@@ -911,6 +911,25 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('patient-date').value = new Date().toISOString().split('T')[0];
   buildForms();
   updateProgress();
+
+  // ?s= URL-parameter: vis kun valgte skemaer
+  const urlParams = new URLSearchParams(window.location.search);
+  const sParam = urlParams.get('s');
+  if (sParam) {
+    const valgte = sParam.split(',').map(s => s.trim().toLowerCase());
+    const navne = {phq9:'PHQ-9',gad7:'GAD-7',wemwbs:'WEMWBS',waisr:'WAI-SR',ors:'ORS'};
+    const navneliste = valgte.map(k => navne[k] || k.toUpperCase()).join(', ');
+    const banner = document.createElement('div');
+    banner.style.cssText = 'background:#e8f4fd;border:1px solid #b3d9f5;border-radius:12px;padding:18px 22px;margin:0 0 24px 0;font-size:14px;color:#1a5276;line-height:1.6;';
+    banner.innerHTML = '<strong>\u{1F4CB} Sp\u00F8rgeskemaer til din session</strong><br>Din psykolog har sendt dig: <strong>' + navneliste + '</strong>.<br>Ca. 5\u201310 min. Tak fordi du udfylder dem inden sessionen.';
+    const mainEl = document.querySelector('main') || document.body;
+    mainEl.insertBefore(banner, mainEl.firstChild);
+    document.querySelectorAll('[id$="-section"]').forEach(sec => {
+      if (!valgte.includes(sec.id.replace('-section', ''))) sec.style.display = 'none';
+    });
+    const sel = document.getElementById('schema-selector');
+    if (sel) (sel.closest('section') || sel.parentElement).style.display = 'none';
+  }
 });
 
 function buildForms() {
