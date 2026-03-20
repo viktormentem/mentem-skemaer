@@ -3,6 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Udfyld psykologiske skemaer (PHQ-9, GAD-7, WEMWBS, WAI-SR, ORS) sikkert i din browser. Ingen data sendes til servere.">
+<meta name="author" content="Viktor Nielsen, Mentem Psykologpraksis">
+<meta property="og:title" content="Mentem — Psykologiske skemaer">
+<meta property="og:description" content="Udfyld psykologiske skemaer sikkert i din browser og del resultater med din psykolog.">
+<meta property="og:type" content="website">
 <title>Mentem — Psykologiske skemaer</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
@@ -910,6 +915,19 @@ let answers = {};
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('patient-date').value = new Date().toISOString().split('T')[0];
   buildForms();
+
+  // ?s= parameter: auto-vælg skemaer, f.eks. ?s=phq9,gad7
+  const params = new URLSearchParams(window.location.search);
+  const sParam = params.get('s');
+  if (sParam) {
+    const gyldige = ['phq9', 'gad7', 'wemwbs', 'waisr', 'ors'];
+    const ønskede = sParam.split(',').map(s => s.trim().toLowerCase()).filter(s => gyldige.includes(s));
+    ønskede.forEach(schema => {
+      const card = document.querySelector(`.schema-card[data-schema="${schema}"]`);
+      if (card && !card.classList.contains('selected')) toggleSchema(card);
+    });
+  }
+
   updateProgress();
 });
 
