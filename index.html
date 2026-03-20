@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mentem — Psykologiske skemaer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --ink: #1a1a2e;
+    --paper: #f8f6f1;
+    --muted: #8a8a9a;
+    --accent: #2d6a4f;
+    --accent-light: #e8f5e1;
+    --border: #e0ddd6;
+    --card: #ffffff;
+    --danger: #c0392b;
+    --warning: #e67e22;
+    --good: #27ae60;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  /* HEADER */
+  .header {
+    background: var(--ink);
+    color: white;
+    padding: 28px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .header-logo {
+    font-family: 'DM Serif Display', serif;
+    font-size: 24px;
+    letter-spacing: -0.5px;
+  }
+
+  .header-sub {
+    font-size: 13px;
+    opacity: 0.5;
+    margin-top: 2px;
+  }
+
+  .header-secure {
+    font-size: 12px;
+    opacity: 0.6;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* SCREEN SYSTEM */
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* WELCOME SCREEN */
+  .welcome {
+    max-width: 680px;
+    margin: 60px auto;
+    padding: 0 24px;
+  }
+
+  .welcome h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 42px;
+    line-height: 1.1;
+    margin-bottom: 16px;
+  }
+
+  .welcome h1 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  .welcome-intro {
+    font-size: 17px;
+    color: var(--muted);
+    line-height: 1.6;
+    margin-bottom: 40px;
+  }
+
+  .schema-cards {
+    display: grid;
+    gap: 12px;
+    margin-bottom: 40px;
+  }
+
+  .schema-card {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    position: relative;
+  }
+
+  .schema-card:hover {
+    border-color: var(--accent);
+    background: var(--accent-light);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(45,106,79,0.1);
+  }
+
+  .schema-card.selected {
+    border-color: var(--accent);
+    background: var(--accent-light);
+  }
+
+  .schema-card.selected::after {
+    content: '✓';
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 24px;
+    height: 24px;
+    background: var(--accent);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .schema-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+
+  .schema-info h3 {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 3px;
+  }
+
+  .schema-info p {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .schema-badge {
+    margin-left: auto;
+    margin-right: 36px;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 3px 8px;
+    border-radius: 20px;
+    background: var(--border);
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 16px 32px;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    width: 100%;
+  }
+
+  .btn-primary:hover { background: #1e4d38; transform: translateY(-1px); }
+  .btn-primary:disabled { background: var(--muted); cursor: not-allowed; transform: none; }
+
+  /* FORM SCREEN */
+  .form-container {
+    max-width: 680px;
+    margin: 40px auto;
+    padding: 0 24px 80px;
+  }
+
+  .form-progress {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 24px;
+    margin-bottom: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .progress-bar-track {
+    flex: 1;
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    margin: 0 16px;
+    overflow: hidden;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+  }
+
+  .progress-label {
+    font-size: 13px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .schema-section {
+    margin-bottom: 40px;
+  }
+
+  .schema-header {
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 16px;
+    margin-bottom: 24px;
+  }
+
+  .schema-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 28px;
+    margin-bottom: 6px;
+  }
+
+  .schema-description {
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  .schema-instruction {
+    background: var(--accent-light);
+    border-left: 3px solid var(--accent);
+    padding: 12px 16px;
+    border-radius: 0 8px 8px 0;
+    font-size: 14px;
+    color: var(--ink);
+    margin-bottom: 24px;
+  }
+
+  /* SPØRGSMÅL */
+  .question-block {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 12px;
+    transition: border-color 0.15s;
+  }
+
+  .question-block:has(input:checked) {
+    border-color: var(--accent);
+    background: var(--accent-light);
+  }
+
+  .question-text {
+    font-size: 15px;
+    font-weight: 500;
+    margin-bottom: 16px;
+    line-height: 1.4;
+  }
+
+  .question-num {
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 400;
+    margin-right: 8px;
+  }
+
+  .radio-group {
+    display: grid;
+    gap: 8px;
+  }
+
+  .radio-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.12s;
+    background: white;
+  }
+
+  .radio-option:hover {
+    border-color: var(--accent);
+    background: #f0faf5;
+  }
+
+  .radio-option input[type="radio"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--accent);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .radio-option:has(input:checked) {
+    border-color: var(--accent);
+    background: var(--accent-light);
+    font-weight: 500;
+  }
+
+  .radio-score {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 400;
+  }
+
+  /* ORS - Visuel skala */
+  .ors-scale {
+    display: grid;
+    gap: 20px;
+  }
+
+  .ors-dimension {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px;
+  }
+
+  .ors-label {
+    font-size: 15px;
+    font-weight: 500;
+    margin-bottom: 6px;
+  }
+
+  .ors-sublabel {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+
+  .ors-slider-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .ors-slider-min, .ors-slider-max {
+    font-size: 12px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .ors-slider {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--border);
+    outline: none;
+    cursor: pointer;
+  }
+
+  .ors-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(45,106,79,0.3);
+  }
+
+  .ors-value {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--accent);
+    width: 32px;
+    text-align: right;
+  }
+
+  /* NAVN SEKTION */
+  .patient-info {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 32px;
+  }
+
+  .patient-info h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 16px;
+  }
+
+  .form-field {
+    margin-bottom: 16px;
+  }
+
+  .form-field label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .form-field input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    background: white;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .form-field input:focus {
+    border-color: var(--accent);
+  }
+
+  /* RESULTS SCREEN */
+  .results-container {
+    max-width: 680px;
+    margin: 40px auto;
+    padding: 0 24px 80px;
+  }
+
+  .results-header {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+
+  .results-header h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 36px;
+    margin-bottom: 8px;
+  }
+
+  .results-header p {
+    color: var(--muted);
+    font-size: 15px;
+  }
+
+  .result-card {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    margin-bottom: 16px;
+  }
+
+  .result-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .result-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+  }
+
+  .result-subtitle {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .score-badge {
+    text-align: right;
+  }
+
+  .score-number {
+    font-size: 36px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .score-max {
+    font-size: 14px;
+    color: var(--muted);
+  }
+
+  .score-label {
+    font-size: 13px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 20px;
+    margin-top: 6px;
+    display: inline-block;
+  }
+
+  .score-minimal { background: #e8f5e1; color: #2d6a4f; }
+  .score-mild { background: #fff3cd; color: #856404; }
+  .score-moderate { background: #fde8d0; color: #6d3a00; }
+  .score-severe { background: #fde0e0; color: #7b1b1b; }
+  .score-good { background: #e8f5e1; color: #2d6a4f; }
+  .score-average { background: #fff3cd; color: #856404; }
+  .score-low { background: #fde8d0; color: #6d3a00; }
+
+  .result-bar-track {
+    height: 10px;
+    background: var(--border);
+    border-radius: 5px;
+    margin: 16px 0 8px;
+    overflow: hidden;
+  }
+
+  .result-bar-fill {
+    height: 100%;
+    border-radius: 5px;
+    transition: width 1s ease;
+  }
+
+  .result-answers {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+  }
+
+  .result-answers-title {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  .answer-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+  }
+
+  .answer-row:last-child { border-bottom: none; }
+
+  .answer-q { color: var(--muted); flex: 1; }
+  .answer-a { font-weight: 500; flex-shrink: 0; }
+
+  .btn-pdf {
+    background: var(--ink);
+    color: white;
+    border: none;
+    padding: 18px 32px;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    width: 100%;
+    margin-top: 8px;
+  }
+
+  .btn-pdf:hover { background: #0d0d1a; transform: translateY(-1px); }
+
+  .pdf-note {
+    text-align: center;
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 12px;
+  }
+
+  /* PRINT */
+  @media print {
+    .header, .btn-pdf, .pdf-note, .btn-primary { display: none !important; }
+    .results-container { margin: 0; padding: 0; }
+    body { background: white; }
+    .result-card { break-inside: avoid; }
+  }
+
+  /* SKJUL/VIS SEKTIONER */
+  .schema-section[data-schema] { display: none; }
+  .schema-section[data-schema].visible { display: block; }
+
+  /* ANIMATION */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .screen.active { animation: fadeIn 0.3s ease; }
+
+  /* DISCLAIMER */
+  .disclaimer {
+    background: var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 24px;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="header-logo">Mentem</div>
+    <div class="header-sub">Psykologiske skemaer · Viktor Nielsen</div>
+  </div>
+  <div class="header-secure">🔒 Data gemmes ikke — PDF laves lokalt i din browser</div>
+</div>
+
+<!-- SCREEN 1: VELKOMST -->
+<div id="screen-welcome" class="screen active">
+  <div class="welcome">
+    <h1>Dine <em>skemaer</em><br>er klar til udfyldelse</h1>
+    <p class="welcome-intro">Nedenfor ser du de skemaer din psykolog har valgt til dig. Det tager typisk 5–15 minutter. Dine svar gemmes ikke — de bruges kun til at lave en PDF du deler med din psykolog.</p>
+
+    <div class="schema-cards" id="schema-selector">
+      <div class="schema-card" data-schema="phq9" onclick="toggleSchema(this)">
+        <div class="schema-icon" style="background:#e8f5e1">😔</div>
+        <div class="schema-info">
+          <h3>PHQ-9 — Depression</h3>
+          <p>Screener for depressive symptomer de seneste 2 uger</p>
+        </div>
+        <span class="schema-badge">9 spørgsmål</span>
+      </div>
+
+      <div class="schema-card" data-schema="gad7" onclick="toggleSchema(this)">
+        <div class="schema-icon" style="background:#fff3cd">😰</div>
+        <div class="schema-info">
+          <h3>GAD-7 — Angst</h3>
+          <p>Måler angst og bekymring de seneste 2 uger</p>
+        </div>
+        <span class="schema-badge">7 spørgsmål</span>
+      </div>
+
+      <div class="schema-card" data-schema="wemwbs" onclick="toggleSchema(this)">
+        <div class="schema-icon" style="background:#e8eaf6">🌱</div>
+        <div class="schema-info">
+          <h3>WEMWBS — Trivsel</h3>
+          <p>Warwick-Edinburgh skala for mental trivsel</p>
+        </div>
+        <span class="schema-badge">14 spørgsmål</span>
+      </div>
+
+      <div class="schema-card" data-schema="waisr" onclick="toggleSchema(this)">
+        <div class="schema-icon" style="background:#fce4ec">🤝</div>
+        <div class="schema-info">
+          <h3>WAI-SR — Alliance</h3>
+          <p>Samarbejdsalliancen med din psykolog</p>
+        </div>
+        <span class="schema-badge">12 spørgsmål</span>
+      </div>
+
+      <div class="schema-card" data-schema="ors" onclick="toggleSchema(this)">
+        <div class="schema-icon" style="background:#e3f2fd">📊</div>
+        <div class="schema-info">
+          <h3>ORS — Outcome Rating</h3>
+          <p>Generelt velbefindende på 4 dimensioner</p>
+        </div>
+        <span class="schema-badge">4 skalaer</span>
+      </div>
+    </div>
+
+    <button class="btn-primary" onclick="startForm()" id="start-btn" disabled>
+      Vælg mindst ét skema for at fortsætte
+    </button>
+
+    <div class="disclaimer">
+      🔒 <strong>Privatliv:</strong> Dine svar behandles udelukkende i din browser. Intet sendes til nogen server. PDF'en genereres lokalt og sendes kun til din psykolog ved at du selv vedhæfter den.
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN 2: FORMULAR -->
+<div id="screen-form" class="screen">
+  <div class="form-container">
+
+    <div class="form-progress">
+      <span class="progress-label" id="progress-current">0%</span>
+      <div class="progress-bar-track">
+        <div class="progress-bar-fill" id="progress-fill" style="width:0%"></div>
+      </div>
+      <span class="progress-label" id="progress-total">0 af 0 besvaret</span>
+    </div>
+
+    <div class="patient-info">
+      <h3>Om dig</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="form-field">
+          <label>Dit navn (valgfrit)</label>
+          <input type="text" id="patient-name" placeholder="Fx Anna Larsen">
+        </div>
+        <div class="form-field">
+          <label>Dato</label>
+          <input type="date" id="patient-date">
+        </div>
+      </div>
+    </div>
+
+    <!-- PHQ-9 -->
+    <div class="schema-section" data-schema="phq9">
+      <div class="schema-header">
+        <div class="schema-title">PHQ-9 — Depression</div>
+        <div class="schema-description">Patient Health Questionnaire · 9 spørgsmål</div>
+      </div>
+      <div class="schema-instruction">Hvor tit har du været generet af følgende problemer <strong>i løbet af de seneste 2 uger?</strong></div>
+
+      <div id="phq9-questions"></div>
+    </div>
+
+    <!-- GAD-7 -->
+    <div class="schema-section" data-schema="gad7">
+      <div class="schema-header">
+        <div class="schema-title">GAD-7 — Angst</div>
+        <div class="schema-description">Generalized Anxiety Disorder · 7 spørgsmål</div>
+      </div>
+      <div class="schema-instruction">Hvor tit har du været generet af følgende problemer <strong>i løbet af de seneste 2 uger?</strong></div>
+
+      <div id="gad7-questions"></div>
+    </div>
+
+    <!-- WEMWBS -->
+    <div class="schema-section" data-schema="wemwbs">
+      <div class="schema-header">
+        <div class="schema-title">WEMWBS — Trivsel</div>
+        <div class="schema-description">Warwick-Edinburgh Mental Wellbeing Scale · 14 spørgsmål</div>
+      </div>
+      <div class="schema-instruction">Nedenfor er en liste over udsagn om følelser og tanker. Angiv det svar, der bedst beskriver <strong>din oplevelse i løbet af de seneste 2 uger.</strong></div>
+
+      <div id="wemwbs-questions"></div>
+    </div>
+
+    <!-- WAI-SR -->
+    <div class="schema-section" data-schema="waisr">
+      <div class="schema-header">
+        <div class="schema-title">WAI-SR — Samarbejdsalliance</div>
+        <div class="schema-description">Working Alliance Inventory — Short Revised · 12 spørgsmål</div>
+      </div>
+      <div class="schema-instruction">Nedenstående udsagn beskriver forskellige måder man kan tænke eller føle om sin terapeut og arbejdet sammen. <strong>Tænk på jeres seneste samtale</strong> når du svarer.</div>
+
+      <div id="waisr-questions"></div>
+    </div>
+
+    <!-- ORS -->
+    <div class="schema-section" data-schema="ors">
+      <div class="schema-header">
+        <div class="schema-title">ORS — Outcome Rating Scale</div>
+        <div class="schema-description">Generelt velbefindende · 4 dimensioner</div>
+      </div>
+      <div class="schema-instruction">Sæt et mærke på linjerne nedenfor for at beskrive, <strong>hvordan du har haft det i den seneste uge</strong> — fra dårligt til godt.</div>
+
+      <div class="ors-scale" id="ors-questions"></div>
+    </div>
+
+    <button class="btn-primary" onclick="generateResults()" id="submit-btn" style="margin-top:16px">
+      Generer resultater →
+    </button>
+
+  </div>
+</div>
+
+<!-- SCREEN 3: RESULTATER -->
+<div id="screen-results" class="screen">
+  <div class="results-container">
+
+    <div class="results-header">
+      <h2>Dine resultater</h2>
+      <p id="results-meta">Klar til at dele med din psykolog</p>
+    </div>
+
+    <div id="results-content"></div>
+
+    <button class="btn-pdf" onclick="printPDF()">
+      📄 Gem som PDF og del med psykolog
+    </button>
+    <p class="pdf-note">Tryk Cmd+P (Mac) eller Ctrl+P (Windows) → Vælg "Gem som PDF"</p>
+
+    <div class="disclaimer" style="margin-top:24px">
+      Disse resultater er til brug i klinisk sammenhæng og er ikke en diagnose. Tal med din psykolog om hvad resultaterne betyder for dig.
+    </div>
+
+  </div>
+</div>
+
+<script>
+// === DATA ===
+
+const PHQ9_QUESTIONS = [
+  "Lille interesse eller glæde ved at gøre ting",
+  "Følelse af at være nedtrykt, deprimeret eller håbløs",
+  "Besvær med at falde i søvn, at sove igennem, eller omvendt at sove for meget",
+  "Følelse af at være træt eller have meget lidt energi",
+  "Dårlig appetit eller omvendt at spise for meget",
+  "Dårlig mening om dig selv — eller en følelse af at du er en fiasko eller har svigtet dig selv eller din familie",
+  "Besvær med at koncentrere dig om ting, f.eks. at læse avisen eller se fjernsyn",
+  "At bevæge eller tale så langsomt at andre mennesker kunne have bemærket det. Eller omvendt at være så rastløs eller urolig at du bevæger dig meget mere end normalt",
+  "Tanker om at du hellere ville være død, eller om at skade dig selv på en eller anden måde"
+];
+
+const PHQ9_OPTIONS = [
+  { label: "Slet ikke", value: 0 },
+  { label: "Adskillige dage", value: 1 },
+  { label: "Mere end halvdelen af dagene", value: 2 },
+  { label: "Næsten hver dag", value: 3 }
+];
+
+const GAD7_QUESTIONS = [
+  "Føler dig nervøs, angst eller på kanten",
+  "Er ude af stand til at stoppe med at bekymre dig eller kontrollere din bekymring",
+  "Bekymrer dig for meget om forskellige ting",
+  "Har svært ved at slappe af",
+  "Er så rastløs at det er svært at sidde stille",
+  "Bliver nemt irritabel eller gnaven",
+  "Føler dig bange, som om noget forfærdeligt kan ske"
+];
+
+const GAD7_OPTIONS = [
+  { label: "Slet ikke", value: 0 },
+  { label: "Adskillige dage", value: 1 },
+  { label: "Mere end halvdelen af dagene", value: 2 },
+  { label: "Næsten hver dag", value: 3 }
+];
+
+const WEMWBS_QUESTIONS = [
+  "Jeg har følt mig optimistisk med hensyn til fremtiden",
+  "Jeg har følt mig nyttig",
+  "Jeg har følt mig afslappet",
+  "Jeg har håndteret problemer godt",
+  "Jeg har tænkt klart",
+  "Jeg har følt mig tæt på andre mennesker",
+  "Jeg har kunnet tage egne beslutninger",
+  "Jeg har haft positive følelser",
+  "Jeg har sovet godt",
+  "Jeg har haft energi at bruge",
+  "Jeg har interesseret mig for nye ting",
+  "Jeg har følt mig munter",
+  "Jeg har følt mig elsket",
+  "Jeg har været interesseret i andre mennesker"
+];
+
+const WEMWBS_OPTIONS = [
+  { label: "Slet ikke", value: 1 },
+  { label: "Sjældent", value: 2 },
+  { label: "Af og til", value: 3 },
+  { label: "Ofte", value: 4 },
+  { label: "Hele tiden", value: 5 }
+];
+
+const WAISR_QUESTIONS = [
+  "Terapeuten og jeg er enige om, hvad der er vigtigt for mig at arbejde med",
+  "Hvad vi foretager os i behandlingen giver mig en ny måde at se mit problem på",
+  "Jeg tror på, at terapeuten kan hjælpe mig",
+  "Terapeuten og jeg er enige om, hvad der skal ske for at mine ting kan forbedre sig",
+  "Jeg tror på, at det vi laver i behandlingen vil hjælpe mig med at nå de mål jeg har sat mig",
+  "Terapeuten og jeg har etableret en god forståelse af, hvilke mål vi skal forsøge at opnå",
+  "Jeg har respekt for og tillid til terapeuten",
+  "Vi har etableret en god forståelse af den slags forandringer, der ville være gode for mig",
+  "Terapeuten og jeg samarbejder om at opstille mål for min behandling",
+  "Terapeuten udviser omsorg for mig, selv når jeg gør ting som vedkommende ikke kan lide",
+  "Terapeuten og jeg stoler på hinanden",
+  "Vi er enige om de ting jeg skal gøre i behandlingen"
+];
+
+const WAISR_OPTIONS = [
+  { label: "Sjældent", value: 1 },
+  { label: "Lejlighedsvist", value: 2 },
+  { label: "Af og til", value: 3 },
+  { label: "Tit", value: 4 },
+  { label: "Meget tit", value: 5 },
+  { label: "Altid", value: 6 }
+];
+
+const ORS_DIMENSIONS = [
+  { id: "ors_personal", label: "Personligt", sublabel: "Generelt velbefindende (ensomhed, angst, depression)" },
+  { id: "ors_interpersonal", label: "Interpersonelt", sublabel: "Familie, nære relationer" },
+  { id: "ors_social", label: "Socialt", sublabel: "Arbejde, skole, venner, sociale relationer" },
+  { id: "ors_overall", label: "Overordnet", sublabel: "Generel fornemmelse af velvære" }
+];
+
+// === STATE ===
+let selectedSchemas = [];
+let answers = {};
+
+// === INIT ===
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('patient-date').value = new Date().toISOString().split('T')[0];
+  buildForms();
+  updateProgress();
+});
+
+function buildForms() {
+  buildRadioForm('phq9-questions', 'phq9', PHQ9_QUESTIONS, PHQ9_OPTIONS);
+  buildRadioForm('gad7-questions', 'gad7', GAD7_QUESTIONS, GAD7_OPTIONS);
+  buildRadioForm('wemwbs-questions', 'wemwbs', WEMWBS_QUESTIONS, WEMWBS_OPTIONS);
+  buildRadioForm('waisr-questions', 'waisr', WAISR_QUESTIONS, WAISR_OPTIONS);
+  buildORS();
+}
+
+function buildRadioForm(containerId, schema, questions, options) {
+  const container = document.getElementById(containerId);
+  questions.forEach((q, i) => {
+    const block = document.createElement('div');
+    block.className = 'question-block';
+    block.innerHTML = `
+      <div class="question-text">
+        <span class="question-num">${i+1}.</span>${q}
+      </div>
+      <div class="radio-group">
+        ${options.map(opt => `
+          <label class="radio-option">
+            <input type="radio" name="${schema}_q${i}" value="${opt.value}"
+              onchange="recordAnswer('${schema}', ${i}, ${opt.value}, '${opt.label}')">
+            ${opt.label}
+            <span class="radio-score">${opt.value}</span>
+          </label>
+        `).join('')}
+      </div>
+    `;
+    container.appendChild(block);
+  });
+}
+
+function buildORS() {
+  const container = document.getElementById('ors-questions');
+  ORS_DIMENSIONS.forEach(dim => {
+    container.innerHTML += `
+      <div class="ors-dimension">
+        <div class="ors-label">${dim.label}</div>
+        <div class="ors-sublabel">${dim.sublabel}</div>
+        <div class="ors-slider-row">
+          <span class="ors-slider-min">Dårligt</span>
+          <input type="range" class="ors-slider" id="${dim.id}" min="0" max="10" step="0.1" value="5"
+            oninput="updateORS('${dim.id}', this.value)">
+          <span class="ors-slider-max">Godt</span>
+          <span class="ors-value" id="${dim.id}_val">5.0</span>
+        </div>
+      </div>
+    `;
+    answers[dim.id] = 5;
+  });
+}
+
+function updateORS(id, val) {
+  document.getElementById(id + '_val').textContent = parseFloat(val).toFixed(1);
+  answers[id] = parseFloat(val);
+  updateProgress();
+}
+
+function recordAnswer(schema, qIndex, value, label) {
+  if (!answers[schema]) answers[schema] = {};
+  answers[schema][qIndex] = { value, label };
+  updateProgress();
+}
+
+function updateProgress() {
+  let total = 0, answered = 0;
+  selectedSchemas.forEach(schema => {
+    if (schema === 'ors') {
+      total += 4;
+      answered += 4; // sliders har altid en værdi
+    } else {
+      const questions = getQuestions(schema);
+      total += questions.length;
+      if (answers[schema]) {
+        answered += Object.keys(answers[schema]).length;
+      }
+    }
+  });
+
+  const pct = total > 0 ? Math.round(answered / total * 100) : 0;
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-current').textContent = pct + '%';
+  document.getElementById('progress-total').textContent = answered + ' af ' + total + ' besvaret';
+}
+
+function getQuestions(schema) {
+  const map = { phq9: PHQ9_QUESTIONS, gad7: GAD7_QUESTIONS, wemwbs: WEMWBS_QUESTIONS, waisr: WAISR_QUESTIONS };
+  return map[schema] || [];
+}
+
+// === TOGGLE SCHEMA VALG ===
+function toggleSchema(card) {
+  const schema = card.dataset.schema;
+  card.classList.toggle('selected');
+  if (card.classList.contains('selected')) {
+    if (!selectedSchemas.includes(schema)) selectedSchemas.push(schema);
+  } else {
+    selectedSchemas = selectedSchemas.filter(s => s !== schema);
+  }
+  const btn = document.getElementById('start-btn');
+  if (selectedSchemas.length > 0) {
+    btn.disabled = false;
+    btn.textContent = `Start udfyldelse (${selectedSchemas.length} skema${selectedSchemas.length > 1 ? 'er' : ''}) →`;
+  } else {
+    btn.disabled = true;
+    btn.textContent = 'Vælg mindst ét skema for at fortsætte';
+  }
+}
+
+// === START FORM ===
+function startForm() {
+  // Vis relevante sektioner
+  document.querySelectorAll('.schema-section[data-schema]').forEach(sec => {
+    sec.classList.remove('visible');
+    if (selectedSchemas.includes(sec.dataset.schema)) sec.classList.add('visible');
+  });
+
+  showScreen('screen-form');
+  updateProgress();
+}
+
+// === GENERER RESULTATER ===
+function generateResults() {
+  let html = '';
+  const name = document.getElementById('patient-name').value || 'Anonym';
+  const date = document.getElementById('patient-date').value;
+  const df = new Intl.DateTimeFormat('da-DK', { year: 'numeric', month: 'long', day: 'numeric' });
+  const dateStr = date ? df.format(new Date(date)) : 'Ukendt dato';
+
+  document.getElementById('results-meta').textContent = name + ' · ' + dateStr;
+
+  selectedSchemas.forEach(schema => {
+    if (schema === 'phq9') html += renderPHQ9();
+    if (schema === 'gad7') html += renderGAD7();
+    if (schema === 'wemwbs') html += renderWEMWBS();
+    if (schema === 'waisr') html += renderWAISR();
+    if (schema === 'ors') html += renderORS();
+  });
+
+  document.getElementById('results-content').innerHTML = html;
+  showScreen('screen-results');
+  setTimeout(() => {
+    document.querySelectorAll('.result-bar-fill').forEach(bar => {
+      bar.style.width = bar.dataset.target;
+    });
+  }, 100);
+}
+
+function calcScore(schema) {
+  if (!answers[schema]) return 0;
+  return Object.values(answers[schema]).reduce((sum, a) => sum + a.value, 0);
+}
+
+function renderPHQ9() {
+  const score = calcScore('phq9');
+  const max = 27;
+  let severity, cls;
+  if (score <= 4) { severity = 'Minimal depression'; cls = 'score-minimal'; }
+  else if (score <= 9) { severity = 'Mild depression'; cls = 'score-mild'; }
+  else if (score <= 14) { severity = 'Moderat depression'; cls = 'score-moderate'; }
+  else if (score <= 19) { severity = 'Moderat svær depression'; cls = 'score-moderate'; }
+  else { severity = 'Svær depression'; cls = 'score-severe'; }
+
+  const pct = Math.round(score / max * 100);
+  const barColor = score <= 4 ? '#2d6a4f' : score <= 9 ? '#f0a500' : score <= 14 ? '#e67e22' : '#c0392b';
+
+  return `
+    <div class="result-card">
+      <div class="result-card-header">
+        <div>
+          <div class="result-title">PHQ-9 — Depression</div>
+          <div class="result-subtitle">Patient Health Questionnaire</div>
+        </div>
+        <div class="score-badge">
+          <div class="score-number" style="color:${barColor}">${score}</div>
+          <div class="score-max">/ ${max}</div>
+          <div class="score-label ${cls}">${severity}</div>
+        </div>
+      </div>
+      <div class="result-bar-track">
+        <div class="result-bar-fill" data-target="${pct}%" style="width:0%;background:${barColor}"></div>
+      </div>
+      <div class="result-answers">
+        <div class="result-answers-title">Svar</div>
+        ${PHQ9_QUESTIONS.map((q, i) => {
+          const a = answers.phq9 && answers.phq9[i];
+          return `<div class="answer-row"><span class="answer-q">${i+1}. ${q}</span><span class="answer-a">${a ? a.label + ' (' + a.value + ')' : '—'}</span></div>`;
+        }).join('')}
+      </div>
+    </div>`;
+}
+
+function renderGAD7() {
+  const score = calcScore('gad7');
+  const max = 21;
+  let severity, cls;
+  if (score <= 4) { severity = 'Minimal angst'; cls = 'score-minimal'; }
+  else if (score <= 9) { severity = 'Mild angst'; cls = 'score-mild'; }
+  else if (score <= 14) { severity = 'Moderat angst'; cls = 'score-moderate'; }
+  else { severity = 'Svær angst'; cls = 'score-severe'; }
+
+  const pct = Math.round(score / max * 100);
+  const barColor = score <= 4 ? '#2d6a4f' : score <= 9 ? '#f0a500' : score <= 14 ? '#e67e22' : '#c0392b';
+
+  return `
+    <div class="result-card">
+      <div class="result-card-header">
+        <div>
+          <div class="result-title">GAD-7 — Angst</div>
+          <div class="result-subtitle">Generalized Anxiety Disorder Scale</div>
+        </div>
+        <div class="score-badge">
+          <div class="score-number" style="color:${barColor}">${score}</div>
+          <div class="score-max">/ ${max}</div>
+          <div class="score-label ${cls}">${severity}</div>
+        </div>
+      </div>
+      <div class="result-bar-track">
+        <div class="result-bar-fill" data-target="${pct}%" style="width:0%;background:${barColor}"></div>
+      </div>
+      <div class="result-answers">
+        <div class="result-answers-title">Svar</div>
+        ${GAD7_QUESTIONS.map((q, i) => {
+          const a = answers.gad7 && answers.gad7[i];
+          return `<div class="answer-row"><span class="answer-q">${i+1}. ${q}</span><span class="answer-a">${a ? a.label + ' (' + a.value + ')' : '—'}</span></div>`;
+        }).join('')}
+      </div>
+    </div>`;
+}
+
+function renderWEMWBS() {
+  const score = calcScore('wemwbs');
+  const max = 70;
+  const min = 14;
+  let severity, cls;
+  if (score >= 54) { severity = 'Høj trivsel'; cls = 'score-good'; }
+  else if (score >= 41) { severity = 'Gennemsnitlig trivsel'; cls = 'score-average'; }
+  else { severity = 'Lav trivsel'; cls = 'score-low'; }
+
+  const pct = Math.round((score - min) / (max - min) * 100);
+  const barColor = score >= 54 ? '#2d6a4f' : score >= 41 ? '#f0a500' : '#c0392b';
+
+  return `
+    <div class="result-card">
+      <div class="result-card-header">
+        <div>
+          <div class="result-title">WEMWBS — Trivsel</div>
+          <div class="result-subtitle">Warwick-Edinburgh Mental Wellbeing Scale</div>
+        </div>
+        <div class="score-badge">
+          <div class="score-number" style="color:${barColor}">${score}</div>
+          <div class="score-max">/ ${max}</div>
+          <div class="score-label ${cls}">${severity}</div>
+        </div>
+      </div>
+      <div class="result-bar-track">
+        <div class="result-bar-fill" data-target="${pct}%" style="width:0%;background:${barColor}"></div>
+      </div>
+      <div class="result-answers">
+        <div class="result-answers-title">Svar</div>
+        ${WEMWBS_QUESTIONS.map((q, i) => {
+          const a = answers.wemwbs && answers.wemwbs[i];
+          return `<div class="answer-row"><span class="answer-q">${i+1}. ${q}</span><span class="answer-a">${a ? a.label + ' (' + a.value + ')' : '—'}</span></div>`;
+        }).join('')}
+      </div>
+    </div>`;
+}
+
+function renderWAISR() {
+  const score = calcScore('waisr');
+  const max = 72;
+  let severity, cls;
+  if (score >= 60) { severity = 'Stærk alliance'; cls = 'score-good'; }
+  else if (score >= 40) { severity = 'Moderat alliance'; cls = 'score-average'; }
+  else { severity = 'Svag alliance'; cls = 'score-low'; }
+
+  const pct = Math.round(score / max * 100);
+  const barColor = score >= 60 ? '#2d6a4f' : score >= 40 ? '#f0a500' : '#c0392b';
+
+  return `
+    <div class="result-card">
+      <div class="result-card-header">
+        <div>
+          <div class="result-title">WAI-SR — Alliance</div>
+          <div class="result-subtitle">Working Alliance Inventory — Short Revised</div>
+        </div>
+        <div class="score-badge">
+          <div class="score-number" style="color:${barColor}">${score}</div>
+          <div class="score-max">/ ${max}</div>
+          <div class="score-label ${cls}">${severity}</div>
+        </div>
+      </div>
+      <div class="result-bar-track">
+        <div class="result-bar-fill" data-target="${pct}%" style="width:0%;background:${barColor}"></div>
+      </div>
+      <div class="result-answers">
+        <div class="result-answers-title">Svar</div>
+        ${WAISR_QUESTIONS.map((q, i) => {
+          const a = answers.waisr && answers.waisr[i];
+          return `<div class="answer-row"><span class="answer-q">${i+1}. ${q}</span><span class="answer-a">${a ? a.label + ' (' + a.value + ')' : '—'}</span></div>`;
+        }).join('')}
+      </div>
+    </div>`;
+}
+
+function renderORS() {
+  const total = ORS_DIMENSIONS.reduce((sum, d) => sum + (answers[d.id] || 0), 0);
+  const max = 40;
+  let severity, cls;
+  if (total >= 28) { severity = 'Over cut-off'; cls = 'score-good'; }
+  else { severity = 'Under cut-off (klinisk bekymring)'; cls = 'score-moderate'; }
+  const barColor = total >= 28 ? '#2d6a4f' : '#e67e22';
+
+  return `
+    <div class="result-card">
+      <div class="result-card-header">
+        <div>
+          <div class="result-title">ORS — Outcome Rating</div>
+          <div class="result-subtitle">Generelt velbefindende på 4 dimensioner</div>
+        </div>
+        <div class="score-badge">
+          <div class="score-number" style="color:${barColor}">${total.toFixed(1)}</div>
+          <div class="score-max">/ ${max}</div>
+          <div class="score-label ${cls}">${severity}</div>
+        </div>
+      </div>
+      <div class="result-bar-track">
+        <div class="result-bar-fill" data-target="${Math.round(total/max*100)}%" style="width:0%;background:${barColor}"></div>
+      </div>
+      <div class="result-answers">
+        <div class="result-answers-title">Dimensioner</div>
+        ${ORS_DIMENSIONS.map(d => `
+          <div class="answer-row">
+            <span class="answer-q">${d.label} — ${d.sublabel}</span>
+            <span class="answer-a">${(answers[d.id] || 0).toFixed(1)} / 10</span>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+// === NAVIGATION ===
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+function printPDF() {
+  window.print();
+}
+</script>
+</body>
+</html>
