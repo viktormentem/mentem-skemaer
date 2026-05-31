@@ -32,14 +32,11 @@
   .intro { font-size:17px; color:var(--muted); line-height:1.6; margin-bottom:36px; }
 
   .schema-cards { display:grid; gap:12px; margin-bottom:36px; }
-  .schema-card { background:var(--card); border:1.5px solid var(--border); border-radius:12px; padding:18px 22px; display:flex; align-items:center; gap:16px; position:relative; transition:all 0.15s; }
-  .schema-card.selectable { cursor:pointer; }
-  .schema-card.selectable:hover { border-color:var(--accent); background:var(--accent-light); }
-  .schema-card.selected { border-color:var(--accent); background:var(--accent-light); }
-  .schema-card.selected::after { content:'✓'; position:absolute; right:18px; top:50%; transform:translateY(-50%); width:24px; height:24px; background:var(--accent); color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; }
-  .schema-icon { width:42px; height:42px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; background:var(--accent-light); }
-  .schema-info h3 { font-size:15px; font-weight:600; margin-bottom:2px; }
-  .schema-info p { font-size:13px; color:var(--muted); }
+  /* Kort = informativ liste (IKKE valgbar checklist — ingen flueben/valg-look) */
+  .schema-card { background:var(--card); border:1.5px solid var(--border); border-radius:12px; padding:18px 22px; display:flex; align-items:center; gap:16px; }
+  .schema-icon { width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; background:var(--accent-light); color:var(--accent); }
+  .schema-icon svg { width:22px; height:22px; display:block; }
+  .schema-info h3 { font-size:15px; font-weight:600; }
   .schema-badge { margin-left:auto; margin-right:32px; font-size:11px; font-weight:500; padding:3px 8px; border-radius:20px; background:var(--border); color:var(--muted); white-space:nowrap; }
 
   .btn-primary { background:var(--accent); color:white; border:none; padding:16px 32px; border-radius:10px; font-family:'DM Sans',sans-serif; font-size:16px; font-weight:600; cursor:pointer; transition:all 0.15s; width:100%; }
@@ -85,6 +82,8 @@
   .done-wrap p { color:var(--muted); font-size:16px; line-height:1.6; margin-bottom:28px; }
   .done-status { font-size:14px; color:var(--accent); margin-top:16px; min-height:20px; }
   .disclaimer { background:var(--border); border-radius:8px; padding:12px 16px; font-size:12px; color:var(--muted); margin-top:24px; line-height:1.5; }
+  .start-note { text-align:center; font-size:14px; color:var(--muted); margin-top:14px; line-height:1.5; }
+  .footer-credit { font-size:11px; color:var(--muted); margin-top:20px; line-height:1.5; text-align:center; }
 
   @keyframes fadeIn { from{opacity:0;transform:translateY(14px);} to{opacity:1;transform:translateY(0);} }
 </style>
@@ -106,7 +105,9 @@
     <p class="intro" id="welcome-intro"></p>
     <div class="schema-cards" id="schema-cards"></div>
     <button class="btn-primary" id="start-btn" disabled>Start</button>
+    <p class="start-note">Til sidst får du én fil, som du nemt deler med din psykolog — vi viser dig hvordan.</p>
     <div class="disclaimer">🔒 <strong>Privatliv:</strong> Du udfylder alt i din egen browser. Når du er færdig, samles svarene i én krypteret fil, som kun din psykolog kan åbne. Intet gemmes på en server, og du sender selv filen.</div>
+    <p class="footer-credit">Skemaerne bygger på anerkendte spørgeskemaer (GAD-7, PHQ-9, WHO-5, WSAS), som din psykolog bruger til at følge din udvikling.</p>
   </div>
 </div>
 
@@ -157,45 +158,47 @@ const fixedFromLink = selected.length > 0;                    // ?s= → låst b
 
 const answers = {};
 
+// Neutrale line-ikoner (stroke = currentColor; pale-grøn cirkel via .schema-icon).
+const SVG = (inner) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
+const ICONS = {
+  kompas:    SVG('<circle cx="12" cy="12" r="9"/><polygon points="15.5 8.5 11 11 8.5 15.5 13 13"/>'),
+  tanker:    SVG('<path d="M7.5 14a4 4 0 1 1 1.4-7.6A4.5 4.5 0 0 1 17 8a3 3 0 0 1-.4 6H8"/><circle cx="6" cy="17.5" r="1"/><circle cx="3.5" cy="20" r="0.6"/>'),
+  sky:       SVG('<path d="M7.5 18a4 4 0 0 1 0-8 5 5 0 0 1 9.5-1.2A3.5 3.5 0 0 1 17 18z"/>'),
+  sol:       SVG('<line x1="3" y1="18" x2="21" y2="18"/><path d="M7 18a5 5 0 0 1 10 0"/><line x1="12" y1="4.5" x2="12" y2="7"/><line x1="5.5" y1="8.5" x2="7" y2="10"/><line x1="18.5" y1="8.5" x2="17" y2="10"/>'),
+  plante:    SVG('<path d="M12 20v-7"/><path d="M12 13c0-3 2.3-5 5-5 0 3-2.3 5-5 5z"/><path d="M12 15c0-2.4-1.9-4.2-4.3-4.2 0 2.4 1.9 4.2 4.3 4.2z"/>'),
+  puslespil: SVG('<path d="M5 9V6.5A1.5 1.5 0 0 1 6.5 5H9a2 2 0 1 1 4 0h2.5A1.5 1.5 0 0 1 17 6.5V9a2 2 0 1 1 0 4v2.5a1.5 1.5 0 0 1-1.5 1.5H13a2 2 0 1 0-4 0H6.5A1.5 1.5 0 0 1 5 15.5V13a2 2 0 1 0 0-4z"/>'),
+  samarbejde:SVG('<circle cx="9.5" cy="12" r="4"/><circle cx="14.5" cy="12" r="4"/>'),
+};
+const iconSVG = (key) => ICONS[key] || SVG('<circle cx="12" cy="12" r="8"/>');
+
 // ── VELKOMST ─────────────────────────────────────────────────────────────
+// Kortene er en INFORMATIV liste over det batteri din psykolog har valgt —
+// ikke en valgbar checklist (ingen flueben/valg-affordance, R5/anti-priming).
 function renderWelcome() {
   const intro = document.getElementById('welcome-intro');
   const cardsEl = document.getElementById('schema-cards');
   const startBtn = document.getElementById('start-btn');
 
-  const ids = fixedFromLink ? selected : SKEMA_ORDER;
-  intro.textContent = fixedFromLink
-    ? `Din psykolog har sammensat ${selected.length} korte skemaer, der hjælper jer med at få mest ud af samtalen. Det tager typisk 5–10 minutter. Der er ingen rigtige eller forkerte svar.`
-    : 'Vælg de skemaer, du vil udfylde inden samtalen.';
+  const battery = fixedFromLink ? selected : SKEMA_ORDER;
+  selected = battery;   // hele batteriet udfyldes
+
+  intro.textContent = 'Din psykolog har sammensat nogle korte skemaer, der hjælper jer med at få mest ud af jeres samtale. Tag dem i dit eget tempo — det tager omkring 10 minutter, og der er ingen rigtige eller forkerte svar.';
 
   cardsEl.innerHTML = '';
-  ids.forEach(id => {
+  battery.forEach(id => {
     const s = SKEMAER[id];
     const card = document.createElement('div');
-    card.className = 'schema-card' + (fixedFromLink ? ' selected' : ' selectable');
+    card.className = 'schema-card';
     card.innerHTML = `
-      <div class="schema-icon">${s.icon}</div>
-      <div class="schema-info"><h3>${s.short}</h3><p>${s.title}</p></div>
+      <div class="schema-icon">${iconSVG(s.icon)}</div>
+      <div class="schema-info"><h3>${s.short}</h3></div>
       <span class="schema-badge">${s.badge}</span>`;
-    if (!fixedFromLink) card.addEventListener('click', () => toggleCard(card, id));
     cardsEl.appendChild(card);
   });
 
-  if (fixedFromLink) { startBtn.disabled = false; startBtn.textContent = 'Start'; }
+  startBtn.disabled = battery.length === 0;
+  startBtn.textContent = 'Start';
   startBtn.addEventListener('click', startForm);
-}
-
-function toggleCard(card, id) {
-  card.classList.toggle('selected');
-  if (card.classList.contains('selected')) {
-    if (!selected.includes(id)) selected.push(id);
-  } else {
-    selected = selected.filter(x => x !== id);
-  }
-  selected = SKEMA_ORDER.filter(x => selected.includes(x));
-  const btn = document.getElementById('start-btn');
-  btn.disabled = selected.length === 0;
-  btn.textContent = selected.length ? 'Start' : 'Vælg mindst ét skema';
 }
 
 // ── FORMULAR ───────────────────────────────────────────────────────────────

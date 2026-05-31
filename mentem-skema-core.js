@@ -52,8 +52,8 @@ const WAISR_OPTS = [
 export const SKEMAER = {
   // ── Egen-forfattet MCT-proces-spine (§12, fri klinisk metode) ──────────
   cas: {
-    id: 'cas', kind: 'vas', title: 'Ugens mønstre', short: 'Proces',
-    icon: '🧭', badge: '4 skalaer',
+    id: 'cas', kind: 'vas', title: 'Ugens mønstre', short: 'Ugens mønstre',
+    icon: 'kompas', badge: '4 skalaer',
     instruction: 'Tænk på den seneste uge. Træk i hver skala for at vise, hvor stor del af tiden (0–100 %) du oplevede følgende. Der er ingen rigtige eller forkerte svar.',
     items: [
       { key: 'worry', text: 'Tid brugt på bekymring (om fremtiden, "hvad nu hvis…")' },
@@ -64,8 +64,8 @@ export const SKEMAER = {
     vasMin: 'Slet ingen tid', vasMax: 'Næsten hele tiden',
   },
   mcb: {
-    id: 'mcb', kind: 'vas', title: 'Tanker om bekymring', short: 'Antagelser',
-    icon: '💭', badge: '5 skalaer',
+    id: 'mcb', kind: 'vas', title: 'Tanker om bekymring', short: 'Tanker om bekymring',
+    icon: 'tanker', badge: '5 skalaer',
     instruction: 'Hvor enig er du i hvert udsagn lige nu? Træk i skalaen fra helt uenig til helt enig.',
     items: [
       { key: 'positive', text: 'At bekymre mig hjælper mig med at være forberedt og håndtere ting' },
@@ -78,7 +78,7 @@ export const SKEMAER = {
   },
   // ── Symptom (frit/public domain) ───────────────────────────────────────
   gad7: {
-    id: 'gad7', kind: 'radio', title: 'GAD-7', short: 'Angst', icon: '😰', badge: '7 spørgsmål',
+    id: 'gad7', kind: 'radio', title: 'GAD-7', short: 'Bekymring og uro', icon: 'sky', badge: '7 spørgsmål',
     instruction: 'Hvor tit har du været generet af følgende problemer i løbet af de seneste 2 uger?',
     options: FREQ_0_3, max: 21,
     items: [
@@ -92,7 +92,7 @@ export const SKEMAER = {
     ],
   },
   phq9: {
-    id: 'phq9', kind: 'radio', title: 'PHQ-9', short: 'Stemningsleje', icon: '😔', badge: '9 spørgsmål',
+    id: 'phq9', kind: 'radio', title: 'PHQ-9', short: 'Humør og energi', icon: 'sol', badge: '9 spørgsmål',
     instruction: 'Hvor tit har du været generet af følgende problemer i løbet af de seneste 2 uger?',
     options: FREQ_0_3, max: 27,
     items: [
@@ -109,7 +109,7 @@ export const SKEMAER = {
   },
   // ── Trivsel + funktion (frit m. attribution, R7.5) ─────────────────────
   who5: {
-    id: 'who5', kind: 'radio', title: 'WHO-5', short: 'Trivsel', icon: '🌤️', badge: '5 spørgsmål',
+    id: 'who5', kind: 'radio', title: 'WHO-5', short: 'Generel trivsel', icon: 'plante', badge: '5 spørgsmål',
     instruction: 'Angiv for hvert af de fem udsagn, hvad der bedst beskriver, hvordan du har haft det i de seneste 2 uger.',
     options: WHO5_OPTS, max: 25,
     attribution: 'WHO-5 Trivselindeks © WHO (1998). Gengivet uændret med kildeangivelse (CC BY-NC-SA).',
@@ -122,7 +122,7 @@ export const SKEMAER = {
     ],
   },
   wsas: {
-    id: 'wsas', kind: 'radio', title: 'WSAS', short: 'Funktion', icon: '🧩', badge: '5 spørgsmål',
+    id: 'wsas', kind: 'radio', title: 'WSAS', short: 'Hverdag og funktion', icon: 'puslespil', badge: '5 spørgsmål',
     instruction: 'Hvor meget påvirker dine vanskeligheder din evne til følgende? 0 = slet ikke påvirket, 8 = meget svært påvirket.',
     options: WSAS_OPTS, max: 40,
     attribution: 'Work and Social Adjustment Scale (WSAS). Reproduced with kind permission of Professor Isaac Marks (Mundt et al. 2002).',
@@ -136,7 +136,7 @@ export const SKEMAER = {
   },
   // ── Alliance (frit/public domain, alliance-checkpoints) ────────────────
   waisr: {
-    id: 'waisr', kind: 'radio', title: 'WAI-SR', short: 'Samarbejde', icon: '🤝', badge: '12 spørgsmål',
+    id: 'waisr', kind: 'radio', title: 'WAI-SR', short: 'Samarbejde', icon: 'samarbejde', badge: '12 spørgsmål',
     instruction: 'Nedenstående udsagn beskriver, hvordan man kan opleve samarbejdet med sin psykolog. Tænk på jeres seneste samtale, når du svarer.',
     options: WAISR_OPTS, max: 72,
     items: [
