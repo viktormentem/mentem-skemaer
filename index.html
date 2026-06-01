@@ -12,7 +12,7 @@
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
   :root {
-    --ink:#1a1a2e; --paper:#f8f6f1; --muted:#8a8a9a; --accent:#2d6a4f;
+    --ink:#1a1a2e; --paper:#f8f6f1; --muted:#62626d; --accent:#2d6a4f;
     --accent-light:#e8f5e1; --border:#e0ddd6; --card:#ffffff;
   }
   * { box-sizing:border-box; margin:0; padding:0; }
@@ -113,6 +113,10 @@
   /* WCAG 2.1 AA: synligt tastatur-fokus (B7) + touch-mål ≥44px. */
   :focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
   .btn-primary, .btn-secondary, .radio-option, .diary-field input { min-height:44px; }
+  /* <label>/<fieldset>/<legend> for diary-felter (A11Y semantik). */
+  label.diary-q { display:block; }
+  fieldset.diary-field { min-width:0; }
+  legend.diary-q { padding:0; }
 </style>
 </head>
 <body>
@@ -181,9 +185,10 @@
       <div class="diary-dots" id="diary-dots"></div>
     </div>
     <button class="btn-primary" id="diary-start-btn">Udfyld for i nat</button>
+    <button class="btn-secondary" id="diary-backfill-btn" style="display:none">Udfyld for i går</button>
     <button class="btn-secondary" id="diary-finish-now-btn" style="display:none">Afslut og send til psykolog nu</button>
     <p class="start-note" id="diary-note"></p>
-    <div class="disclaimer">🔒 <strong>Privatliv:</strong> Dine svar gemmes kun i denne browser på din egen enhed, mens du udfylder dagbogen — som en notesbog der ligger derhjemme. Når perioden er slut, samles de i én krypteret fil, som kun din psykolog kan åbne, og du sender den selv. <strong>Bemærk:</strong> rydder du browseren eller skifter enhed, mistes de dage, du har gemt, og du må starte forfra.</div>
+    <div class="disclaimer">🔒 <strong>Privatliv:</strong> Dine svar krypteres på din egen enhed, før noget sendes. En krypteret kopi gemmes midlertidigt på en sikker server (i EU), så din dagbog ikke går tabt, hvis du rydder browseren eller skifter enhed. Kun din psykolog kan åbne den — serveren ser kun ulæselig, krypteret tekst. Kopien slettes automatisk, når perioden er slut (senest efter 45 dage).</div>
     <p class="footer-credit" id="diary-attribution"></p>
     <p class="footer-credit" id="diary-key-fp"></p>
   </div>
@@ -198,6 +203,7 @@
       <span class="progress-label" id="diary-form-count">0 af 0</span>
     </div>
     <div class="schema-instruction" id="diary-form-instruction" style="margin-bottom:24px"></div>
+    <button class="btn-secondary" id="diary-sameasyesterday-btn" style="display:none;margin-bottom:16px">Samme som i går (kan rettes)</button>
     <div id="diary-fields"></div>
     <button class="btn-primary" id="diary-save-btn" style="margin-top:8px">Gem</button>
     <button class="btn-secondary" id="diary-cancel-btn">Tilbage</button>
@@ -255,6 +261,13 @@ const apiOverride = params.get('api');
 function draftBase() { return ((apiOverride || DRAFT_API_BASE || '').trim()).replace(/\/+$/, ''); }
 function draftEnabled() { return !!(draftToken && /^[0-9a-f]{32}$/.test(draftToken) && draftBase()); }
 function draftUrl() { return `${draftBase()}/api/soevn-draft/${draftToken}`; }
+
+// TEST-only dag-advance: ?testday=N rykker "i dag" N dage frem så dag 2 + slet-
+// flow kan device-testes uden at vente et døgn. GATET til preview/test-hosts →
+// ALDRIG aktiv i prod (viktormentem.github.io/mentem-skemaer).
+const TEST_HOST = /mentem-skemaer-preview|localhost|127\.0\.0\.1|\.loca\.lt|\.trycloudflare\.com/
+  .test(location.host + location.pathname);
+const testDayOffset = (TEST_HOST && params.get('testday')) ? (parseInt(params.get('testday'), 10) || 0) : 0;
 
 // SIKKERHED: krypteringsnøglen er PINNED i koden (ikke fra ?pk=). Et ?pk= i
 // URL'en bruges KUN som cross-check — afviger det fra pinned nøgle, nægter vi
@@ -470,11 +483,14 @@ function showScreen(id) {
 const CSD_LS_KEY = 'mentem_csd_v1';
 const CSD_DEFAULT_DAYS = 14;
 
-function todayISO() {
+function dateISO(offsetDays = 0) {
   const d = new Date();
+  d.setDate(d.getDate() + testDayOffset + offsetDays);   // testDayOffset = 0 i prod
   const p = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
+function todayISO() { return dateISO(0); }
+function yesterdayISO() { return dateISO(-1); }
 function loadCSD() {
   try { return JSON.parse(localStorage.getItem(CSD_LS_KEY)) || null; } catch { return null; }
 }
@@ -489,6 +505,7 @@ let diaryState = null;   // { startedAt, plannedDays, contentVersion, dirty, ent
 let diaryDraft = {};     // dagens igangværende svar
 let diarySkema = null;
 let recoveredBlob = null;   // opaque server-kladde efter ITP-wipe (kan IKKE dekrypteres klient-side)
+let diaryFillDate = null;   // hvilken kalenderdag formularen udfylder (i dag / i går-backfill)
 
 function diaryPlannedDays() {
   if (dParam && dParam > 0 && dParam <= 60) return dParam;   // ?d= ved første åbning
@@ -506,7 +523,8 @@ async function runDiary(id) {
   if (!diaryState.plannedDays) diaryState.plannedDays = diaryPlannedDays();
   if (diaryState.contentVersion == null) diaryState.contentVersion = CONTENT_VERSION;
 
-  document.getElementById('diary-start-btn').addEventListener('click', startDiaryEntry);
+  document.getElementById('diary-start-btn').addEventListener('click', () => startDiaryEntry(todayISO()));
+  document.getElementById('diary-backfill-btn').addEventListener('click', () => startDiaryEntry(yesterdayISO()));
   document.getElementById('diary-finish-now-btn').addEventListener('click', finishDiary);
   document.getElementById('diary-save-btn').addEventListener('click', saveDiaryEntry);
   document.getElementById('diary-cancel-btn').addEventListener('click', () => {
@@ -601,11 +619,22 @@ function renderDiaryWelcome() {
     finishNow.textContent = 'Afslut og send til psykolog nu';
   }
 
+  // 1-dags backfill-nåde: tillad "udfyld for i går" hvis misset (max 1 dag
+  // tilbage, og kun inden for perioden). INGEN straffende streak-mekanik.
+  const backfillBtn = document.getElementById('diary-backfill-btn');
+  if (backfillBtn) {
+    const y = yesterdayISO();
+    const yMissed = !diaryState.entries.find(e => e.date === y);
+    const yInPeriod = y >= diaryState.startedAt;
+    backfillBtn.style.display = (yMissed && yInPeriod) ? 'block' : 'none';
+  }
+
   // Server-recovery (ITP-wipe): lokal kladde væk, men serveren havde en krypteret.
   if (recoveredBlob && done === 0) {
     note.textContent = 'Vi fandt en tidligere gemt dagbog (krypteret) hos din psykolog — den er sikker. Du kan udfylde flere dage, eller sende den nu.';
     finishNow.style.display = 'block';
     finishNow.textContent = 'Send gendannet dagbog til psykolog';
+    if (backfillBtn) backfillBtn.style.display = 'none';
   }
 
   document.getElementById('diary-attribution').textContent = diarySkema.attribution || '';
@@ -613,12 +642,45 @@ function renderDiaryWelcome() {
   if (fp) fp.textContent = 'Krypteret til din psykologs nøgle · ID ' + PINNED_KEY_ID;
 }
 
-function startDiaryEntry() {
-  const existing = diaryState.entries.find(e => e.date === todayISO());
-  diaryDraft = existing ? { ...existing } : {};
+function lastEntryBefore(dateStr) {
+  const before = diaryState.entries.filter(e => e.date < dateStr).sort((a, b) => a.date.localeCompare(b.date));
+  return before.length ? before[before.length - 1] : null;
+}
+
+function startDiaryEntry(forDate, prefillEntry) {
+  diaryFillDate = forDate || todayISO();
+  const existing = diaryState.entries.find(e => e.date === diaryFillDate);
+  // Forudfyld: eksisterende entry for datoen > "samme som i går"-kilde > tomt.
+  const src = existing || prefillEntry || null;
+  diaryDraft = src ? { ...src } : {};
+  delete diaryDraft.date; delete diaryDraft.savedAt;
+  // Valgfri felter får en blød default ("Nej"/"Intet") hvis intet er sat.
+  diarySkema.fields.forEach(f => {
+    if (f.optional && f.default != null && (diaryDraft[f.key] == null || diaryDraft[f.key] === '')) {
+      diaryDraft[f.key] = f.default;
+    }
+  });
+
+  // Dag-label: "I går" ved backfill, ellers "Dag k".
+  const priorCount = diaryState.entries.filter(e => e.date < diaryFillDate).length;
+  const dagNr = existing ? (diaryState.entries.findIndex(e => e.date === diaryFillDate) + 1) : (priorCount + 1);
   document.getElementById('diary-form-day').textContent =
-    `Dag ${Math.min(diaryState.entries.length + (existing ? 0 : 1), diaryState.plannedDays)}`;
+    diaryFillDate === yesterdayISO() ? 'I går' : `Dag ${Math.min(dagNr, diaryState.plannedDays)}`;
   document.getElementById('diary-form-instruction').textContent = diarySkema.instruction;
+
+  // "Samme som i går"-genvej: vis hvis der findes en tidligere dag og vi ikke
+  // allerede er ved at rette en eksisterende/forudfyldt entry.
+  const sameBtn = document.getElementById('diary-sameasyesterday-btn');
+  const prev = lastEntryBefore(diaryFillDate);
+  if (sameBtn) {
+    if (prev && !existing && !prefillEntry) {
+      sameBtn.style.display = 'block';
+      sameBtn.onclick = () => startDiaryEntry(diaryFillDate, prev);
+    } else {
+      sameBtn.style.display = 'none';
+    }
+  }
+
   renderDiaryFields();
   showScreen('screen-diary-form');
   updateDiaryProgress();
@@ -638,22 +700,57 @@ function renderDiaryFields() {
   const root = document.getElementById('diary-fields');
   root.innerHTML = '';
   diarySkema.fields.forEach((f, i) => {
+    const inputId = `dfield-${f.key}`;
+    const optTag = f.optional ? '<span class="diary-optional">valgfrit</span>' : '';
+    const qHtml = `<span class="question-num">${i + 1}.</span>${f.text}${optTag}`;
+    const val = diaryDraft[f.key];
+
+    // Scale → <fieldset>/<legend> om radioknapperne (semantisk gruppe, A11Y).
+    if (f.kind === 'scale') {
+      const fs = document.createElement('fieldset');
+      fs.className = 'diary-field';
+      const legend = document.createElement('legend');
+      legend.className = 'diary-q'; legend.innerHTML = qHtml;
+      fs.appendChild(legend);
+      const group = document.createElement('div'); group.className = 'radio-group';
+      f.scale.forEach((label, idx) => {
+        const v = idx + 1;
+        const rid = `${inputId}-${v}`;
+        const opt = document.createElement('label');
+        opt.className = 'radio-option' + (val === v ? ' checked' : '');
+        opt.setAttribute('for', rid);
+        opt.innerHTML = `<input type="radio" id="${rid}" name="${f.key}" value="${v}" ${val === v ? 'checked' : ''}><span>${label}</span>`;
+        opt.querySelector('input').addEventListener('change', () => {
+          diaryDraft[f.key] = v;
+          group.querySelectorAll('.radio-option').forEach(o => o.classList.remove('checked'));
+          opt.classList.add('checked'); markDiaryField(fs, f); updateDiaryProgress();
+        });
+        group.appendChild(opt);
+      });
+      fs.appendChild(group);
+      markDiaryField(fs, f);
+      root.appendChild(fs);
+      return;
+    }
+
+    // Øvrige → <label for> bundet til input'et (A11Y).
     const block = document.createElement('div');
     block.className = 'diary-field';
-    const optTag = f.optional ? '<span class="diary-optional">valgfrit</span>' : '';
-    block.innerHTML = `<div class="diary-q"><span class="question-num">${i + 1}.</span>${f.text}${optTag}</div>`;
-    const val = diaryDraft[f.key];
+    const label = document.createElement('label');
+    label.className = 'diary-q'; label.setAttribute('for', inputId); label.innerHTML = qHtml;
+    block.appendChild(label);
 
     if (f.kind === 'time') {
       const row = document.createElement('div'); row.className = 'diary-input-row';
-      const inp = document.createElement('input'); inp.type = 'time';
+      const inp = document.createElement('input'); inp.type = 'time'; inp.id = inputId;
+      inp.setAttribute('placeholder', 'tt:mm');   // ingen "nu"-default
       if (val != null) inp.value = val;
       inp.addEventListener('input', e => { diaryDraft[f.key] = e.target.value; markDiaryField(block, f); updateDiaryProgress(); });
       row.appendChild(inp); block.appendChild(row);
 
     } else if (f.kind === 'number') {
       const row = document.createElement('div'); row.className = 'diary-input-row';
-      const inp = document.createElement('input'); inp.type = 'number'; inp.inputMode = 'numeric';
+      const inp = document.createElement('input'); inp.type = 'number'; inp.id = inputId; inp.inputMode = 'numeric';
       if (f.min != null) inp.min = f.min;
       if (f.max != null) inp.max = f.max;
       if (val != null) inp.value = val;
@@ -667,24 +764,8 @@ function renderDiaryFields() {
       if (f.unit) { const u = document.createElement('span'); u.className = 'diary-unit'; u.textContent = f.unit; row.appendChild(u); }
       block.appendChild(row);
 
-    } else if (f.kind === 'scale') {
-      const group = document.createElement('div'); group.className = 'radio-group';
-      f.scale.forEach((label, idx) => {
-        const v = idx + 1;
-        const lbl = document.createElement('label');
-        lbl.className = 'radio-option' + (val === v ? ' checked' : '');
-        lbl.innerHTML = `<input type="radio" name="${f.key}" value="${v}" ${val === v ? 'checked' : ''}><span>${label}</span>`;
-        lbl.querySelector('input').addEventListener('change', () => {
-          diaryDraft[f.key] = v;
-          group.querySelectorAll('.radio-option').forEach(o => o.classList.remove('checked'));
-          lbl.classList.add('checked'); markDiaryField(block, f); updateDiaryProgress();
-        });
-        group.appendChild(lbl);
-      });
-      block.appendChild(group);
-
     } else { // text
-      const inp = document.createElement('input'); inp.type = 'text';
+      const inp = document.createElement('input'); inp.type = 'text'; inp.id = inputId;
       if (val != null) inp.value = val;
       inp.addEventListener('input', e => { diaryDraft[f.key] = e.target.value; markDiaryField(block, f); updateDiaryProgress(); });
       block.appendChild(inp);
@@ -710,7 +791,7 @@ function saveDiaryEntry() {
   const req = diarySkema.fields.filter(f => !f.optional);
   if (req.some(f => { const v = diaryDraft[f.key]; return v == null || v === ''; })) return;
 
-  const date = todayISO();
+  const date = diaryFillDate || todayISO();    // i dag ELLER i går-backfill
   const entry = { date, savedAt: new Date().toISOString() };   // savedAt → newest-wins-merge
   diarySkema.fields.forEach(f => { const v = diaryDraft[f.key]; if (v != null && v !== '') entry[f.key] = v; });
 
@@ -728,7 +809,13 @@ function saveDiaryEntry() {
 }
 
 function finishDiary() {
-  if (!diaryState || diaryState.entries.length === 0) return;
+  if (!diaryState || (diaryState.entries.length === 0 && !recoveredBlob)) return;
+  // Send-bekræft (irreversibelt): afslutning lukker perioden + sletter kladden.
+  const done = diaryState.entries.length;
+  const N = diaryState.plannedDays;
+  const ok = window.confirm(
+    `Du har udfyldt ${done} af ${N} dage.\n\nNår du sender, afsluttes perioden, og kladden lukkes. Er du sikker på, at du vil sende til din psykolog nu?`);
+  if (!ok) return;
   const p = document.querySelector('#screen-done p');
   if (p) p.textContent = 'Dine søvndage er nu samlet i én krypteret fil. Tryk nedenfor for at sende filen til din psykolog i den samme SMS-tråd, hvor du fik linket.';
   showScreen('screen-done');
