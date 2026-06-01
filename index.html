@@ -108,6 +108,7 @@
     <p class="start-note">Til sidst får du én fil, som du nemt deler med din psykolog — vi viser dig hvordan.</p>
     <div class="disclaimer">🔒 <strong>Privatliv:</strong> Du udfylder alt i din egen browser. Når du er færdig, samles svarene i én krypteret fil, som kun din psykolog kan åbne. Intet gemmes på en server, og du sender selv filen.</div>
     <p class="footer-credit">Skemaerne bygger på anerkendte spørgeskemaer (GAD-7, PHQ-9, WHO-5, WSAS), som din psykolog bruger til at følge din udvikling.</p>
+    <p class="footer-credit" id="key-fp"></p>
   </div>
 </div>
 
@@ -143,13 +144,18 @@
 </div>
 
 <script type="module">
-import { SKEMAER, SKEMA_ORDER, buildPayload, mentemEncrypt } from './mentem-skema-core.js';
+import { SKEMAER, SKEMA_ORDER, buildPayload, mentemEncrypt,
+         PINNED_PUBKEY, PINNED_KEY_ID, resolveRecipientKey } from './mentem-skema-core.js';
 
-// ── URL-parametre (?s=batteri  ?pk=public-key  ?n=sessionsnummer) ────────
+// ── URL-parametre (?s=batteri  ?n=sessionsnummer  ?pk=cross-check) ────────
 const params   = new URLSearchParams(location.search);
 const sParam   = params.get('s');
-const PUBKEY   = params.get('pk') || '';            // KUN public-key (krypto-guard)
 const sessionN = params.get('n') ? parseInt(params.get('n'), 10) : null;
+
+// SIKKERHED: krypteringsnøglen er PINNED i koden (ikke fra ?pk=). Et ?pk= i
+// URL'en bruges KUN som cross-check — afviger det fra pinned nøgle, nægter vi
+// at kryptere (ingen krypter-til-fremmed-nøgle via manipuleret link).
+const keyCheck = resolveRecipientKey(params.get('pk'));
 
 let selected = (sParam ? sParam.split(',').map(x => x.trim().toLowerCase()) : [])
   .filter(id => SKEMAER[id]);
@@ -179,6 +185,16 @@ function renderWelcome() {
   const cardsEl = document.getElementById('schema-cards');
   const startBtn = document.getElementById('start-btn');
 
+  // SIKKERHED: hvis linket peger på en ukendt nøgle, så advar straks og
+  // bloker — klienten skal ikke engang udfylde via et manipuleret link.
+  if (!keyCheck.ok) {
+    intro.innerHTML = '<strong style="color:#c0392b">Sikkerhedstjek fejlede.</strong> Dette link peger på en ukendt sikkerhedsnøgle. Brug det IKKE — kontakt din psykolog for et nyt link.';
+    document.getElementById('schema-cards').innerHTML = '';
+    startBtn.disabled = true;
+    startBtn.textContent = 'Linket kan ikke bruges';
+    return;
+  }
+
   const battery = fixedFromLink ? selected : SKEMA_ORDER;
   selected = battery;   // hele batteriet udfyldes
 
@@ -199,6 +215,9 @@ function renderWelcome() {
   startBtn.disabled = battery.length === 0;
   startBtn.textContent = 'Start';
   startBtn.addEventListener('click', startForm);
+
+  const fp = document.getElementById('key-fp');
+  if (fp) fp.textContent = 'Krypteret til din psykologs nøgle · ID ' + PINNED_KEY_ID;
 }
 
 // ── FORMULAR ───────────────────────────────────────────────────────────────
@@ -290,9 +309,10 @@ function goDone() { showScreen('screen-done'); window.scrollTo(0, 0); }
 async function shareEncrypted() {
   const status = document.getElementById('done-status');
   const btn = document.getElementById('share-btn');
-  if (!PUBKEY) {
+  // SIKKERHED: nægt at kryptere hvis linket peger på en ukendt nøgle.
+  if (!keyCheck.ok) {
     status.style.color = '#c0392b';
-    status.textContent = 'Linket mangler en sikkerhedsnøgle. Bed din psykolog sende et nyt link.';
+    status.textContent = 'Sikkerhedstjek fejlede: linket peger på en ukendt nøgle. Del IKKE dine svar — kontakt din psykolog for et nyt link.';
     return;
   }
   btn.disabled = true;
@@ -301,7 +321,8 @@ async function shareEncrypted() {
   try {
     const name = (document.getElementById('patient-name').value || '').trim();
     const payload = buildPayload(answers, { name, sessionNumber: sessionN });
-    const container = await mentemEncrypt(PUBKEY, payload);
+    // Krypter ALTID til den pinned nøgle (ikke ?pk=).
+    const container = await mentemEncrypt(keyCheck.key, payload, keyCheck.keyId);
     const blob = new Blob([JSON.stringify(container)], { type: 'application/json' });
     const filename = `mentem-skema-${new Date().toISOString().slice(0, 10)}.json`;
     const file = new File([blob], filename, { type: 'application/json' });

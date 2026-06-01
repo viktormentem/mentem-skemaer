@@ -4,16 +4,25 @@
 // modtager-X25519-public-key og printer KrypteretEksportContainer-JSON til stdout.
 // Swift-testen decoder den via Mentems PRODUKTIONS-E2EKryptering.dekrypter().
 //
-// Brug:  node test/encrypt-fixture.mjs <recipientPubKeyBase64> [--break-tag]
-//   --break-tag  = flip én byte i GCM-tag'et (negativ teeth-test: beviser at
-//                  round-trip-testen fanger korruption/inkompatibilitet —
-//                  AES-GCM auth-fail → dekrypter SKAL afvise blobben).
+// Brug:  node test/encrypt-fixture.mjs <mentemPubKeyBase64> [--break-tag]
+//   <mentemPubKeyBase64> = Mentems ægte E2E-pubkey (E2EKryptering.hentPublicKey).
+//        Harnessen krypterer til den PINNED nøgle i koden og verificerer at
+//        den == Mentems ægte nøgle → fanger pin-DRIFT (hardcoded pin ≠ prod-nøgle).
+//   --break-tag  = flip én byte i GCM-tag'et (negativ teeth-test: AES-GCM
+//                  auth-fail → dekrypter SKAL afvise blobben).
 
-import { buildPayload, mentemEncrypt } from '../mentem-skema-core.js';
+import { buildPayload, mentemEncrypt, PINNED_PUBKEY, resolveRecipientKey } from '../mentem-skema-core.js';
 
 const pub = process.argv[2];
 if (!pub) { console.error('mangler pubkey-arg'); process.exit(2); }
 const breakTag = process.argv.includes('--break-tag');
+
+// Pin-drift-guard: den hardcodede PINNED_PUBKEY SKAL matche Mentems ægte nøgle.
+const norm = (k) => k.replace(/-/g, '+').replace(/_/g, '/').replace(/=+$/, '');
+if (norm(pub) !== norm(PINNED_PUBKEY)) {
+  console.error(`PIN-DRIFT: PINNED_PUBKEY != Mentems ægte E2E-pubkey. Opdatér PINNED_PUBKEY/PINNED_KEY_ID i mentem-skema-core.js.\n  pinned=${PINNED_PUBKEY}\n  mentem=${pub}`);
+  process.exit(3);
+}
 
 const answers = {
   cas:   { 0: 80, 1: 70, 2: 60, 3: 50 },
@@ -26,7 +35,9 @@ const answers = {
 };
 
 const payload = buildPayload(answers, { name: 'Round-trip Klient', sessionNumber: 4 });
-const container = await mentemEncrypt(pub, payload);
+// Krypter til den PINNED nøgle (præcis som siden gør) — ikke til argv direkte.
+const k = resolveRecipientKey(null);   // → pinned
+const container = await mentemEncrypt(k.key, payload, k.keyId);
 
 if (breakTag) {
   // Flip byte 0 i tag'et → AES-GCM authentication-fail ved dekryptering.

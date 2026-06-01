@@ -248,6 +248,37 @@ export function buildPayload(answers, meta = {}) {
 }
 
 // ════════════════════════════════════════════════════════════════════════
+//  KEY-PINNING (sikkerheds-hærdning, P1a) — trust anchor i siden
+// ════════════════════════════════════════════════════════════════════════
+// Mentems E2E X25519-public-key er PINNED i koden — IKKE taget fra ?pk=-URL-
+// feltet. Det forhindrer en manipuleret URL i at få klienten til at kryptere
+// helbredsdata til en FREMMED nøgle (attacker-in-the-middle via link).
+// KRYPTO-GUARD: kun den OFFENTLIGE nøgle her. Rotation = redeploy med ny
+// PINNED_PUBKEY + bump af PINNED_KEY_ID (stemples i hver container → Mentem
+// kan detektere nøgle-version-mismatch ved decrypt).
+//
+// PINNED_KEY_ID = første 8 hex af SHA-256(rå 32-byte pubkey).
+export const PINNED_PUBKEY = 'M8LHgVyDALEoCtm_Q6C2dZ73qPHvqy8VGtiLUiSjUwI';
+export const PINNED_KEY_ID = '8aa536a1';
+
+/// Normalisér en nøgle til sammenligning (base64url/base64 + uden padding).
+function normKey(k) {
+  return (k || '').replace(/-/g, '+').replace(/_/g, '/').replace(/=+$/, '').trim();
+}
+
+/// Afgør hvilken modtager-nøgle der må krypteres til. PINNED er autoritativ.
+/// - intet ?pk= → brug pinned.
+/// - ?pk= == pinned (uanset base64/base64url) → ok.
+/// - ?pk= != pinned → AFVIS (krypter ALDRIG til en fremmed nøgle).
+/// Returnerer { ok, key, keyId, reason }.
+export function resolveRecipientKey(pkParam) {
+  if (pkParam && normKey(pkParam) !== normKey(PINNED_PUBKEY)) {
+    return { ok: false, reason: 'mismatch' };
+  }
+  return { ok: true, key: PINNED_PUBKEY, keyId: PINNED_KEY_ID };
+}
+
+// ════════════════════════════════════════════════════════════════════════
 //  KRYPTO — public-key-only opaque output (R3)
 // ════════════════════════════════════════════════════════════════════════
 function b64ToBytes(b64) {
@@ -268,7 +299,10 @@ function bytesToB64(bytes) {
 
 /// Krypter et payload-objekt mod modtagerens X25519-public-key (base64 / base64url).
 /// Returnerer et KrypteretEksportContainer-objekt (klar til JSON.stringify).
-export async function mentemEncrypt(recipientPubB64, payloadObj) {
+/// `keyId` stemples i containeren (default = PINNED_KEY_ID) så Mentem kan
+/// detektere nøgle-version-mismatch ved decrypt. Swift-decrypt ignorerer
+/// ukendte felter → bagudkompatibelt.
+export async function mentemEncrypt(recipientPubB64, payloadObj, keyId = PINNED_KEY_ID) {
   const subtle = globalThis.crypto.subtle;
   const recipientPub = await subtle.importKey('raw', b64ToBytes(recipientPubB64), { name: 'X25519' }, false, []);
 
@@ -303,5 +337,6 @@ export async function mentemEncrypt(recipientPubB64, payloadObj) {
     nonce: bytesToB64(nonce),
     tag: bytesToB64(tag),
     salt: bytesToB64(salt),
+    keyId,
   };
 }

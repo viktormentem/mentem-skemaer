@@ -16,6 +16,9 @@ import {
   buildPayload,
   mentemEncrypt,
   SKEMA_ORDER,
+  PINNED_PUBKEY,
+  PINNED_KEY_ID,
+  resolveRecipientKey,
 } from '../mentem-skema-core.js';
 
 let failures = 0;
@@ -112,6 +115,18 @@ const roundtripped = await nodeDecrypt(container, recipient.privateKey);
 check('round-trip clientName', roundtripped.clientName === payload.clientName);
 check('round-trip qs bevaret', roundtripped.questionnaireScores.length === 5);
 check('round-trip casTrends bevaret', roundtripped.casTrends[0].componentScores.worry === 80);
+
+// ── Key-pinning hærdning ──────────────────────────────────────────────────
+console.log('key-pinning:');
+check('PINNED_PUBKEY sat (base64url, 32B)', typeof PINNED_PUBKEY === 'string' && PINNED_PUBKEY.length >= 43);
+check('PINNED_KEY_ID = 8 hex', /^[0-9a-f]{8}$/.test(PINNED_KEY_ID));
+check('container stempler keyId', container.keyId === PINNED_KEY_ID);
+check('resolve: intet ?pk → pinned', resolveRecipientKey(null).ok && resolveRecipientKey(null).key === PINNED_PUBKEY);
+check('resolve: matchende ?pk → ok', resolveRecipientKey(PINNED_PUBKEY).ok === true);
+const stdVariant = PINNED_PUBKEY.replace(/-/g, '+').replace(/_/g, '/') + '=';  // base64 m. padding
+check('resolve: base64-variant af samme nøgle → ok', resolveRecipientKey(stdVariant).ok === true);
+const foreign = resolveRecipientKey('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA');
+check('resolve: fremmed ?pk → AFVIST (krypter aldrig til fremmed nøgle)', foreign.ok === false && foreign.reason === 'mismatch');
 
 console.log('');
 if (failures > 0) { console.error(`SELFTEST FAILED: ${failures} fejl`); process.exit(1); }
