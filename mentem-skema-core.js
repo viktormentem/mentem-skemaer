@@ -196,6 +196,36 @@ export const CSD_SOEVNDAGBOG = {
 SKEMAER.soevndagbog = CSD_SOEVNDAGBOG;
 
 // ════════════════════════════════════════════════════════════════════════
+//  SØVN-BASELINE — engangs intake-skema (IKKE-akkumulerende)
+// ════════════════════════════════════════════════════════════════════════
+// Adskilt fra den daglige CSD: sendes ÉN gang ved forløbs-start, udfyldes én
+// gang, deles én gang. KUN deskriptive/kontekst-variable (data-minimering,
+// GDPR) — hver variabel ændrer en klinisk beslutning (spec-baseline-intake §1).
+// D3-SIKKERHEDSSCREEN (epilepsi/bipolar/OSA/suicidalitet/…) er BEVIDST IKKE her:
+// den hører i Viktors kliniske intake (B-Q1/Riemann "clinical interview"), ikke
+// et self-serve-link. Nul-score: ingen tolkning vises klienten.
+export const SOEVN_BASELINE = {
+  id: 'soevn-baseline', kind: 'baseline', title: 'Kort baseline om din søvn', short: 'Baseline', icon: 'maane',
+  badge: 'udfyldes én gang',
+  instruction: 'Et kort engangs-skema om din søvn og dine vaner. Det hjælper din psykolog med at tilpasse forløbet til dig. Der er ingen rigtige eller forkerte svar.',
+  fields: [
+    { key: 'alder',            kind: 'number', text: 'Hvor gammel er du?', unit: 'år', min: 0, max: 120 },
+    { key: 'koen',             kind: 'radio',  text: 'Køn',
+      options: ['Kvinde', 'Mand', 'Andet / vil ikke oplyse'] },
+    { key: 'undertype',        kind: 'radio',  text: 'Hvad passer bedst på dine søvnvanskeligheder?',
+      options: ['Svært ved at falde i søvn i starten af natten', 'Vågner meget i løbet af natten', 'Vågner for tidligt om morgenen', 'En blanding'] },
+    { key: 'varighed',         kind: 'radio',  text: 'Hvor længe har du haft søvnvanskeligheder?',
+      options: ['Under 3 måneder', '3 måneder eller mere'] },
+    { key: 'sovemedicin',      kind: 'text',   text: 'Tager du sovemedicin? (hvad og hvor ofte — valgfrit)', optional: true },
+    { key: 'stimulanser',      kind: 'text',   text: 'Kaffe/te, alkohol og nikotin på en typisk dag? (valgfrit)', optional: true },
+    { key: 'lure',             kind: 'radio',  text: 'Tager du dig lure i dagtimerne?',
+      options: ['Nej', 'Ja, under 30 min', 'Ja, 30-60 min', 'Ja, over 60 min'] },
+    { key: 'vanligOpvaagning', kind: 'time',   text: 'Hvad tid står du normalt op om morgenen?' },
+  ],
+};
+SKEMAER['soevn-baseline'] = SOEVN_BASELINE;
+
+// ════════════════════════════════════════════════════════════════════════
 //  SCORING (intern — bruges til opaque payload; klienten ser ALDRIG resultatet)
 // ════════════════════════════════════════════════════════════════════════
 function val(a) { return (a && typeof a === 'object') ? a.value : a; }
@@ -319,6 +349,31 @@ export function buildPayloadCSD(entries, meta = {}) {
     diaryStartedAt: meta.startedAt || (sleepDiary[0] && sleepDiary[0].date) || now,
     plannedDays: (meta.plannedDays != null) ? meta.plannedDays : null,
     sleepDiary,
+  };
+}
+
+// ════════════════════════════════════════════════════════════════════════
+//  SØVN-BASELINE-PAYLOAD (engangs intake → opaque eksport)
+// ════════════════════════════════════════════════════════════════════════
+// Ren data-capture (nul-score). Ny gren `payload.baseline = {…}` ved siden af
+// questionnaireScores/casTrends/beliefRatings/sleepDiary. Swift ignorerer
+// ukendte felter ved decode → bagudkompatibelt (fuld ingest = P2-schema-touch,
+// ikke Fase 1; standalone-visning først, Q5).
+export function buildPayloadBaseline(answers, meta = {}) {
+  const now = isoNoFrac(new Date());
+  const baseline = {};
+  for (const f of SOEVN_BASELINE.fields) {
+    const v = answers[f.key];
+    if (v != null && v !== '') baseline[f.key] = v;
+  }
+  return {
+    version: 1,
+    exportedAt: now,
+    clientName: meta.name || '',
+    therapistName: 'Viktor Nielsen',
+    categories: ['soevn-baseline'],
+    baselineType: 'soevn-intake',
+    baseline,
   };
 }
 

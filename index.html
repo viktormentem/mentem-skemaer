@@ -109,6 +109,10 @@
   .diary-field input[type=text] { width:100%; }
   .diary-field input:focus { border-color:var(--accent); }
   .diary-unit { font-size:14px; color:var(--muted); }
+
+  /* WCAG 2.1 AA: synligt tastatur-fokus (B7) + touch-mål ≥44px. */
+  :focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
+  .btn-primary, .btn-secondary, .radio-option, .diary-field input { min-height:44px; }
 </style>
 </head>
 <body>
@@ -200,9 +204,35 @@
   </div>
 </div>
 
+<!-- B1: SØVN-BASELINE — velkomst (engangs) -->
+<div id="screen-baseline-welcome" class="screen">
+  <div class="wrap">
+    <h1>Kort om <em>din søvn</em></h1>
+    <p class="intro" id="baseline-intro"></p>
+    <button class="btn-primary" id="baseline-start-btn">Start</button>
+    <p class="start-note">Det tager et par minutter og udfyldes kun denne ene gang.</p>
+    <div class="disclaimer">🔒 <strong>Privatliv:</strong> Du udfylder alt i din egen browser. Til sidst samles svarene i én krypteret fil, som kun din psykolog kan åbne, og du sender den selv. Intet gemmes på en server.</div>
+    <p class="footer-credit" id="baseline-key-fp"></p>
+  </div>
+</div>
+
+<!-- B2: SØVN-BASELINE — formular -->
+<div id="screen-baseline-form" class="screen">
+  <div class="wrap">
+    <div class="form-progress">
+      <span class="progress-label" id="baseline-progress-current">0%</span>
+      <div class="progress-bar-track"><div class="progress-bar-fill" id="baseline-progress-fill"></div></div>
+      <span class="progress-label" id="baseline-progress-total">0 af 0</span>
+    </div>
+    <div class="schema-instruction" id="baseline-instruction" style="margin-bottom:24px"></div>
+    <div id="baseline-fields"></div>
+    <button class="btn-primary" id="baseline-finish-btn" style="margin-top:8px">Færdig →</button>
+  </div>
+</div>
+
 <script type="module">
-import { SKEMAER, SKEMA_ORDER, buildPayload, buildPayloadCSD, mentemEncrypt,
-         CSD_SOEVNDAGBOG, PINNED_PUBKEY, PINNED_KEY_ID, resolveRecipientKey } from './mentem-skema-core.js';
+import { SKEMAER, SKEMA_ORDER, buildPayload, buildPayloadCSD, buildPayloadBaseline, mentemEncrypt,
+         CSD_SOEVNDAGBOG, SOEVN_BASELINE, PINNED_PUBKEY, PINNED_KEY_ID, resolveRecipientKey } from './mentem-skema-core.js';
 
 // ── URL-parametre (?s=batteri  ?n=sessionsnummer  ?pk=cross-check) ────────
 const params   = new URLSearchParams(location.search);
@@ -220,6 +250,8 @@ const rawSelected = (sParam ? sParam.split(',').map(x => x.trim().toLowerCase())
 // Søvndagbog (kind:'diary') er en standalone akkumulerende dagbog — håndteres
 // af et separat flow (runDiary), IKKE spørgeskema-batteriet.
 const diaryId = rawSelected.find(id => SKEMAER[id].kind === 'diary') || null;
+// Søvn-baseline (kind:'baseline') = engangs intake-skema, eget flow (runBaseline).
+const baselineId = rawSelected.find(id => SKEMAER[id].kind === 'baseline') || null;
 let selected = SKEMA_ORDER.filter(id => rawSelected.includes(id));   // kanonisk rækkefølge (kun spørgeskemaer)
 const fixedFromLink = selected.length > 0;                    // ?s= → låst batteri
 
@@ -679,8 +711,180 @@ async function shareDiaryEncrypted() {
   }
 }
 
-// ── BOOTSTRAP: dagbog-flow ELLER spørgeskema-flow ─────────────────────────
-if (diaryId) {
+// ════════════════════════════════════════════════════════════════════════
+//  SØVN-BASELINE (engangs intake) — ikke-akkumulerende, kun deskriptive felter
+// ════════════════════════════════════════════════════════════════════════
+// Adskilt fra den daglige CSD: udfyldes/deles ÉN gang. Genbruger nul-score +
+// pinned-key opaque-encrypt + navigator.share. D3-sikkerhedsscreen er IKKE her
+// (den hører i Viktors kliniske intake). WCAG 2.1 AA: semantisk HTML, <label>/
+// aria-labelledby, native input-typer, role=radiogroup, synligt fokus (B7).
+let baselineSkema = null;
+const baselineDraft = {};
+
+function runBaseline(id) {
+  baselineSkema = SKEMAER[id];
+  document.getElementById('baseline-start-btn').addEventListener('click', startBaseline);
+  document.getElementById('baseline-finish-btn').addEventListener('click', finishBaseline);
+  document.getElementById('share-btn').addEventListener('click', shareBaselineEncrypted);
+  renderBaselineWelcome();
+  showScreen('screen-baseline-welcome');
+}
+
+function renderBaselineWelcome() {
+  const intro = document.getElementById('baseline-intro');
+  const startBtn = document.getElementById('baseline-start-btn');
+  if (!keyCheck.ok) {
+    intro.innerHTML = '<strong style="color:#c0392b">Sikkerhedstjek fejlede.</strong> Dette link peger på en ukendt sikkerhedsnøgle. Brug det IKKE — kontakt din psykolog for et nyt link.';
+    startBtn.disabled = true; startBtn.textContent = 'Linket kan ikke bruges';
+    return;
+  }
+  intro.textContent = baselineSkema.instruction;
+  startBtn.disabled = false;
+  const fp = document.getElementById('baseline-key-fp');
+  if (fp) fp.textContent = 'Krypteret til din psykologs nøgle · ID ' + PINNED_KEY_ID;
+}
+
+function startBaseline() {
+  document.getElementById('baseline-instruction').textContent = baselineSkema.instruction;
+  renderBaselineFields();
+  showScreen('screen-baseline-form');
+  updateBaselineProgress();
+  window.scrollTo(0, 0);
+}
+
+function baselineFilled(f) {
+  if (f.optional) return true;
+  const v = baselineDraft[f.key];
+  return v != null && v !== '';
+}
+function markBaselineField(block, f) {
+  if (!f.optional) block.classList.toggle('answered', baselineFilled(f));
+}
+
+function renderBaselineFields() {
+  const root = document.getElementById('baseline-fields');
+  root.innerHTML = '';
+  baselineSkema.fields.forEach((f, i) => {
+    const block = document.createElement('div');
+    block.className = 'diary-field';
+    const qId = `bq-${f.key}`;
+    const optTag = f.optional ? '<span class="diary-optional">valgfrit</span>' : '';
+    block.innerHTML = `<div class="diary-q" id="${qId}"><span class="question-num">${i + 1}.</span>${f.text}${optTag}</div>`;
+    const val = baselineDraft[f.key];
+
+    if (f.kind === 'number') {
+      const row = document.createElement('div'); row.className = 'diary-input-row';
+      const inp = document.createElement('input'); inp.type = 'number'; inp.inputMode = 'numeric';
+      inp.setAttribute('aria-labelledby', qId);
+      if (f.min != null) inp.min = f.min;
+      if (f.max != null) inp.max = f.max;
+      if (val != null) inp.value = val;
+      inp.addEventListener('input', e => {
+        const raw = e.target.value;
+        baselineDraft[f.key] = raw === '' ? undefined
+          : Math.max(f.min ?? 0, Math.min(f.max ?? 99999, parseInt(raw, 10) || 0));
+        markBaselineField(block, f); updateBaselineProgress();
+      });
+      row.appendChild(inp);
+      if (f.unit) { const u = document.createElement('span'); u.className = 'diary-unit'; u.textContent = f.unit; row.appendChild(u); }
+      block.appendChild(row);
+
+    } else if (f.kind === 'time') {
+      const row = document.createElement('div'); row.className = 'diary-input-row';
+      const inp = document.createElement('input'); inp.type = 'time'; inp.setAttribute('aria-labelledby', qId);
+      if (val != null) inp.value = val;
+      inp.addEventListener('input', e => { baselineDraft[f.key] = e.target.value; markBaselineField(block, f); updateBaselineProgress(); });
+      row.appendChild(inp); block.appendChild(row);
+
+    } else if (f.kind === 'radio') {
+      const group = document.createElement('div'); group.className = 'radio-group';
+      group.setAttribute('role', 'radiogroup'); group.setAttribute('aria-labelledby', qId);
+      f.options.forEach(label => {
+        const lbl = document.createElement('label');
+        lbl.className = 'radio-option' + (val === label ? ' checked' : '');
+        lbl.innerHTML = `<input type="radio" name="${f.key}" value="${label}" ${val === label ? 'checked' : ''}><span>${label}</span>`;
+        lbl.querySelector('input').addEventListener('change', () => {
+          baselineDraft[f.key] = label;
+          group.querySelectorAll('.radio-option').forEach(o => o.classList.remove('checked'));
+          lbl.classList.add('checked'); markBaselineField(block, f); updateBaselineProgress();
+        });
+        group.appendChild(lbl);
+      });
+      block.appendChild(group);
+
+    } else { // text
+      const inp = document.createElement('input'); inp.type = 'text'; inp.setAttribute('aria-labelledby', qId);
+      if (val != null) inp.value = val;
+      inp.addEventListener('input', e => { baselineDraft[f.key] = e.target.value; markBaselineField(block, f); updateBaselineProgress(); });
+      block.appendChild(inp);
+    }
+
+    markBaselineField(block, f);
+    root.appendChild(block);
+  });
+}
+
+function updateBaselineProgress() {
+  const req = baselineSkema.fields.filter(f => !f.optional);
+  const filled = req.filter(f => { const v = baselineDraft[f.key]; return v != null && v !== ''; }).length;
+  const pct = req.length ? Math.round(filled / req.length * 100) : 100;
+  document.getElementById('baseline-progress-fill').style.width = pct + '%';
+  document.getElementById('baseline-progress-current').textContent = pct + '%';
+  document.getElementById('baseline-progress-total').textContent = `${filled} af ${req.length}`;
+  const btn = document.getElementById('baseline-finish-btn');
+  btn.disabled = filled < req.length;
+  btn.textContent = filled < req.length ? `Mangler ${req.length - filled} svar` : 'Færdig →';
+}
+
+function finishBaseline() {
+  const req = baselineSkema.fields.filter(f => !f.optional);
+  if (req.some(f => { const v = baselineDraft[f.key]; return v == null || v === ''; })) return;
+  const p = document.querySelector('#screen-done p');
+  if (p) p.textContent = 'Dine svar er nu samlet i én krypteret fil. Tryk nedenfor for at sende filen til din psykolog i den samme SMS-tråd, hvor du fik linket.';
+  showScreen('screen-done');
+  window.scrollTo(0, 0);
+}
+
+async function shareBaselineEncrypted() {
+  const status = document.getElementById('done-status');
+  const btn = document.getElementById('share-btn');
+  if (!keyCheck.ok) {
+    status.style.color = '#c0392b';
+    status.textContent = 'Sikkerhedstjek fejlede: linket peger på en ukendt nøgle. Del IKKE dine svar — kontakt din psykolog for et nyt link.';
+    return;
+  }
+  btn.disabled = true;
+  status.style.color = 'var(--accent)';
+  status.textContent = 'Krypterer …';
+  try {
+    const nameEl = document.getElementById('patient-name');
+    const name = ((nameEl && nameEl.value) || '').trim();
+    const payload = buildPayloadBaseline(baselineDraft, { name });
+    const container = await mentemEncrypt(keyCheck.key, payload, keyCheck.keyId);   // ALTID pinned key
+    const blob = new Blob([JSON.stringify(container)], { type: 'application/json' });
+    const filename = `mentem-soevn-baseline-${new Date().toISOString().slice(0, 10)}.json`;
+    const file = new File([blob], filename, { type: 'application/json' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: 'Baseline til min psykolog' });
+      status.textContent = 'Filen er klar til at sende. Tak!';
+    } else {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+      a.remove(); URL.revokeObjectURL(url);
+      status.innerHTML = 'Filen er hentet til din enhed. Vedhæft den nu i SMS-tråden til din psykolog.';
+    }
+  } catch (e) {
+    status.style.color = '#c0392b';
+    status.textContent = 'Noget gik galt under kryptering. Prøv igen, eller kontakt din psykolog.';
+    btn.disabled = false;
+  }
+}
+
+// ── BOOTSTRAP: baseline-flow ELLER dagbog-flow ELLER spørgeskema-flow ──────
+if (baselineId) {
+  runBaseline(baselineId);
+} else if (diaryId) {
   runDiary(diaryId);
 } else {
   document.getElementById('finish-btn').addEventListener('click', goDone);

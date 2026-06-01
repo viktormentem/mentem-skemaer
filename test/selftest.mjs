@@ -15,10 +15,12 @@ import {
   computeScores,
   buildPayload,
   buildPayloadCSD,
+  buildPayloadBaseline,
   mentemEncrypt,
   SKEMA_ORDER,
   SKEMAER,
   CSD_SOEVNDAGBOG,
+  SOEVN_BASELINE,
   PINNED_PUBKEY,
   PINNED_KEY_ID,
   resolveRecipientKey,
@@ -167,6 +169,36 @@ const csdContainer = await mentemEncrypt(recipientPubB64, csd);
 const csdRT = await nodeDecrypt(csdContainer, recipient.privateKey);
 check('csd round-trip sleepDiary bevaret', csdRT.sleepDiary.length === 2 && csdRT.sleepDiary[1].quality === 4);
 check('csd round-trip diaryType bevaret', csdRT.diaryType === 'consensus-sleep-diary');
+
+// ── Søvn-baseline (engangs intake) ────────────────────────────────────────
+console.log('soevn-baseline:');
+check('SKEMAER soevn-baseline findes', !!SKEMAER['soevn-baseline']);
+check('baseline kind=baseline', SKEMAER['soevn-baseline'].kind === 'baseline');
+check('baseline IKKE i SKEMA_ORDER', !SKEMA_ORDER.includes('soevn-baseline'));
+check('SOEVN_BASELINE === SKEMAER[soevn-baseline]', SOEVN_BASELINE === SKEMAER['soevn-baseline']);
+const blKeys = SOEVN_BASELINE.fields.map(f => f.key);
+for (const k of ['alder','koen','undertype','varighed','sovemedicin','stimulanser','lure','vanligOpvaagning']) {
+  check(`baseline-felt: ${k}`, blKeys.includes(k));
+}
+check('baseline INGEN alder i daglig CSD', !CSD_SOEVNDAGBOG.fields.some(f => f.key === 'alder'));
+
+console.log('buildPayloadBaseline:');
+const blAnswers = {
+  alder: 67, koen: 'Kvinde', undertype: 'Vågner for tidligt om morgenen',
+  varighed: '3 måneder eller mere', sovemedicin: '', stimulanser: '2 kopper kaffe',
+  lure: 'Ja, 30-60 min', vanligOpvaagning: '06:30',
+};
+const bl = buildPayloadBaseline(blAnswers, { name: 'Baseline Klient' });
+check('bl version 1', bl.version === 1);
+check('bl categories = [soevn-baseline]', JSON.stringify(bl.categories) === JSON.stringify(['soevn-baseline']));
+check('bl baselineType', bl.baselineType === 'soevn-intake');
+check('bl exportedAt no-frac', ISO_NOFRAC.test(bl.exportedAt));
+check('bl bevarer felter', bl.baseline.alder === 67 && bl.baseline.vanligOpvaagning === '06:30');
+check('bl dropper tomme valgfri', bl.baseline.sovemedicin === undefined);
+check('bl beholder udfyldte valgfri', bl.baseline.stimulanser === '2 kopper kaffe');
+check('bl INGEN scoring (nul-score)', bl.questionnaireScores === undefined && bl.baseline.score === undefined);
+const blRT = await nodeDecrypt(await mentemEncrypt(recipientPubB64, bl), recipient.privateKey);
+check('bl round-trip baseline bevaret', blRT.baseline.alder === 67 && blRT.baseline.koen === 'Kvinde');
 
 console.log('');
 if (failures > 0) { console.error(`SELFTEST FAILED: ${failures} fejl`); process.exit(1); }
