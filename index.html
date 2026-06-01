@@ -245,12 +245,16 @@ const dParam   = params.get('d') ? parseInt(params.get('d'), 10) : null;   // da
 // token = forløbs-id (128-bit, fra Mentem). {BASE} er KONFIGURERBAR (ikke
 // hardcoded host) → swappable: tom DRAFT_API_BASE + intet ?api= → server-sync
 // FRA (ren localStorage, bagudkompatibel). ?api= overrider (preview/test).
-const DRAFT_API_BASE = '';                       // ← swap her ved prod-GO (EU-endpoint)
+// {BASE} = TCC-lane draft-store (D1/WEUR + R2/eu). ⚠️ TEST-preview-endpoint —
+// KUN TEST-data. Prod go-live (reel klient-data) er GATET på G3-DPA + Viktor-GO;
+// denne branch er held (0-push prod). Route-kontrakt: /api/soevn-draft/{token}.
+// ?api= kan stadig override (lokal test). Tom base + intet ?api= → server-sync FRA.
+const DRAFT_API_BASE = 'https://mentem-soevn-draftstore.mentem-mycel.workers.dev';
 const draftToken = params.get('t');
 const apiOverride = params.get('api');
 function draftBase() { return ((apiOverride || DRAFT_API_BASE || '').trim()).replace(/\/+$/, ''); }
 function draftEnabled() { return !!(draftToken && /^[0-9a-f]{32}$/.test(draftToken) && draftBase()); }
-function draftUrl() { return `${draftBase()}/draft/${draftToken}`; }
+function draftUrl() { return `${draftBase()}/api/soevn-draft/${draftToken}`; }
 
 // SIKKERHED: krypteringsnøglen er PINNED i koden (ikke fra ?pk=). Et ?pk= i
 // URL'en bruges KUN som cross-check — afviger det fra pinned nøgle, nægter vi
