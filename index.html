@@ -186,9 +186,11 @@
     </div>
     <button class="btn-primary" id="diary-start-btn">Udfyld for i nat</button>
     <button class="btn-secondary" id="diary-backfill-btn" style="display:none">Udfyld for i går</button>
-    <button class="btn-secondary" id="diary-finish-now-btn" style="display:none">Afslut og send til psykolog nu</button>
+    <button class="btn-secondary" id="diary-update-btn" style="display:none">Send opdatering til psykolog</button>
+    <button class="btn-secondary" id="diary-finish-now-btn" style="display:none">Afslut og send til psykolog</button>
     <p class="start-note" id="diary-note"></p>
-    <div class="disclaimer">🔒 <strong>Privatliv:</strong> Dine svar krypteres på din egen enhed, før noget sendes. En krypteret kopi gemmes midlertidigt på en sikker server (i EU), så din dagbog ikke går tabt, hvis du rydder browseren eller skifter enhed. Kun din psykolog kan åbne den — serveren ser kun ulæselig, krypteret tekst. Kopien slettes automatisk, når perioden er slut (senest efter 45 dage).</div>
+    <div class="done-status" id="diary-update-status" style="min-height:0"></div>
+    <div class="disclaimer" id="diary-privacy"></div>
     <p class="footer-credit" id="diary-attribution"></p>
     <p class="footer-credit" id="diary-key-fp"></p>
   </div>
@@ -255,10 +257,15 @@ const dParam   = params.get('d') ? parseInt(params.get('d'), 10) : null;   // da
 // KUN TEST-data. Prod go-live (reel klient-data) er GATET på G3-DPA + Viktor-GO;
 // denne branch er held (0-push prod). Route-kontrakt: /api/soevn-draft/{token}.
 // ?api= kan stadig override (lokal test). Tom base + intet ?api= → server-sync FRA.
+// LOCAL_ONLY: localStorage-only-variant (G3-fri rigtig-klient). Når true →
+// server-sync STRUKTURELT umulig (draftBase tom + ?api ignoreret) → klientens
+// data rammer ALDRIG nogen server, robust mod param-tab (flag bagt ind i den
+// distinkte lokal-deploy, ikke en URL-param). false = server-wiret preview.
+const LOCAL_ONLY = false;
 const DRAFT_API_BASE = 'https://mentem-soevn-draftstore.mentem-mycel.workers.dev';
 const draftToken = params.get('t');
 const apiOverride = params.get('api');
-function draftBase() { return ((apiOverride || DRAFT_API_BASE || '').trim()).replace(/\/+$/, ''); }
+function draftBase() { if (LOCAL_ONLY) return ''; return ((apiOverride || DRAFT_API_BASE || '').trim()).replace(/\/+$/, ''); }
 function draftEnabled() { return !!(draftToken && /^[0-9a-f]{32}$/.test(draftToken) && draftBase()); }
 function draftUrl() { return `${draftBase()}/api/soevn-draft/${draftToken}`; }
 
@@ -526,6 +533,7 @@ async function runDiary(id) {
   document.getElementById('diary-start-btn').addEventListener('click', () => startDiaryEntry(todayISO()));
   document.getElementById('diary-backfill-btn').addEventListener('click', () => startDiaryEntry(yesterdayISO()));
   document.getElementById('diary-finish-now-btn').addEventListener('click', finishDiary);
+  document.getElementById('diary-update-btn').addEventListener('click', sendDiaryOpdatering);
   document.getElementById('diary-save-btn').addEventListener('click', saveDiaryEntry);
   document.getElementById('diary-cancel-btn').addEventListener('click', () => {
     renderDiaryWelcome(); showScreen('screen-diary-welcome'); window.scrollTo(0, 0);
@@ -591,8 +599,21 @@ function renderDiaryWelcome() {
   const filledToday = diaryHasToday();
 
   intro.textContent = 'Udfyld dagbogen kort hver morgen for natten, der gik. Det tager et øjeblik, og der er ingen rigtige eller forkerte svar. Til sidst samler vi alle dagene i én fil, som du sender til din psykolog.';
+
+  // Privatlivstekst: v1 (localStorage-only) ELLER server-kladde-tekst.
+  const priv = document.getElementById('diary-privacy');
+  if (priv) priv.innerHTML = LOCAL_ONLY
+    ? '🔒 <strong>Privatliv:</strong> Dine svar gemmes kun i denne browser på din egen enhed. Når du er klar, samles de i én krypteret fil, som kun din psykolog kan åbne, og du sender den selv. <strong>Bemærk:</strong> rydder du browseren eller skifter enhed, mistes de dage, du har gemt, og du må starte forfra.'
+    : '🔒 <strong>Privatliv:</strong> Dine svar krypteres på din egen enhed, før noget sendes. En krypteret kopi gemmes midlertidigt på en sikker server (i EU), så din dagbog ikke går tabt, hvis du rydder browseren eller skifter enhed. Kun din psykolog kan åbne den — serveren ser kun ulæselig, krypteret tekst. Kopien slettes automatisk, når perioden er slut (senest efter 45 dage).';
+
+  // Open-ended: vis reelt dag-tal; "af N" kun mens inden for målet, ellers "(fortsat)".
+  const dagNu = done + (filledToday ? 0 : 1);
   document.getElementById('diary-progress-text').textContent =
-    `Dag ${Math.min(done + (filledToday ? 0 : 1), N)} af ${N}`;
+    dagNu <= N ? `Dag ${dagNu} af ${N}` : `Dag ${dagNu} (fortsat)`;
+
+  // Ugentlig ikke-terminal "Send opdatering"-knap (fortsætter forløbet).
+  const updateBtn = document.getElementById('diary-update-btn');
+  if (updateBtn) updateBtn.style.display = done >= 1 ? 'block' : 'none';
 
   const dotsEl = document.getElementById('diary-dots');
   dotsEl.innerHTML = '';
@@ -822,6 +843,35 @@ function finishDiary() {
   window.scrollTo(0, 0);
 }
 
+// Byg krypteret container-JSON for hele den akkumulerede dagbog. `afslut` sætter
+// endedAt (terminal). Server-recovery (lokal tom + recoveredBlob) → den blob.
+async function byggDiaryContainerJSON(afslut) {
+  if (diaryState.entries.length === 0 && recoveredBlob) return recoveredBlob;
+  const payload = buildPayloadCSD(diaryState.entries, {
+    startedAt: diaryState.startedAt, plannedDays: diaryState.plannedDays,
+    forloebId: draftToken || null, contentVersion: diaryState.contentVersion,
+    endedAt: afslut ? new Date().toISOString().replace(/\.\d{3}Z$/, 'Z') : null,
+  });
+  return JSON.stringify(await mentemEncrypt(keyCheck.key, payload, keyCheck.keyId));   // ALTID pinned key
+}
+
+// Del filen via navigator.share → fallback download. Returnerer "delt"|"hentet".
+async function delDiaryFil(containerJSON, titel) {
+  const blob = new Blob([containerJSON], { type: 'application/json' });
+  const filename = `mentem-soevndagbog-${todayISO()}.json`;
+  const file = new File([blob], filename, { type: 'application/json' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    await navigator.share({ files: [file], title: titel });
+    return 'delt';
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+  a.remove(); URL.revokeObjectURL(url);
+  return 'hentet';
+}
+
+// TERMINAL: afslut + send. Rydder lokal kladde + sletter server-kladde.
 async function shareDiaryEncrypted() {
   const status = document.getElementById('done-status');
   const btn = document.getElementById('share-btn');
@@ -830,8 +880,6 @@ async function shareDiaryEncrypted() {
     status.textContent = 'Sikkerhedstjek fejlede: linket peger på en ukendt nøgle. Del IKKE dine svar — kontakt din psykolog for et nyt link.';
     return;
   }
-  // Recovery-path: lokal kladde tom, men server havde en (krypteret) → send den.
-  const useRecovered = diaryState.entries.length === 0 && !!recoveredBlob;
   if (diaryState.entries.length === 0 && !recoveredBlob) {
     status.style.color = '#c0392b';
     status.textContent = 'Der er ingen dage at sende endnu. Udfyld mindst én nat først.';
@@ -841,31 +889,10 @@ async function shareDiaryEncrypted() {
   status.style.color = 'var(--accent)';
   status.textContent = 'Krypterer …';
   try {
-    let containerJSON;
-    if (useRecovered) {
-      containerJSON = recoveredBlob;   // allerede krypteret til pinned key (server-recovery)
-    } else {
-      const payload = buildPayloadCSD(diaryState.entries, {
-        startedAt: diaryState.startedAt, plannedDays: diaryState.plannedDays,
-        forloebId: draftToken || null, contentVersion: diaryState.contentVersion,
-        endedAt: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'),
-      });
-      containerJSON = JSON.stringify(await mentemEncrypt(keyCheck.key, payload, keyCheck.keyId));   // ALTID pinned key
-    }
-    const blob = new Blob([containerJSON], { type: 'application/json' });
-    const filename = `mentem-soevndagbog-${todayISO()}.json`;
-    const file = new File([blob], filename, { type: 'application/json' });
-
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({ files: [file], title: 'Søvndagbog til min psykolog' });
-      status.textContent = 'Filen er klar til at sende. Tak!';
-    } else {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = filename; document.body.appendChild(a); a.click();
-      a.remove(); URL.revokeObjectURL(url);
-      status.innerHTML = 'Filen er hentet til din enhed. Vedhæft den nu i SMS-tråden til din psykolog.';
-    }
+    const r = await delDiaryFil(await byggDiaryContainerJSON(true), 'Søvndagbog til min psykolog');
+    status.innerHTML = r === 'delt'
+      ? 'Filen er klar til at sende. Tak!'
+      : 'Filen er hentet til din enhed. Vedhæft den nu i SMS-tråden til din psykolog.';
     await deleteDraft();   // ryd server-kladde efter delt (én eksport)
     clearCSDState();       // + ryd lokal dagbog
     recoveredBlob = null;
@@ -874,6 +901,36 @@ async function shareDiaryEncrypted() {
     status.textContent = 'Noget gik galt under kryptering. Prøv igen, eller kontakt din psykolog.';
     btn.disabled = false;
   }
+}
+
+// IKKE-TERMINAL: ugentlig opdatering. Eksportér nuværende kladde → FORTSÆT
+// forløbet (ryd IKKE, slet IKKE). Til open-ended monitorering.
+async function sendDiaryOpdatering() {
+  const status = document.getElementById('diary-update-status');
+  const btn = document.getElementById('diary-update-btn');
+  if (!keyCheck.ok) {
+    status.style.color = '#c0392b';
+    status.textContent = 'Sikkerhedstjek fejlede — kontakt din psykolog for et nyt link.';
+    return;
+  }
+  if (diaryState.entries.length === 0) {
+    status.style.color = '#c0392b';
+    status.textContent = 'Udfyld mindst én nat, før du sender en opdatering.';
+    return;
+  }
+  btn.disabled = true;
+  status.style.color = 'var(--accent)';
+  status.textContent = 'Krypterer opdatering …';
+  try {
+    const r = await delDiaryFil(await byggDiaryContainerJSON(false), 'Søvndagbog-opdatering til min psykolog');
+    status.innerHTML = (r === 'delt'
+      ? 'Opdateringen er klar til at sende. Tak!'
+      : 'Opdateringen er hentet — vedhæft den i tråden til din psykolog.') + ' Du kan roligt fortsætte dagbogen.';
+  } catch (e) {
+    status.style.color = '#c0392b';
+    status.textContent = 'Noget gik galt. Prøv igen, eller kontakt din psykolog.';
+  }
+  btn.disabled = false;   // ikke-terminal → knap forbliver brugbar (ugentligt)
 }
 
 // ════════════════════════════════════════════════════════════════════════
