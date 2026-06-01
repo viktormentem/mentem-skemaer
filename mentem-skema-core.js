@@ -157,6 +157,45 @@ export const SKEMAER = {
 };
 
 // ════════════════════════════════════════════════════════════════════════
+//  SØVNDAGBOG — udskifteligt indholds-modul (B5 swap-arkitektur)
+// ════════════════════════════════════════════════════════════════════════
+// DROP-IN-KONTRAKT: dette objekt er CSD-INDHOLDET (felt-listen) holdt ISOLERET
+// fra render-motoren (renderDiary i index.html) + krypto/akkumulering. En
+// egen-forfattet variant til Companion-distribution kan erstatte HELE
+// `CSD_SOEVNDAGBOG` med samme `{kind:'diary', fields:[…]}`-shape uden at røre
+// render/krypto/persistens. Felt-`kind` (time|number|scale|text) er det eneste
+// render-motoren kender → indholdet er frit udskifteligt.
+//
+// NU (Viktors egen praksis): ÆGTE Consensus Sleep Diary (Carney et al. 2012,
+// SLEEP 35(2):287-302 — "The Consensus Sleep Diary: Standardizing prospective
+// sleep self-monitoring"). Fri klinisk brug. Gengivet uændret med kildeangivelse.
+// Felterne følger CSD-M (morgen-versionen): udfyldes om morgenen for natten der gik.
+export const CSD_SOEVNDAGBOG = {
+  id: 'soevndagbog', kind: 'diary', title: 'Søvndagbog', short: 'Søvndagbog', icon: 'maane',
+  badge: 'én gang om morgenen',
+  attribution: 'Consensus Sleep Diary (Carney et al., 2012, SLEEP). Gengivet uændret med kildeangivelse.',
+  instruction: 'Udfyld om morgenen for natten, der lige er gået. Svar så godt du kan — du behøver ikke kigge på uret om natten, et skøn er fint. Der er ingen rigtige eller forkerte svar.',
+  fields: [
+    { key: 'bedtime',         kind: 'time',   text: 'Hvad tid gik du i seng i aftes?' },
+    { key: 'lightsOut',       kind: 'time',   text: 'Hvad tid forsøgte du at falde i søvn (slukkede lyset)?' },
+    { key: 'sleepLatencyMin', kind: 'number', text: 'Hvor lang tid tog det dig at falde i søvn?', unit: 'minutter', min: 0, max: 600 },
+    { key: 'awakeningsCount', kind: 'number', text: 'Hvor mange gange vågnede du i løbet af natten (ud over den endelige opvågning)?', unit: 'gange', min: 0, max: 30 },
+    { key: 'awakeningsMin',   kind: 'number', text: 'Hvor længe var du vågen i alt under disse opvågninger?', unit: 'minutter', min: 0, max: 600 },
+    { key: 'finalAwake',      kind: 'time',   text: 'Hvad tid vågnede du endeligt?' },
+    { key: 'outOfBed',        kind: 'time',   text: 'Hvad tid stod du op af sengen?' },
+    { key: 'quality',         kind: 'scale',  text: 'Hvordan vil du vurdere kvaliteten af din søvn?',
+      scale: ['Meget dårlig', 'Dårlig', 'Nogenlunde', 'God', 'Meget god'] },
+    { key: 'naps',            kind: 'text',   text: 'Tog du dig en lur eller blund i løbet af gårsdagen? (antal og samlet varighed, valgfrit)', optional: true },
+    { key: 'medication',      kind: 'text',   text: 'Tog du søvnmedicin, alkohol eller koffein i går? (hvad og hvornår, valgfrit)', optional: true },
+  ],
+};
+
+// Registrér søvndagbogen i SKEMAER (men IKKE i SKEMA_ORDER — den er en
+// standalone monitorerings-dagbog, aldrig en del af det booking-koblede
+// spørgeskema-batteri).
+SKEMAER.soevndagbog = CSD_SOEVNDAGBOG;
+
+// ════════════════════════════════════════════════════════════════════════
 //  SCORING (intern — bruges til opaque payload; klienten ser ALDRIG resultatet)
 // ════════════════════════════════════════════════════════════════════════
 function val(a) { return (a && typeof a === 'object') ? a.value : a; }
@@ -245,6 +284,42 @@ export function buildPayload(answers, meta = {}) {
     }));
   }
   return payload;
+}
+
+// ════════════════════════════════════════════════════════════════════════
+//  SØVNDAGBOG-PAYLOAD (akkumuleret periode → ÉN opaque eksport)
+// ════════════════════════════════════════════════════════════════════════
+// REN data-capture: payloaden bærer KUN de rå dagbogs-felter (ingen scoring,
+// ingen TST/SE) — nul-score-invarianten bevares, og den AUTORITATIVE
+// TST/SE-beregning sker Mentem-side (Swift `Soevnberegning`), så formlen har
+// én sandhedskilde. `sleepDiary` er en NY gren ved siden af questionnaireScores
+// /casTrends/beliefRatings; Swift `TerapiEksportPayload` ignorerer ukendte
+// felter ved decode → bagudkompatibelt (fuld ingest-persistens = flagget P2-
+// schema-touch, ikke Fase 1).
+//
+// `entries` = array af { date:'YYYY-MM-DD', bedtime, lightsOut, sleepLatencyMin,
+//   awakeningsCount, awakeningsMin, finalAwake, outOfBed, quality, naps?, medication? }.
+export function buildPayloadCSD(entries, meta = {}) {
+  const now = isoNoFrac(new Date());
+  const FIELD_KEYS = CSD_SOEVNDAGBOG.fields.map((f) => f.key);
+
+  const sleepDiary = (entries || []).map((e) => {
+    const out = { date: e.date };
+    for (const k of FIELD_KEYS) if (e[k] != null && e[k] !== '') out[k] = e[k];
+    return out;
+  });
+
+  return {
+    version: 1,
+    exportedAt: now,
+    clientName: meta.name || '',
+    therapistName: 'Viktor Nielsen',
+    categories: ['soevndagbog'],
+    diaryType: 'consensus-sleep-diary',
+    diaryStartedAt: meta.startedAt || (sleepDiary[0] && sleepDiary[0].date) || now,
+    plannedDays: (meta.plannedDays != null) ? meta.plannedDays : null,
+    sleepDiary,
+  };
 }
 
 // ════════════════════════════════════════════════════════════════════════

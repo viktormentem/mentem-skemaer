@@ -14,8 +14,11 @@
 import {
   computeScores,
   buildPayload,
+  buildPayloadCSD,
   mentemEncrypt,
   SKEMA_ORDER,
+  SKEMAER,
+  CSD_SOEVNDAGBOG,
   PINNED_PUBKEY,
   PINNED_KEY_ID,
   resolveRecipientKey,
@@ -127,6 +130,43 @@ const stdVariant = PINNED_PUBKEY.replace(/-/g, '+').replace(/_/g, '/') + '=';  /
 check('resolve: base64-variant af samme nøgle → ok', resolveRecipientKey(stdVariant).ok === true);
 const foreign = resolveRecipientKey('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA');
 check('resolve: fremmed ?pk → AFVIST (krypter aldrig til fremmed nøgle)', foreign.ok === false && foreign.reason === 'mismatch');
+
+// ── Søvndagbog (CSD) — indholds-modul + payload-gren ──────────────────────
+console.log('soevndagbog (CSD):');
+check('SKEMAER.soevndagbog findes', !!SKEMAER.soevndagbog);
+check('soevndagbog kind=diary', SKEMAER.soevndagbog.kind === 'diary');
+check('soevndagbog IKKE i SKEMA_ORDER (standalone)', !SKEMA_ORDER.includes('soevndagbog'));
+check('CSD_SOEVNDAGBOG === SKEMAER.soevndagbog (drop-in-handle)', CSD_SOEVNDAGBOG === SKEMAER.soevndagbog);
+check('CSD har Carney-attribution', /Carney/.test(SKEMAER.soevndagbog.attribution || ''));
+const diaryKeys = CSD_SOEVNDAGBOG.fields.map(f => f.key);
+for (const k of ['bedtime','lightsOut','sleepLatencyMin','awakeningsCount','awakeningsMin','finalAwake','outOfBed','quality','naps','medication']) {
+  check(`CSD-felt: ${k}`, diaryKeys.includes(k));
+}
+
+console.log('buildPayloadCSD:');
+const csdEntries = [
+  { date:'2026-06-01', bedtime:'23:15', lightsOut:'23:30', sleepLatencyMin:25, awakeningsCount:2, awakeningsMin:30, finalAwake:'06:45', outOfBed:'07:00', quality:3, naps:'', medication:'' },
+  { date:'2026-06-02', bedtime:'23:00', lightsOut:'23:20', sleepLatencyMin:15, awakeningsCount:1, awakeningsMin:10, finalAwake:'06:30', outOfBed:'06:50', quality:4, naps:'20 min ved middag', medication:'1 glas vin kl. 20' },
+];
+const csd = buildPayloadCSD(csdEntries, { name:'Søvn Klient', startedAt:'2026-06-01', plannedDays:14 });
+check('csd version 1', csd.version === 1);
+check('csd therapistName', csd.therapistName === 'Viktor Nielsen');
+check('csd clientName', csd.clientName === 'Søvn Klient');
+check('csd categories = [soevndagbog]', JSON.stringify(csd.categories) === JSON.stringify(['soevndagbog']));
+check('csd diaryType', csd.diaryType === 'consensus-sleep-diary');
+check('csd plannedDays', csd.plannedDays === 14);
+check('csd exportedAt no-frac', ISO_NOFRAC.test(csd.exportedAt), `(${csd.exportedAt})`);
+check('csd sleepDiary 2 entries', csd.sleepDiary.length === 2);
+check('csd entry bevarer felter', csd.sleepDiary[0].bedtime === '23:15' && csd.sleepDiary[0].sleepLatencyMin === 25);
+check('csd dropper tomme valgfri felter', csd.sleepDiary[0].naps === undefined && csd.sleepDiary[0].medication === undefined);
+check('csd beholder udfyldte valgfri felter', csd.sleepDiary[1].naps === '20 min ved middag');
+check('csd INGEN scoring (nul-score)', csd.questionnaireScores === undefined && csd.sleepDiary[0].tst === undefined && csd.sleepDiary[0].se === undefined);
+
+// Round-trip: CSD-payload krypteres + dekrypteres → sleepDiary intakt.
+const csdContainer = await mentemEncrypt(recipientPubB64, csd);
+const csdRT = await nodeDecrypt(csdContainer, recipient.privateKey);
+check('csd round-trip sleepDiary bevaret', csdRT.sleepDiary.length === 2 && csdRT.sleepDiary[1].quality === 4);
+check('csd round-trip diaryType bevaret', csdRT.diaryType === 'consensus-sleep-diary');
 
 console.log('');
 if (failures > 0) { console.error(`SELFTEST FAILED: ${failures} fejl`); process.exit(1); }
