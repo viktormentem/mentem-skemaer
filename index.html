@@ -232,13 +232,25 @@
 
 <script type="module">
 import { SKEMAER, SKEMA_ORDER, buildPayload, buildPayloadCSD, buildPayloadBaseline, mentemEncrypt,
-         CSD_SOEVNDAGBOG, SOEVN_BASELINE, PINNED_PUBKEY, PINNED_KEY_ID, resolveRecipientKey } from './mentem-skema-core.js';
+         CSD_SOEVNDAGBOG, SOEVN_BASELINE, CONTENT_VERSION, SITE_BUILD,
+         PINNED_PUBKEY, PINNED_KEY_ID, resolveRecipientKey } from './mentem-skema-core.js';
 
 // ── URL-parametre (?s=batteri  ?n=sessionsnummer  ?pk=cross-check) ────────
 const params   = new URLSearchParams(location.search);
 const sParam   = params.get('s');
 const sessionN = params.get('n') ? parseInt(params.get('n'), 10) : null;
 const dParam   = params.get('d') ? parseInt(params.get('d'), 10) : null;   // dagbog-periode (dage)
+
+// ── Server draft-store (Mulighed A) ───────────────────────────────────────
+// token = forløbs-id (128-bit, fra Mentem). {BASE} er KONFIGURERBAR (ikke
+// hardcoded host) → swappable: tom DRAFT_API_BASE + intet ?api= → server-sync
+// FRA (ren localStorage, bagudkompatibel). ?api= overrider (preview/test).
+const DRAFT_API_BASE = '';                       // ← swap her ved prod-GO (EU-endpoint)
+const draftToken = params.get('t');
+const apiOverride = params.get('api');
+function draftBase() { return ((apiOverride || DRAFT_API_BASE || '').trim()).replace(/\/+$/, ''); }
+function draftEnabled() { return !!(draftToken && /^[0-9a-f]{32}$/.test(draftToken) && draftBase()); }
+function draftUrl() { return `${draftBase()}/draft/${draftToken}`; }
 
 // SIKKERHED: krypteringsnøglen er PINNED i koden (ikke fra ?pk=). Et ?pk= i
 // URL'en bruges KUN som cross-check — afviger det fra pinned nøgle, nægter vi
@@ -469,9 +481,10 @@ function clearCSDState() {
   try { localStorage.removeItem(CSD_LS_KEY); } catch (e) { /* ignore */ }
 }
 
-let diaryState = null;   // { startedAt, plannedDays, entries:[{date, …felter}] }
+let diaryState = null;   // { startedAt, plannedDays, contentVersion, dirty, entries:[{date, …felter, savedAt}] }
 let diaryDraft = {};     // dagens igangværende svar
 let diarySkema = null;
+let recoveredBlob = null;   // opaque server-kladde efter ITP-wipe (kan IKKE dekrypteres klient-side)
 
 function diaryPlannedDays() {
   if (dParam && dParam > 0 && dParam <= 60) return dParam;   // ?d= ved første åbning
@@ -481,12 +494,13 @@ function diaryHasToday() {
   return !!(diaryState && diaryState.entries.find(e => e.date === todayISO()));
 }
 
-function runDiary(id) {
+async function runDiary(id) {
   diarySkema = SKEMAER[id];
-  // Eksisterende periode bevares; plannedDays låses ved første åbning (et senere
-  // ?d= ændrer ikke en igangværende periode).
-  diaryState = loadCSD() || { startedAt: todayISO(), plannedDays: diaryPlannedDays(), entries: [] };
+  // Eksisterende periode bevares; plannedDays + contentVersion låses ved første
+  // åbning (et senere ?d=/ny site-version ændrer ikke en igangværende periode, G2).
+  diaryState = loadCSD() || { startedAt: todayISO(), plannedDays: diaryPlannedDays(), contentVersion: CONTENT_VERSION, dirty: false, entries: [] };
   if (!diaryState.plannedDays) diaryState.plannedDays = diaryPlannedDays();
+  if (diaryState.contentVersion == null) diaryState.contentVersion = CONTENT_VERSION;
 
   document.getElementById('diary-start-btn').addEventListener('click', startDiaryEntry);
   document.getElementById('diary-finish-now-btn').addEventListener('click', finishDiary);
@@ -496,8 +510,43 @@ function runDiary(id) {
   });
   document.getElementById('share-btn').addEventListener('click', shareDiaryEncrypted);
 
-  renderDiaryWelcome();
   showScreen('screen-diary-welcome');
+  renderDiaryWelcome();        // render straks (lokal)
+  await syncDraftOnLoad();     // server-sync (network-first m. lokal offline-buffer)
+  renderDiaryWelcome();        // re-render m. evt. recovery-tilstand
+}
+
+// Krypter HELE den akkumulerede dagbog → PUT. Offline → behold som localStorage-buffer.
+async function pushDraft() {
+  if (!draftEnabled() || !keyCheck.ok || diaryState.entries.length === 0) return;
+  try {
+    const payload = buildPayloadCSD(diaryState.entries, {
+      startedAt: diaryState.startedAt, plannedDays: diaryState.plannedDays,
+      forloebId: draftToken, contentVersion: diaryState.contentVersion });
+    const container = await mentemEncrypt(keyCheck.key, payload, keyCheck.keyId);
+    const res = await fetch(draftUrl(), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(container) });
+    diaryState.dirty = !res.ok;
+  } catch (e) { diaryState.dirty = true; }   // offline → retry ved næste load
+  saveCSDState(diaryState);
+}
+
+async function syncDraftOnLoad() {
+  if (!draftEnabled()) return;
+  if (diaryState.entries.length && diaryState.dirty) await pushDraft();   // flush offline-buffer
+  try {
+    const res = await fetch(draftUrl(), { method: 'GET' });
+    if (res.ok && diaryState.entries.length === 0) {
+      // ITP-wipe / ny enhed: lokal kladde væk, serveren har den krypterede.
+      // Klienten kan IKKE dekryptere pinned-key-blobben → behold til forwarding
+      // ved afslut (blob-niveau recovery; entry-merge sker Mentem-side ved decrypt).
+      recoveredBlob = await res.text();
+    }
+  } catch (e) { /* offline → kør videre på lokal kladde */ }
+}
+
+async function deleteDraft() {
+  if (!draftEnabled()) return;
+  try { await fetch(draftUrl(), { method: 'DELETE' }); } catch (e) { /* best-effort */ }
 }
 
 function renderDiaryWelcome() {
@@ -546,6 +595,13 @@ function renderDiaryWelcome() {
     note.textContent = `Du har udfyldt alle ${N} dage. Tryk for at sende til din psykolog.`;
   } else {
     finishNow.textContent = 'Afslut og send til psykolog nu';
+  }
+
+  // Server-recovery (ITP-wipe): lokal kladde væk, men serveren havde en krypteret.
+  if (recoveredBlob && done === 0) {
+    note.textContent = 'Vi fandt en tidligere gemt dagbog (krypteret) hos din psykolog — den er sikker. Du kan udfylde flere dage, eller sende den nu.';
+    finishNow.style.display = 'block';
+    finishNow.textContent = 'Send gendannet dagbog til psykolog';
   }
 
   document.getElementById('diary-attribution').textContent = diarySkema.attribution || '';
@@ -651,18 +707,20 @@ function saveDiaryEntry() {
   if (req.some(f => { const v = diaryDraft[f.key]; return v == null || v === ''; })) return;
 
   const date = todayISO();
-  const entry = { date };
+  const entry = { date, savedAt: new Date().toISOString() };   // savedAt → newest-wins-merge
   diarySkema.fields.forEach(f => { const v = diaryDraft[f.key]; if (v != null && v !== '') entry[f.key] = v; });
 
   // Dag-dedup: én entry pr. kalenderdag (overskriv hvis samme dag gemmes igen).
   const idx = diaryState.entries.findIndex(e => e.date === date);
   if (idx >= 0) diaryState.entries[idx] = entry; else diaryState.entries.push(entry);
   diaryState.entries.sort((a, b) => a.date.localeCompare(b.date));
+  recoveredBlob = null;     // brugeren udfylder aktivt → lokal kladde er nu autoritativ
   saveCSDState(diaryState);
 
   renderDiaryWelcome();
   showScreen('screen-diary-welcome');
   window.scrollTo(0, 0);
+  pushDraft();              // krypter HELE dagbogen → PUT (fire-and-forget; offline-buffer ved fejl)
 }
 
 function finishDiary() {
@@ -681,15 +739,29 @@ async function shareDiaryEncrypted() {
     status.textContent = 'Sikkerhedstjek fejlede: linket peger på en ukendt nøgle. Del IKKE dine svar — kontakt din psykolog for et nyt link.';
     return;
   }
+  // Recovery-path: lokal kladde tom, men server havde en (krypteret) → send den.
+  const useRecovered = diaryState.entries.length === 0 && !!recoveredBlob;
+  if (diaryState.entries.length === 0 && !recoveredBlob) {
+    status.style.color = '#c0392b';
+    status.textContent = 'Der er ingen dage at sende endnu. Udfyld mindst én nat først.';
+    return;
+  }
   btn.disabled = true;
   status.style.color = 'var(--accent)';
   status.textContent = 'Krypterer …';
   try {
-    const payload = buildPayloadCSD(diaryState.entries, {
-      startedAt: diaryState.startedAt, plannedDays: diaryState.plannedDays,
-    });
-    const container = await mentemEncrypt(keyCheck.key, payload, keyCheck.keyId);   // ALTID pinned key
-    const blob = new Blob([JSON.stringify(container)], { type: 'application/json' });
+    let containerJSON;
+    if (useRecovered) {
+      containerJSON = recoveredBlob;   // allerede krypteret til pinned key (server-recovery)
+    } else {
+      const payload = buildPayloadCSD(diaryState.entries, {
+        startedAt: diaryState.startedAt, plannedDays: diaryState.plannedDays,
+        forloebId: draftToken || null, contentVersion: diaryState.contentVersion,
+        endedAt: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'),
+      });
+      containerJSON = JSON.stringify(await mentemEncrypt(keyCheck.key, payload, keyCheck.keyId));   // ALTID pinned key
+    }
+    const blob = new Blob([containerJSON], { type: 'application/json' });
     const filename = `mentem-soevndagbog-${todayISO()}.json`;
     const file = new File([blob], filename, { type: 'application/json' });
 
@@ -703,7 +775,9 @@ async function shareDiaryEncrypted() {
       a.remove(); URL.revokeObjectURL(url);
       status.innerHTML = 'Filen er hentet til din enhed. Vedhæft den nu i SMS-tråden til din psykolog.';
     }
-    clearCSDState();   // én eksport → ryd lokal dagbog efter delt
+    await deleteDraft();   // ryd server-kladde efter delt (én eksport)
+    clearCSDState();       // + ryd lokal dagbog
+    recoveredBlob = null;
   } catch (e) {
     status.style.color = '#c0392b';
     status.textContent = 'Noget gik galt under kryptering. Prøv igen, eller kontakt din psykolog.';

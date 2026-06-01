@@ -16,6 +16,7 @@ import {
   buildPayload,
   buildPayloadCSD,
   buildPayloadBaseline,
+  mergeDiaryEntries,
   mentemEncrypt,
   SKEMA_ORDER,
   SKEMAER,
@@ -169,6 +170,39 @@ const csdContainer = await mentemEncrypt(recipientPubB64, csd);
 const csdRT = await nodeDecrypt(csdContainer, recipient.privateKey);
 check('csd round-trip sleepDiary bevaret', csdRT.sleepDiary.length === 2 && csdRT.sleepDiary[1].quality === 4);
 check('csd round-trip diaryType bevaret', csdRT.diaryType === 'consensus-sleep-diary');
+
+// Versions-blok (§6) + forloebId.
+console.log('csd versions-blok (draft-store):');
+const csdV = buildPayloadCSD(csdEntries, { startedAt: '2026-06-01', plannedDays: 14, forloebId: 'a1b2c3d4e5f60718293a4b5c6d7e8f90' });
+check('meta.instrument = CSD-Carney-2012', csdV.meta.instrument === 'CSD-Carney-2012');
+check('meta.schemaVersion', csdV.meta.schemaVersion === 1);
+check('meta.contentVersion', csdV.meta.contentVersion === 1);
+check('meta.protocolVersion', csdV.meta.protocolVersion === 1);
+check('meta.siteBuild stamp', typeof csdV.meta.siteBuild === 'string' && csdV.meta.siteBuild.length > 0);
+check('meta.forloebId = token', csdV.meta.forloebId === 'a1b2c3d4e5f60718293a4b5c6d7e8f90');
+check('meta.periodPlanned/Completed', csdV.meta.periodPlanned === 14 && csdV.meta.periodCompleted === 2);
+check('meta additivt på formatVersion 1', csdV.version === 1);
+
+// Draft-merge: newest-wins pr. dato, server-authoritative ved tie.
+console.log('mergeDiaryEntries:');
+const local = [
+  { date: '2026-06-01', quality: 5, savedAt: '2026-06-02T08:00:00Z' },   // lokal nyere
+  { date: '2026-06-03', quality: 2, savedAt: '2026-06-03T08:00:00Z' },   // kun lokal
+];
+const server = [
+  { date: '2026-06-01', quality: 3, savedAt: '2026-06-01T08:00:00Z' },   // ældre end lokal
+  { date: '2026-06-02', quality: 4, savedAt: '2026-06-02T08:00:00Z' },   // kun server
+];
+const merged = mergeDiaryEntries(local, server);
+check('merge: union af datoer (3)', merged.length === 3);
+check('merge: sorteret pr. dato', merged.map(e => e.date).join(',') === '2026-06-01,2026-06-02,2026-06-03');
+check('merge: lokal nyere vinder (01 → quality 5)', merged.find(e => e.date === '2026-06-01').quality === 5);
+check('merge: server-only bevaret (02)', merged.find(e => e.date === '2026-06-02').quality === 4);
+check('merge: lokal-only bevaret (03)', merged.find(e => e.date === '2026-06-03').quality === 2);
+const tie = mergeDiaryEntries(
+  [{ date: '2026-06-01', quality: 9, savedAt: '2026-06-01T08:00:00Z' }],
+  [{ date: '2026-06-01', quality: 1, savedAt: '2026-06-01T08:00:00Z' }]);
+check('merge: tie → server-authoritative', tie[0].quality === 1);
 
 // ── Søvn-baseline (engangs intake) ────────────────────────────────────────
 console.log('soevn-baseline:');

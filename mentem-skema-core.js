@@ -329,6 +329,12 @@ export function buildPayload(answers, meta = {}) {
 //
 // `entries` = array af { date:'YYYY-MM-DD', bedtime, lightsOut, sleepLatencyMin,
 //   awakeningsCount, awakeningsMin, finalAwake, outOfBed, quality, naps?, medication? }.
+// Versionering (persistens-spec §5/§6, G2). Additivt på formatVersion:1.
+export const SCHEMA_VERSION = 1;          // payload-strukturversion
+export const CONTENT_VERSION = 1;         // CSD-indholdsversion (bump = kun NYE forløb, G2-frys)
+export const PROTOCOL_VERSION = 1;        // draft-store transport-kontrakt
+export const SITE_BUILD = '2026-06-01-fase1';   // synlig version-stamp (G3)
+
 export function buildPayloadCSD(entries, meta = {}) {
   const now = isoNoFrac(new Date());
   const FIELD_KEYS = CSD_SOEVNDAGBOG.fields.map((f) => f.key);
@@ -339,6 +345,8 @@ export function buildPayloadCSD(entries, meta = {}) {
     return out;
   });
 
+  const startedAt = meta.startedAt || (sleepDiary[0] && sleepDiary[0].date) || now;
+
   return {
     version: 1,
     exportedAt: now,
@@ -346,10 +354,42 @@ export function buildPayloadCSD(entries, meta = {}) {
     therapistName: 'Viktor Nielsen',
     categories: ['soevndagbog'],
     diaryType: 'consensus-sleep-diary',
-    diaryStartedAt: meta.startedAt || (sleepDiary[0] && sleepDiary[0].date) || now,
+    diaryStartedAt: startedAt,
     plannedDays: (meta.plannedDays != null) ? meta.plannedDays : null,
+    // Versions-blok (§6) — klartekst INDE i ciphertext (serveren ser den aldrig).
+    meta: {
+      schemaVersion: SCHEMA_VERSION,
+      contentVersion: (meta.contentVersion != null) ? meta.contentVersion : CONTENT_VERSION,
+      instrument: 'CSD-Carney-2012',
+      protocolVersion: PROTOCOL_VERSION,
+      siteBuild: SITE_BUILD,
+      forloebId: meta.forloebId || null,          // = token (mapping kun i Mentem)
+      periodPlanned: (meta.plannedDays != null) ? meta.plannedDays : null,
+      periodCompleted: sleepDiary.length,
+      startedAt,
+      endedAt: meta.endedAt || null,
+    },
     sleepDiary,
   };
+}
+
+// ════════════════════════════════════════════════════════════════════════
+//  DRAFT-MERGE (newest-wins pr. entry-dato) — readable-side reconcile
+// ════════════════════════════════════════════════════════════════════════
+// Bruges hvor BEGGE sider er læsbare plaintext-entries (fx Mentem-decrypt-side,
+// eller fremtidig klient-læsbar kladde). Server-draften er pinned-key-ciphertext
+// → klienten kan IKKE læse den (asymmetrisk, §1 "ingen ny primitiv"); klientens
+// ITP-recovery sker derfor på BLOB-niveau (hele krypterede kladde overlever).
+// newest-wins via `savedAt`; server-authoritative ved tie/manglende stempel.
+export function mergeDiaryEntries(localEntries, serverEntries) {
+  const byDate = new Map();
+  for (const e of (serverEntries || [])) byDate.set(e.date, e);      // server-baseline (authoritative)
+  for (const e of (localEntries || [])) {
+    const ex = byDate.get(e.date);
+    if (!ex) { byDate.set(e.date, e); continue; }
+    if ((e.savedAt || '') > (ex.savedAt || '')) byDate.set(e.date, e); // lokal strengt nyere → vinder
+  }
+  return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
 }
 
 // ════════════════════════════════════════════════════════════════════════
