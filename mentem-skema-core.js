@@ -177,7 +177,8 @@ export const CSD_SOEVNDAGBOG = {
   instruction: 'Udfyld om morgenen for natten, der lige er gået. Svar så godt du kan — du behøver ikke kigge på uret om natten, et skøn er fint. Der er ingen rigtige eller forkerte svar.',
   fields: [
     { key: 'bedtime',         kind: 'time',   text: 'Hvad tid gik du i seng i aftes?' },
-    { key: 'lightsOut',       kind: 'time',   text: 'Hvad tid forsøgte du at falde i søvn (slukkede lyset)?' },
+    { key: 'lightsOut',       kind: 'time',   text: 'Hvad tid forsøgte du at falde i søvn (slukkede lyset)?',
+      hint: 'Tit samme tid som du gik i seng — men hvis du lå og læste eller var på mobilen lidt først, så skriv hvornår du faktisk prøvede at sove. Samme tid er helt fint.' },
     { key: 'sleepLatencyMin', kind: 'number', text: 'Hvor lang tid tog det dig at falde i søvn?', unit: 'minutter', min: 0, max: 600 },
     { key: 'awakeningsCount', kind: 'number', text: 'Hvor mange gange vågnede du i løbet af natten (ud over den endelige opvågning)?', unit: 'gange', min: 0, max: 30 },
     { key: 'awakeningsMin',   kind: 'number', text: 'Hvor længe var du vågen i alt under disse opvågninger?', unit: 'minutter', min: 0, max: 600 },

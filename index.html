@@ -102,6 +102,7 @@
   .diary-q { font-size:15px; font-weight:500; margin-bottom:14px; line-height:1.4; }
   .diary-q .question-num { font-size:12px; color:var(--muted); font-weight:400; margin-right:8px; }
   .diary-optional { font-size:12px; color:var(--muted); font-weight:400; font-style:italic; margin-left:6px; }
+  .diary-hint { font-size:13px; color:var(--muted); font-weight:400; line-height:1.45; margin:-6px 0 14px; }
   .diary-input-row { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
   .diary-field input[type=time], .diary-field input[type=number], .diary-field input[type=text] {
     padding:12px 16px; border:1.5px solid var(--border); border-radius:8px; font-family:'DM Sans',sans-serif; font-size:16px; background:white; outline:none; }
@@ -760,6 +761,11 @@ function renderDiaryFields() {
     const label = document.createElement('label');
     label.className = 'diary-q'; label.setAttribute('for', inputId); label.innerHTML = qHtml;
     block.appendChild(label);
+    if (f.hint) {
+      const hint = document.createElement('div');
+      hint.className = 'diary-hint'; hint.textContent = f.hint;
+      block.appendChild(hint);
+    }
 
     if (f.kind === 'time') {
       const row = document.createElement('div'); row.className = 'diary-input-row';
