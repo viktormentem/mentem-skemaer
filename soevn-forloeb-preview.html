@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mentem søvnforløb — navigerbart preview (syntetisk)</title>
+<style>
+  :root{
+    --bg:#f4f6f9; --card:#ffffff; --ink:#1d2530; --muted:#5b6675; --line:#e2e7ee;
+    --brand:#3a6ea5; --brand-soft:#eaf1f8; --green:#2e7d54; --green-soft:#e7f3ec;
+    --amber:#a96a1f; --amber-soft:#fbf1e2; --red:#b23b3b; --red-soft:#fbecec;
+    --draft:#6a4ea9; --draft-soft:#efeaf8; --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);color:var(--ink);line-height:1.6;font-size:17px}
+  .wrap{max-width:760px;margin:0 auto;padding:0 18px 120px}
+  header.top{position:sticky;top:0;z-index:10;background:rgba(244,246,249,.92);
+    backdrop-filter:saturate(150%) blur(8px);border-bottom:1px solid var(--line);padding:12px 18px}
+  .top-inner{max-width:760px;margin:0 auto;display:flex;align-items:center;gap:12px}
+  .logo{font-weight:700;letter-spacing:.2px}
+  .logo .moon{color:var(--brand)}
+  .banner{background:#262f3a;color:#dfe6ef;font-size:13px;text-align:center;padding:7px 10px;line-height:1.4}
+  .steps{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 4px}
+  .steps button{font:inherit;font-size:12.5px;border:1px solid var(--line);background:var(--card);
+    color:var(--muted);border-radius:999px;padding:5px 11px;cursor:pointer;white-space:nowrap}
+  .steps button[aria-current="true"]{background:var(--brand);color:#fff;border-color:var(--brand);font-weight:600}
+  .progress{height:4px;background:var(--line);border-radius:4px;overflow:hidden;margin:8px 0 18px}
+  .progress > i{display:block;height:100%;background:var(--brand);transition:width .3s ease}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:26px 24px;margin:0 0 16px;box-shadow:0 1px 2px rgba(20,30,50,.04)}
+  .eyebrow{font-size:12.5px;text-transform:uppercase;letter-spacing:.7px;color:var(--brand);font-weight:700;margin:0 0 6px}
+  h1{font-size:25px;margin:.1em 0 .4em;line-height:1.25}
+  h2{font-size:19px;margin:1.4em 0 .4em}
+  p{margin:.55em 0}
+  .lead{color:var(--muted);font-size:17px}
+  .badge{display:inline-block;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
+    padding:3px 9px;border-radius:6px;vertical-align:middle;margin-left:8px}
+  .badge.lock{background:var(--green-soft);color:var(--green)}
+  .badge.draft{background:var(--draft-soft);color:var(--draft)}
+  .badge.synthetic{background:var(--brand-soft);color:var(--brand)}
+  .quote{background:#fafbfc;border:1px solid var(--line);border-left:4px solid var(--brand);
+    border-radius:10px;padding:16px 18px;margin:14px 0}
+  .quote.lock{border-left-color:var(--green)}
+  .quote.draft{border-left-color:var(--draft);background:#fbfaff}
+  .quote h3{margin:0 0 .4em;font-size:17px}
+  .quote ul{margin:.4em 0;padding-left:1.2em}
+  .quote li{margin:.25em 0}
+  .window-box{display:flex;gap:18px;align-items:center;background:var(--brand-soft);
+    border-radius:12px;padding:18px 20px;margin:10px 0}
+  .window-box .time{font-size:30px;font-weight:700;color:var(--brand);white-space:nowrap}
+  .window-box .arrow{color:var(--brand);font-size:22px}
+  .window-box .lab{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  .safety{background:var(--amber-soft);border:1px solid #f0dcc0;border-radius:10px;padding:16px 18px;margin:14px 0}
+  .safety strong{color:var(--amber)}
+  .failsafe{background:var(--red-soft);border:1px solid #f2cfcf;border-radius:10px;padding:16px 18px;margin:14px 0}
+  .failsafe strong{color:var(--red)}
+  .note{font-size:13.5px;color:var(--muted);background:#f7f8fa;border-radius:8px;padding:10px 13px;margin:12px 0}
+  .note b{color:var(--ink)}
+  .field{margin:14px 0}
+  .field label{display:block;font-weight:600;font-size:14.5px;margin:0 0 5px}
+  .field input,.field textarea,.field select{width:100%;font:inherit;padding:10px 12px;border:1px solid var(--line);
+    border-radius:9px;background:#fff;color:var(--ink)}
+  .field textarea{min-height:64px;resize:vertical}
+  .scale{display:flex;gap:5px;flex-wrap:wrap}
+  .scale button{flex:1;min-width:34px;font:inherit;padding:9px 0;border:1px solid var(--line);background:#fff;
+    border-radius:8px;cursor:pointer;color:var(--muted)}
+  .scale button[aria-pressed="true"]{background:var(--brand);color:#fff;border-color:var(--brand);font-weight:700}
+  .twocol{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .twocol .field label{font-size:13.5px}
+  .pill{display:inline-block;background:var(--green-soft);color:var(--green);border-radius:999px;
+    padding:4px 12px;font-size:13px;font-weight:600;margin:4px 6px 4px 0}
+  .pill.amber{background:var(--amber-soft);color:var(--amber)}
+  .nav{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,.96);
+    backdrop-filter:blur(8px);border-top:1px solid var(--line);padding:12px 18px}
+  .nav-inner{max-width:760px;margin:0 auto;display:flex;gap:12px;align-items:center}
+  .nav button{font:inherit;font-weight:600;padding:11px 18px;border-radius:10px;border:1px solid var(--line);
+    background:#fff;color:var(--ink);cursor:pointer}
+  .nav button.primary{background:var(--brand);color:#fff;border-color:var(--brand);margin-left:auto}
+  .nav button:disabled{opacity:.4;cursor:default}
+  .nav .count{font-size:13px;color:var(--muted)}
+  .hide{display:none}
+  .checklist li{margin:.3em 0}
+  hr.soft{border:none;border-top:1px solid var(--line);margin:18px 0}
+  @media(max-width:560px){.twocol{grid-template-columns:1fr}.window-box{flex-direction:column;align-items:flex-start;gap:6px}}
+</style>
+</head>
+<body>
+<div class="banner">🔒 PREVIEW · syntetisk demo-data · ingen rigtige klient-data · kører lokalt i din browser (intet sendes nogen steder)</div>
+<header class="top">
+  <div class="top-inner">
+    <span class="logo"><span class="moon">🌙</span> Mentem søvnforløb</span>
+    <span style="font-size:12.5px;color:var(--muted)">navigerbart klient-preview</span>
+  </div>
+</header>
+
+<div class="wrap">
+  <nav class="steps" id="stepNav" aria-label="Forløbs-trin"></nav>
+  <div class="progress"><i id="bar"></i></div>
+  <main id="screen" aria-live="polite"></main>
+</div>
+
+<div class="nav">
+  <div class="nav-inner">
+    <button id="prev">← Forrige</button>
+    <span class="count" id="count"></span>
+    <button id="next" class="primary">Næste →</button>
+  </div>
+</div>
+
+<script>
+// ---- Synthetic ordination (NO sleep-efficiency numbers ever shown to client) ----
+const ORD = { sengetid:"00:30", opvaagning:"07:00" }; // a 6.5h window, synthetic
+
+const L = {
+  vindue: `Dit søvnvindue er den periode, du må være i sengen lige nu: fra <b>${ORD.sengetid}</b> til <b>${ORD.opvaagning}</b>. Det kan føles kortere, end du er vant til — det er meningen. Ved at samle din søvn i et fast vindue hjælper vi din krop med at sove mere sammenhængende. Stå op på det faste tidspunkt hver morgen, også i weekenden. Vi justerer vinduet undervejs ud fra din dagbog.`
+};
+
+const steps = [
+ {key:"velkomst", tab:"1 · Velkomst", render:()=>`
+   <div class="card">
+     <p class="eyebrow">Velkommen</p>
+     <h1>Et roligere forhold til søvn</h1>
+     <p class="lead">Det her er et struktureret forløb, der hjælper dig med at sove mere sammenhængende — uden sovemedicin. Vi bygger på det, der virker bedst i forskningen, og <b>justerer undervejs ud fra din egen søvndagbog</b>.</p>
+     <h2>Sådan ser rejsen ud</h2>
+     <p>Først lærer vi din søvn at kende (en baseline-dagbog). Derefter får du et personligt søvnvindue, som vi finjusterer uge for uge. Undervejs arbejder vi med tankerne om søvn — og holder øje med, at du har det godt om dagen.</p>
+     <div class="note"><b>Du er ikke alene i det.</b> Din psykolog ser med, godkender hvert skridt og er der, hvis noget skal justeres. Forløbet kører ikke på autopilot.</div>
+   </div>`},
+
+ {key:"baseline", tab:"2 · Baseline", render:()=>`
+   <div class="card">
+     <p class="eyebrow">Baseline · søvndagbog</p>
+     <h1>Lad os lære din søvn at kende <span class="badge synthetic">eksisterende</span></h1>
+     <p class="lead">I de første <b>to uger</b> udfylder du en kort dagbog hver morgen. Den tager et minut og danner grundlaget for dit personlige søvnvindue. Vi regner ikke noget ud, du skal forstå — du beskriver bare natten.</p>
+     <div class="field"><label>I går gik jeg i seng kl.</label><input type="time" value="23:15"></div>
+     <div class="twocol">
+       <div class="field"><label>Slukkede lyset kl.</label><input type="time" value="23:30"></div>
+       <div class="field"><label>Vågnede endeligt kl.</label><input type="time" value="06:50"></div>
+     </div>
+     <div class="twocol">
+       <div class="field"><label>Tid om at falde i søvn (min)</label><input type="number" value="35"></div>
+       <div class="field"><label>Vågen om natten i alt (min)</label><input type="number" value="40"></div>
+     </div>
+     <div class="field"><label>Hvordan var søvnkvaliteten?</label>
+       <select><option>Meget dårlig</option><option selected>Nogenlunde</option><option>God</option></select></div>
+     <div class="note">Privatliv: dagbogen lever krypteret. Kun din psykolog kan læse den — aldrig en server eller tredjepart.</div>
+   </div>`},
+
+ {key:"screening", tab:"3 · Screening", render:()=>`
+   <div class="card">
+     <p class="eyebrow">Sikkerheds-tjek (screening)</p>
+     <h1>Er metoden tryg for dig? <span class="badge synthetic">gated · syntetisk</span></h1>
+     <p class="lead">Den aktive del af forløbet (søvnvinduet) virker — men den må kun sættes i gang, når den er sikker for netop dig. Derfor laver din psykolog et kort sikkerheds-tjek først.</p>
+     <p>Vi ser bl.a. på: søvnapnø-tegn, epilepsi, bipolar lidelse, hvor søvnig du er om dagen, og om du kører meget eller arbejder skiftehold. Er noget af det relevant, justerer vi tilgangen — eller henviser, hvis det er bedst.</p>
+     <p>Resultatet er et klinisk skøn, din psykolog tager:</p>
+     <span class="pill">GRØN · klar til forløbet</span>
+     <span class="pill amber">GUL · blødere tilgang</span>
+     <span class="pill" style="background:var(--red-soft);color:var(--red)">RØD · anden hjælp først</span>
+     <div class="note"><b>I dette preview:</b> ingen reel screening og ingen aktivering — skærmen viser bare, hvad klienten møder. Selve gaten styres af din psykolog i Mentem.</div>
+   </div>`},
+
+ {key:"ordination", tab:"4 · Dit vindue", render:()=>`
+   <div class="card">
+     <p class="eyebrow">Dit søvnvindue <span class="badge lock">låst tekst ✓</span></p>
+     <h1>Dit søvnvindue</h1>
+     <div class="window-box">
+       <div><div class="lab">Tidligst i seng</div><div class="time">${ORD.sengetid}</div></div>
+       <div class="arrow">→</div>
+       <div><div class="lab">Op hver morgen</div><div class="time">${ORD.opvaagning}</div></div>
+     </div>
+     <p>${L.vindue}</p>
+     <div class="quote lock">
+       <h3>Sådan bruger du sengen</h3>
+       <ul>
+         <li>Gå kun i seng, når du er søvnig.</li>
+         <li>Brug kun sengen til søvn (og sex) — ikke til at ligge vågen, se skærm eller bekymre dig.</li>
+         <li><b>Forlad sengen, hvis du føler dig vågen eller frustreret — uden at kigge på uret.</b> Gå ind i et andet rum, og gå tilbage til sengen, når du føler dig søvnig nok til at falde i søvn.</li>
+         <li>Stå op på det samme tidspunkt hver morgen.</li>
+         <li>Undgå at sove eller blunde i løbet af dagen.</li>
+       </ul>
+     </div>
+     <div class="safety">
+       <strong>Vigtigt om sikkerhed den første uge</strong><br>
+       Den første uge med dit nye søvnvindue kan gøre dig lidt mere træt om dagen, mens din krop vænner sig til det. Hvis du mærker øget træthed, så <b>undgå aktiviteter, hvor søvnighed kan være farlig for dig — for eksempel at køre langt eller betjene farlige maskiner.</b> Er du fortsat meget træt i dagtimerne efter den første uge, så sig til — så har vi sandsynligvis sat vinduet for stramt, og vi justerer det.
+     </div>
+     <div class="note">De tre tekster ovenfor er <b>ord-for-ord godkendt af din psykolog</b>. Bemærk: ingen tal eller udregninger vises — kun selve vinduet.</div>
+   </div>`},
+
+ {key:"dagbog", tab:"5 · Daglig dagbog", render:()=>`
+   <div class="card">
+     <p class="eyebrow">Daglig opfølgning</p>
+     <h1>Hver morgen: hvordan gik natten? <span class="badge synthetic">+ dagtræthed</span></h1>
+     <p class="lead">Du udfylder dagbogen videre — og hver dag svarer du også på ét spørgsmål om dagtræthed. Det er sådan, vi fanger, hvis vinduet er sat for stramt, så vi kan justere i tide.</p>
+     <div class="field"><label>Hvor søvnig har du været i dagtimerne i dag? (0 = slet ikke · 10 = ekstremt)</label>
+       <div class="scale" id="t1scale">${[0,1,2,3,4,5,6,7,8,9,10].map(n=>`<button type="button" data-n="${n}">${n}</button>`).join("")}</div>
+     </div>
+     <div class="field"><label>Noget jeg bør vide? (valgfrit)</label>
+       <textarea placeholder="Skriv frit…"></textarea></div>
+     <div class="failsafe" id="failsafePeek" hidden>
+       <strong>Tak fordi du fortæller mig det.</strong><br>
+       Din krop er for søvnig lige nu til, at det er sikkert at fortsætte med det stramme søvnvindue. Det er ikke noget, du har gjort forkert — vi justerer.<br><br>
+       Gør det her nu:
+       <ul style="margin:.3em 0">
+         <li>Sov efter dine vante tider i nat. Læg dig, når du plejer, og bliv i sengen, så længe du har brug for.</li>
+         <li>Lad være med at køre bil eller betjene maskiner, før du føler dig udhvilet.</li>
+         <li>Skriv til mig hurtigst muligt, så finder vi den rigtige justering sammen.</li>
+       </ul>
+       <span class="badge lock" style="margin-left:0">låst tekst ✓ (vises ved sikkerheds-flag)</span>
+     </div>
+     <div class="note"><b>Prøv:</b> tryk 9 eller 10 ovenfor → så ser du den <b>aktive sikkerheds-besked</b>, klienten møder ved et sikkerheds-flag (din psykolog får besked samtidig). Den skjuler ikke noget i det stille — den giver en handling.</div>
+   </div>`},
+
+ {key:"m3", tab:"6 · Tankerne", render:()=>`
+   <div class="card">
+     <p class="eyebrow">Modul 3 · kognitivt</p>
+     <h1>Tankerne om søvn <span class="badge draft">udkast</span></h1>
+     <p class="lead">Når det adfærdsmæssige kører, ser vi på tankerne, der holder dig vågen. Tre dele:</p>
+     <div class="quote draft">
+       <h3>Sådan fungerer søvn (kort)</h3>
+       <p>Din søvn styres af to ting: <b>søvntrykket</b> (jo længere du er vågen, jo lettere falder du i søvn — derfor ingen lure) og <b>dit indre ur</b> (det trives med en fast opvågningstid). At "prøve hårdere" på at sove virker ikke — søvn kan ikke tvinges frem.</p>
+     </div>
+     <div class="quote draft">
+       <h3>Konstruktiv bekymring</h3>
+       <p>Tidligt på aftenen (ikke ved sengetid) skriver du i to kolonner: <b>"Det fylder"</b> og <b>"Næste skridt"</b>. Så er hovedet mere tomt, når du skal sove. Melder bekymringen sig i sengen: mind dig selv om, at du allerede har taget hånd om tingene, så godt du kunne.</p>
+       <div class="twocol">
+         <div class="field"><label>Det fylder</label><textarea placeholder="fx: regningen i næste uge"></textarea></div>
+         <div class="field"><label>Næste skridt</label><textarea placeholder="fx: ringe til banken i morgen kl. 10"></textarea></div>
+       </div>
+     </div>
+     <div class="quote draft">
+       <h3>Tankerne der skræmmer (decatastrofering)</h3>
+       <p>Skriv den værste tanke, der melder sig, når du ligger vågen, og hvor sikker den føles. Tænk så på alle de dårlige nætter, du har haft — hvor tit skete katastrofen <i>virkelig</i>? Næsten altid: meget sjældnere, end frygten siger. Svar tanken: <i>"Måske ikke. Faktisk er det ret usandsynligt."</i></p>
+     </div>
+     <div class="note"><b>Udkast-tekster</b> — din psykolog låser den endelige ordlyd. De gennemgås typisk sammen de første gange (ikke ren selvhjælp).</div>
+   </div>`},
+
+ {key:"m4", tab:"7 · Forholdet til tanker", render:()=>`
+   <div class="card">
+     <p class="eyebrow">Modul 4 · metakognitivt (valgfrit)</p>
+     <h1>At ændre forholdet til tankerne <span class="badge draft">udkast</span></h1>
+     <p class="lead">For nogle bliver søvnen bedre, men hovedet bliver ved med at arbejde for meget <i>omkring</i> søvn. Dette modul handler ikke om at få <i>færre</i> tanker — men om at ændre dit <i>forhold</i> til dem.</p>
+     <div class="quote draft">
+       <h3>Lad tankerne være (detached mindfulness)</h3>
+       <p>Når tankerne kører om natten, kæmper de fleste med dem eller prøver at skubbe dem væk — begge dele holder hovedet vågent. Der findes en tredje vej: at lægge mærke til tankerne, som man ser skyer drive forbi, uden at gribe fat. Du behøver ikke gøre noget ved dem. De passerer af sig selv.</p>
+     </div>
+     <div class="quote draft">
+       <h3>Opmærksomheds-træning (om dagen)</h3>
+       <p>Dette er en øvelse, du laver <b>om dagen — ikke for at falde i søvn</b> (det ville være endnu en måde at "prøve hårdt" på). Den træner din evne til at flytte opmærksomheden frit. Tænk på det som motion for opmærksomheden.</p>
+       <p style="color:var(--muted);font-size:14px">🎧 Lyd-guide (12 min) — placeholder; indspilles + godkendes af din psykolog inden brug.</p>
+     </div>
+     <div class="note"><b>Udkast + valgfrit modul.</b> Det metakognitive lag er din psykologs kliniske tilføjelse oven på kernen — ærligt mærket som lovende, ikke et færdigt standalone-program.</div>
+   </div>`},
+
+ {key:"m5", tab:"8 · Fremover", render:()=>`
+   <div class="card">
+     <p class="eyebrow">Modul 5 · vedligehold</p>
+     <h1>At holde fast — og hvad du gør, hvis det glider <span class="badge draft">udkast</span></h1>
+     <p class="lead">Når søvnen er stabil, samler vi op: hvad gjorde forskellen for <i>dig</i>? Det er dine egne ændringer — og dem tager du med dig.</p>
+     <div class="quote draft">
+       <h3>En dårlig nat er normal</h3>
+       <p>Stress, rejser, sygdom — søvnen kan dykke. Det er ikke et tilbagefald. Behold de faste vaner: samme opvågningstid hver dag, seng kun til søvn, ingen lure. Jag ikke den tabte søvn.</p>
+     </div>
+     <div class="quote draft">
+       <h3>Din plan, hvis det varer ved</h3>
+       <p>Dykker søvnen i mere end et par uger, kan du selv stramme vinduet lidt igen — du har jo lært hvordan. Varer det ved, eller dukker noget nyt op, så skriver du til din psykolog, så vi tager en kort opfølgning.</p>
+     </div>
+     <div class="note">Forløbet efterlader dig <b>selv-kompetent</b> — ikke afhængig af en app. Valgfri opfølgning efter 1 og 3 måneder fanger et evt. tilbagefald i tide.</div>
+   </div>
+   <div class="card">
+     <p class="eyebrow">Tak fordi du klikkede igennem</p>
+     <p>Det var hele klient-rejsen — fra velkomst til vedligehold. Brug trin-knapperne øverst til at hoppe rundt. <b>Tjek-liste til gennemgangen er sendt i SMS/mail.</b></p>
+   </div>`}
+];
+
+// ---- Navigation ----
+let i = 0;
+const screen=document.getElementById("screen"), bar=document.getElementById("bar"),
+  nav=document.getElementById("stepNav"), count=document.getElementById("count"),
+  prev=document.getElementById("prev"), next=document.getElementById("next");
+
+nav.innerHTML = steps.map((s,idx)=>`<button data-i="${idx}">${s.tab}</button>`).join("");
+const tabs=[...nav.querySelectorAll("button")];
+
+const wantFailsafe = new URLSearchParams(location.search).get("failsafe")==="1";
+function show(n){
+  i=Math.max(0,Math.min(steps.length-1,n));
+  screen.innerHTML=steps[i].render();
+  tabs.forEach((t,idx)=>t.setAttribute("aria-current", idx===i?"true":"false"));
+  bar.style.width=((i+1)/steps.length*100)+"%";
+  count.textContent=`Trin ${i+1} af ${steps.length}`;
+  prev.disabled=i===0; next.textContent = i===steps.length-1 ? "Forfra ↻" : "Næste →";
+  if(("#"+(i+1))!==location.hash){ history.replaceState(null,"","#"+(i+1)); }
+  window.scrollTo({top:0,behavior:"smooth"});
+  wireStep();
+}
+function wireStep(){
+  const sc=document.getElementById("t1scale");
+  if(sc){ sc.addEventListener("click",e=>{
+    const b=e.target.closest("button"); if(!b)return;
+    [...sc.children].forEach(x=>x.setAttribute("aria-pressed","false"));
+    b.setAttribute("aria-pressed","true");
+    const n=+b.dataset.n, peek=document.getElementById("failsafePeek");
+    if(peek) peek.hidden = n<9;
+  });
+    // deep-link helper for screenshots: ?failsafe=1 pre-reveals the failsafe message
+    if(wantFailsafe){ const nine=sc.querySelector('[data-n="9"]'); if(nine) nine.click(); }
+  }
+}
+nav.addEventListener("click",e=>{const b=e.target.closest("button"); if(b) show(+b.dataset.i);});
+prev.onclick=()=>show(i-1);
+next.onclick=()=>show(i===steps.length-1?0:i+1);
+document.addEventListener("keydown",e=>{if(e.key==="ArrowRight")show(i+1);if(e.key==="ArrowLeft")show(i-1);});
+const startHash=parseInt((location.hash||"#1").slice(1),10);
+show(Number.isFinite(startHash)&&startHash>=1 ? startHash-1 : 0);
+</script>
+</body>
+</html>
