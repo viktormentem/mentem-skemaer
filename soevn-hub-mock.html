@@ -151,6 +151,52 @@
   <div class="detail" id="detail"></div>
 </div>
 
+<!-- ── KLINISK-ARBEJDE-KLYNGE (dag-bevidst, §5) ── -->
+<div class="card">
+  <p class="eyebrow">Klinisk arbejde — dag-bevidst klynge (§5)</p>
+  <p style="margin:.1em 0 13px;color:var(--muted);font-size:13px">
+    Intent-gruppe der <b>bevarer 1-klik</b> men <b>rangeres efter dagens kalender</b>: har du en konsultation
+    den dag, rykker den klients værktøjer øverst (forhåndsindstillet til klienten). Ingen aftale → neutral gruppe.
+    Drevet af dagens aftaler — som Søvn-hub'en er drevet af forløb-status.
+  </p>
+
+  <!-- STATE A: med dagens konsultation -->
+  <div id="klA">
+    <div style="background:linear-gradient(160deg,rgba(48,176,199,.16),rgba(94,92,230,.10));border:1px solid rgba(48,176,199,.45);border-radius:10px;padding:9px 12px;font-size:13px;margin-bottom:11px;color:var(--ink)">
+      📅 Dagens konsultation: <b>fre. 5. jun · JMJ</b> — kliniske værktøjer forhåndsindstillet til JMJ
+    </div>
+    <div class="tiles">
+      <button class="tile hubtile"><span class="circ">📨</span><span class="lbl">Therapy Copilot<small>JMJ · klar til session</small></span></button>
+      <button class="tile hubtile"><span class="circ">🎙️</span><span class="lbl">Session Intelligence<small>JMJ · klar til session</small></span></button>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin:12px 0 7px;text-transform:uppercase;letter-spacing:.04em">Øvrige kliniske værktøjer</div>
+    <div class="tiles">
+      <button class="tile"><span class="circ">📨</span><span class="lbl">Therapy<br>Copilot<small>anden klient</small></span></button>
+      <button class="tile"><span class="circ">🎙️</span><span class="lbl">Session<br>Intelligence<small>anden klient</small></span></button>
+      <button class="tile"><span class="circ">🔬</span><span class="lbl">Supervision</span></button>
+    </div>
+  </div>
+
+  <!-- STATE B: ingen konsultation i dag -->
+  <div id="klB" class="hidden">
+    <div style="background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:13px;margin-bottom:11px;color:var(--muted)">
+      Ingen scheduleret konsultation i dag → <b>neutral intent-gruppe</b> (ingen rangering, ingen forhåndsindstilling)
+    </div>
+    <div class="tiles">
+      <button class="tile"><span class="circ">📨</span><span class="lbl">Therapy<br>Copilot</span></button>
+      <button class="tile"><span class="circ">🎙️</span><span class="lbl">Session<br>Intelligence</span></button>
+      <button class="tile"><span class="circ">🔬</span><span class="lbl">Supervision</span></button>
+    </div>
+  </div>
+
+  <div class="toggle">
+    Tilstand:
+    <button id="btKlA" class="active" onclick="visKl('A')">Med dagens konsultation</button>
+    <button id="btKlB" onclick="visKl('B')">Ingen konsultation i dag</button>
+    <span style="margin-left:auto">10 flade tiles → 3 klynger (Søvn-hub · Klinisk dag-bevidst · Planlæg). Kun Søvn er en pipeline-hub.</span>
+  </div>
+</div>
+
 <!-- ── ANBEFALING + ÅBNE SPØRGSMÅL ── -->
 <div class="card">
   <p class="eyebrow">Codes forslag + åbne spørgsmål</p>
@@ -240,6 +286,13 @@ function visTiles(which){
   document.getElementById("gamleTiles").classList.toggle("hidden",which!=="gl");
   document.getElementById("btNy").classList.toggle("active",which==="ny");
   document.getElementById("btGl").classList.toggle("active",which==="gl");
+}
+// §5: dag-bevidst Klinisk-arbejde-klynge — skift mellem med/uden dagens konsultation
+function visKl(which){
+  document.getElementById("klA").classList.toggle("hidden",which!=="A");
+  document.getElementById("klB").classList.toggle("hidden",which!=="B");
+  document.getElementById("btKlA").classList.toggle("active",which==="A");
+  document.getElementById("btKlB").classList.toggle("active",which==="B");
 }
 renderPipe(); renderDetail();
 </script>
