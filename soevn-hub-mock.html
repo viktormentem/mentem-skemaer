@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Søvn-hub — preview-mock (Mentem)</title>
+<style>
+  :root{
+    --bg:#f2f2f7; --panel:#ffffff; --ink:#1c1c1e; --muted:#8e8e93; --line:#e5e5ea;
+    --teal:#30b0c7; --green:#34c759; --orange:#ff9500; --red:#ff3b30; --blue:#0a84ff; --indigo:#5e5ce6;
+    --shadow:0 1px 3px rgba(0,0,0,.08),0 8px 24px rgba(0,0,0,.06);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{--bg:#1c1c1e;--panel:#2c2c2e;--ink:#f2f2f7;--muted:#98989f;--line:#3a3a3c;
+      --shadow:0 1px 3px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.3);}
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    font:15px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif;
+    background:var(--bg); color:var(--ink); -webkit-font-smoothing:antialiased;
+    padding:18px; max-width:960px; margin:0 auto;
+  }
+  h1{font-size:20px;margin:0 0 2px;font-weight:700;letter-spacing:-.2px}
+  .sub{color:var(--muted);font-size:13px;margin:0 0 16px}
+  .mockbanner{background:rgba(94,92,230,.10);border:1px solid rgba(94,92,230,.35);color:var(--indigo);
+    border-radius:12px;padding:9px 13px;font-size:12.5px;margin-bottom:16px}
+  .mockbanner b{color:var(--indigo)}
+
+  /* ── Dashboard hurtighandlinger-simulering ── */
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:16px;margin-bottom:16px}
+  .card>.eyebrow{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin:0 0 11px}
+  .tiles{display:flex;gap:8px;flex-wrap:wrap}
+  .tile{width:82px;min-height:90px;border-radius:14px;background:rgba(48,176,199,.10);
+    border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+    padding:10px 4px 8px;gap:6px;font-family:inherit;position:relative}
+  .tile .circ{width:32px;height:32px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:15px;background:rgba(48,176,199,.18)}
+  .tile .lbl{font-size:10px;font-weight:500;color:var(--muted);text-align:center;line-height:1.2}
+  .tile small{display:block;font-size:9px;color:var(--muted);opacity:.85;margin-top:1px}
+  .tile.t-orange{background:rgba(255,149,0,.10)} .tile.t-orange .circ{background:rgba(255,149,0,.18)}
+  .tile.t-green{background:rgba(52,199,89,.10)} .tile.t-green .circ{background:rgba(52,199,89,.18)}
+  .tile.t-blue{background:rgba(10,132,255,.10)} .tile.t-blue .circ{background:rgba(10,132,255,.18)}
+
+  /* the consolidated Søvn hub tile */
+  .tile.hubtile{width:118px;background:linear-gradient(160deg,rgba(48,176,199,.16),rgba(94,92,230,.12));outline:2px solid rgba(48,176,199,.45);outline-offset:-2px}
+  .tile .badge{position:absolute;top:6px;right:6px;min-width:18px;height:18px;border-radius:9px;background:var(--orange);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px}
+  .tile.hubtile .lbl{font-size:11px;font-weight:600;color:var(--ink)}
+
+  .toggle{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);margin-top:13px;border-top:1px solid var(--line);padding-top:11px}
+  .toggle button{font-family:inherit;font-size:12px;border:1px solid var(--line);background:var(--panel);color:var(--ink);
+    border-radius:8px;padding:4px 11px;cursor:pointer}
+  .toggle button.active{background:var(--teal);border-color:var(--teal);color:#fff}
+
+  /* ── Hub-panel (sheet) ── */
+  .hub{display:grid;grid-template-columns:280px 1fr;gap:0;overflow:hidden;padding:0}
+  .hub .pipe{border-right:1px solid var(--line);padding:8px}
+  .hub .pipehd{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);padding:8px 10px 6px}
+  .row{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:11px;cursor:pointer;border:1px solid transparent}
+  .row:hover{background:rgba(120,120,128,.07)}
+  .row.sel{background:rgba(48,176,199,.12);border-color:rgba(48,176,199,.35)}
+  .stg{width:26px;height:26px;border-radius:13px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;
+    font-size:12px;font-weight:700;color:#fff;background:var(--teal)}
+  .row .who{font-weight:600;font-size:13.5px}
+  .row .nx{font-size:11.5px;color:var(--muted);margin-top:1px}
+  .row .dot{margin-left:auto;width:9px;height:9px;border-radius:5px;background:var(--orange);flex:0 0 auto}
+  .row .dot.wait{background:var(--muted);opacity:.4}
+  .row .dot.done{background:var(--green)}
+
+  .detail{padding:20px 22px;min-height:330px}
+  .detail .stagepill{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:var(--teal);
+    background:rgba(48,176,199,.12);border-radius:20px;padding:4px 12px;margin-bottom:12px}
+  .detail h2{margin:0 0 2px;font-size:21px;letter-spacing:-.3px}
+  .detail .state{color:var(--muted);font-size:13.5px;margin:0 0 18px}
+  .nextcard{border:1.5px solid var(--teal);background:rgba(48,176,199,.07);border-radius:14px;padding:16px 18px;margin-bottom:14px}
+  .nextcard .k{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--teal);margin:0 0 7px}
+  .cta{display:inline-flex;align-items:center;gap:8px;font-family:inherit;font-size:14px;font-weight:600;color:#fff;
+    background:var(--teal);border:none;border-radius:11px;padding:11px 18px;cursor:pointer}
+  .cta.secondary{background:transparent;color:var(--teal);border:1.5px solid var(--teal);margin-left:8px}
+  .cta.wait{background:var(--muted)}
+  .ctx{margin-top:16px;font-size:12.5px;color:var(--muted);line-height:1.55}
+  .ctx .pdl{display:flex;gap:7px;margin-top:5px}
+  .ctx .pdl span{flex:0 0 auto}
+  .hil{color:var(--ink);font-weight:600}
+  .miniflow{display:flex;gap:4px;align-items:center;margin:14px 0 0;flex-wrap:wrap}
+  .miniflow .s{width:22px;height:22px;border-radius:11px;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;background:var(--line);color:var(--muted)}
+  .miniflow .s.on{background:var(--teal);color:#fff}
+  .miniflow .s.past{background:rgba(48,176,199,.3);color:var(--teal)}
+  .miniflow .arr{color:var(--muted);font-size:11px}
+
+  .recnote{font-size:12.5px;color:var(--muted);line-height:1.6}
+  .recnote b{color:var(--ink)}
+  .q{background:rgba(255,149,0,.08);border:1px solid rgba(255,149,0,.3);border-radius:11px;padding:11px 14px;font-size:12.5px;margin-top:10px}
+  .hidden{display:none}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);margin-top:10px}
+  .legend i{width:9px;height:9px;border-radius:5px;display:inline-block;margin-right:4px;vertical-align:middle}
+</style>
+</head>
+<body>
+
+<h1>Søvn-hub — preview-mock</h1>
+<p class="sub">Kontekst-bevidst konsolidering · Mentem macOS dashboard · syntetiske klienter (kun initialer, ingen PII)</p>
+
+<div class="mockbanner">
+  <b>Dette er en mock</b> — ikke den rigtige app. Formålet er at se UX'en før hub'en bygges. Klik på klient-rækkerne. Gamle 5 tiles ligger bag toggle'en (reversibel udrulning). <b>Intet er bygget i appen endnu</b> — afventer din GO.
+</div>
+
+<!-- ── DASHBOARD-RÆKKE ── -->
+<div class="card">
+  <p class="eyebrow">Hurtighandlinger (dashboard) — søvn-sektion</p>
+
+  <!-- NY: konsolideret hub-tile -->
+  <div id="nyTiles" class="tiles">
+    <button class="tile hubtile" onclick="document.getElementById('hub').scrollIntoView({behavior:'smooth'})">
+      <span class="badge" id="aggBadge">5</span>
+      <span class="circ">🌙</span>
+      <span class="lbl">Søvn<small id="aggText">5 venter handling</small></span>
+    </button>
+    <div style="align-self:center;color:var(--muted);font-size:12px;max-width:230px;padding-left:6px">
+      Én tile erstatter de fem søvn-knapper. Badge = antal klienter der venter en handling. Åbner klient-pipeline ↓
+    </div>
+  </div>
+
+  <!-- GAMMEL: 5 separate tiles (skjult bag toggle) -->
+  <div id="gamleTiles" class="tiles hidden">
+    <button class="tile"><span class="circ">🌙</span><span class="lbl">Send<br>søvndagbog</span></button>
+    <button class="tile"><span class="circ">📋</span><span class="lbl">Send<br>baseline</span></button>
+    <button class="tile t-orange"><span class="circ">🔔</span><span class="lbl">Søvn:<br>bagud</span></button>
+    <button class="tile t-green"><span class="circ">🛡️</span><span class="lbl">Søvn:<br>screening</span></button>
+    <button class="tile"><span class="circ">🛏️</span><span class="lbl">SRT-<br>ordination</span></button>
+  </div>
+
+  <div class="toggle">
+    Udrulning:
+    <button id="btNy" class="active" onclick="visTiles('ny')">Ny hub</button>
+    <button id="btGl" onclick="visTiles('gl')">Gamle 5 tiles</button>
+    <span style="margin-left:auto">Begge bevares under overgang — ingen muskelhukommelse-brud.</span>
+  </div>
+</div>
+
+<!-- ── HUB-PANEL ── -->
+<div class="card hub" id="hub">
+  <div class="pipe">
+    <div class="pipehd">Søvn-klienter · pipeline</div>
+    <div id="pipeList"></div>
+    <div class="legend" style="padding:8px 10px 4px">
+      <span><i style="background:var(--orange)"></i>venter handling</span>
+      <span><i style="background:var(--muted);opacity:.4"></i>venter klient</span>
+      <span><i style="background:var(--green)"></i>på sporet</span>
+    </div>
+  </div>
+  <div class="detail" id="detail"></div>
+</div>
+
+<!-- ── ANBEFALING + ÅBNE SPØRGSMÅL ── -->
+<div class="card">
+  <p class="eyebrow">Codes forslag + åbne spørgsmål</p>
+  <div class="recnote">
+    <p style="margin:0 0 8px"><b>Præsentation:</b> Jeg foreslår hub'en som et <b>dedikeret sheet/panel</b> (som her) frem for en sidebar — den fylder skærmen når du arbejder per-klient, og lukker rent tilbage til dashboardet. Modal-sheet glider op over forsiden; klient-pipeline til venstre, fremhævet næste-skridt til højre.</p>
+    <p style="margin:0 0 8px"><b>1-klik for normaltilfældet:</b> hub'en åbner default på den klient der er mest tidskritisk (her: bagud-klienten, stadie 6) med dens næste-skridt allerede fremhævet. Ét klik på CTA'en udfører handlingen.</p>
+    <p style="margin:0"><b>Status-bevidst:</b> hver række læser den status-data der allerede findes synkront i appen (baseline sendt? data ind? screening-gate? aktiv ordination? bagud?) men som dashboardet ignorerer i dag. Det er hele gevinsten.</p>
+    <div class="q">
+      <b>Åbne spørgsmål til dig (Viktor):</b><br>
+      1. Hub som <b>sheet</b> (mit forslag) vs dedikeret fuldskærms-view vs sidebar-sektion?<br>
+      2. Skal default-åbning lande på <b>mest-bagud-klient</b> (som her) eller øverst i pipeline?<br>
+      3. Konsolidér <b>kun</b> de 5 søvn-tiles, eller også ikke-søvn-tiles senere (åbent spørgsmål 4 i spec)?
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Syntetiske klienter (kun initialer) ── stadie-model fra spec §1
+const STAGES = {
+  1:{t:"Ingen baseline sendt",            cta:"Send baseline",                  kind:"act"},
+  2:{t:"Baseline sendt — afventer data",  cta:"Vent · send påmindelse",         kind:"wait"},
+  3:{t:"Baseline-data ind",               cta:"Send søvndagbog",  cta2:"Start screening", kind:"act"},
+  4:{t:"Screening sendt — afventer gennemgang", cta:"Gennemgå screening",       kind:"act"},
+  5:{t:"Screenet + godkendt (SRT tilladt)",cta:"SRT-ordination",                kind:"act"},
+  6:{t:"Ordination aktiv",                cta:"Status / næste titrering",       kind:"act"},
+  7:{t:"Vedligehold / afslutning",        cta:"M5 check-in",  cta2:"Afslut forløb", kind:"done"},
+};
+const KL = [
+  {init:"A.B.", stage:1, ctx:["Oprettet som søvn-klient i dag.","Ingen baseline endnu."]},
+  {init:"C.D.", stage:2, ctx:["Baseline-link sendt for 1 dag siden.","Afventer at klienten udfylder."]},
+  {init:"E.F.", stage:3, ctx:["Baseline-data modtaget.","Klar til Fase-1 dagbog eller screening."]},
+  {init:"G.H.", stage:4, ctx:["Screening sendt — svar modtaget.","Gate skal gennemgås af dig (menneske-i-loop)."]},
+  {init:"I.J.", stage:5, ctx:["Screening-gate: GRØN — SRT tilladt.","Baseline-TST klar til ordination."]},
+  {init:"K.L.", stage:6, ctx:["Ordination #2 aktiv · vindue 00:30–06:30.","2 dage bagud med dagbogen.","Klar til titrerings-vurdering."], flag:"bagud 2 dage"},
+  {init:"M.N.", stage:7, ctx:["Søvneffektivitet stabil.","Vedligehold — valgfri 1-mdr opfølgning."]},
+];
+
+// aggregat = klienter der venter en aktiv handling (kind:"act")
+const venter = KL.filter(k=>STAGES[k.stage].kind==="act").length;
+document.getElementById("aggBadge").textContent = venter;
+document.getElementById("aggText").textContent = venter+" venter handling";
+
+// default-valg: mest tidskritisk = bagud-klient (stadie 6) ellers første act
+let sel = KL.findIndex(k=>k.flag) ; if(sel<0) sel = KL.findIndex(k=>STAGES[k.stage].kind==="act");
+
+function dotClass(k){const kd=STAGES[k.stage].kind;return kd==="act"?(k.flag?"":""):kd==="wait"?"wait":"done";}
+
+function renderPipe(){
+  const host=document.getElementById("pipeList"); host.innerHTML="";
+  KL.forEach((k,i)=>{
+    const s=STAGES[k.stage];
+    const r=document.createElement("div");
+    r.className="row"+(i===sel?" sel":"");
+    r.onclick=()=>{sel=i;renderPipe();renderDetail();};
+    r.innerHTML=`<div class="stg">${k.stage}</div>
+      <div><div class="who">${k.init}${k.flag?` · <span style="color:var(--orange);font-weight:600">${k.flag}</span>`:""}</div>
+      <div class="nx">${s.cta}</div></div>
+      <div class="dot ${dotClass(k)}"></div>`;
+    host.appendChild(r);
+  });
+}
+function miniflow(stage){
+  let h='<div class="miniflow">';
+  for(let i=1;i<=7;i++){
+    const cls=i<stage?"past":i===stage?"on":"";
+    h+=`<div class="s ${cls}">${i}</div>`+(i<7?'<span class="arr">›</span>':"");
+  }
+  return h+"</div>";
+}
+function renderDetail(){
+  const k=KL[sel], s=STAGES[k.stage];
+  const ctaCls = s.kind==="wait"?"cta wait":"cta";
+  let html=`<div class="stagepill">Stadie ${k.stage} / 7</div>
+    <h2>${k.init}</h2>
+    <p class="state">${s.t}${k.flag?` · <span style="color:var(--orange);font-weight:600">${k.flag}</span>`:""}</p>
+    <div class="nextcard">
+      <p class="k">Næste skridt</p>
+      <button class="${ctaCls}" onclick="alert('Mock: udfører «${s.cta}» for ${k.init}')">${s.cta}</button>
+      ${s.cta2?`<button class="cta secondary" onclick="alert('Mock: «${s.cta2}» for ${k.init}')">${s.cta2}</button>`:""}
+    </div>
+    <div class="ctx">${k.ctx.map(c=>`<div class="pdl"><span>•</span><span>${c}</span></div>`).join("")}</div>
+    ${miniflow(k.stage)}`;
+  document.getElementById("detail").innerHTML=html;
+}
+function visTiles(which){
+  document.getElementById("nyTiles").classList.toggle("hidden",which!=="ny");
+  document.getElementById("gamleTiles").classList.toggle("hidden",which!=="gl");
+  document.getElementById("btNy").classList.toggle("active",which==="ny");
+  document.getElementById("btGl").classList.toggle("active",which==="gl");
+}
+renderPipe(); renderDetail();
+</script>
+</body>
+</html>
