@@ -214,68 +214,143 @@ const steps = [
  {key:"m3", tab:"6 · Tankerne", render:()=>`
    <div class="card">
      <p class="eyebrow">Modul 3 · kognitivt</p>
-     <h1>Tankerne om søvn <span class="badge draft">udkast</span></h1>
-     <p class="lead">Når det adfærdsmæssige kører, ser vi på tankerne, der holder dig vågen. Tre dele:</p>
-     <div class="quote draft">
-       <h3>Sådan fungerer søvn (kort)</h3>
-       <p>Din søvn styres af to ting: <b>søvntrykket</b> (jo længere du er vågen, jo lettere falder du i søvn — derfor ingen lure) og <b>dit indre ur</b> (det trives med en fast opvågningstid). At "prøve hårdere" på at sove virker ikke — søvn kan ikke tvinges frem.</p>
+     <h1>Tankerne om søvn <span class="badge lock">låst tekst ✓</span></h1>
+     <p class="lead">Når det adfærdsmæssige kører, ser vi på tankerne, der holder dig vågen. Først hvordan søvn fungerer, så konstruktiv bekymring, og til sidst tankerne om søvn.</p>
+
+     <div class="quote lock">
+       <h3>Sådan fungerer søvn · Dit søvnsystem har to motorer</h3>
+       <p>Din søvn styres af to ting, der arbejder sammen.</p>
+       <p><b>Søvntrykket</b> bygger sig op, jo længere du er vågen. Tænk på det som sult: jo længere tid siden du sov, jo "mere sulten" efter søvn bliver din krop — og jo lettere falder du i søvn. Det er derfor, det hjælper at være vågen hele dagen og ikke tage lure: det opbygger et stærkt søvntryk til natten.</p>
+       <p><b>Dit indre ur</b> styrer, hvornår på døgnet din krop er klar til at sove. Det fungerer bedst, når du står op på samme tid hver dag — også i weekenden. Skifter du tidspunkt fra dag til dag, kan du give dig selv en slags indbygget jetlag.</p>
      </div>
-     <div class="quote draft">
+     <div class="quote lock">
+       <h3>Hvorfor "prøve hårdere" ikke virker</h3>
+       <p>Søvn er ikke noget, man kan tvinge frem. Vi er alle <i>passive modtagere</i> af søvn — der findes ingen knap, du kan trykke på for at falde i søvn lige nu.</p>
+       <p>Når søvnen driller, gør de fleste ting, der føles fornuftige: sover længe, går tidligt i seng, tager en lur, prøver ekstra hårdt at sove. Men netop de ting holder ofte problemet i gang. De sænker søvntrykket og forvirrer dit indre ur — det modsatte af, hvad der skal til.</p>
+       <p>Derfor handler det her forløb ikke om at <i>gøre mere</i>, men om at give din krop de rette betingelser og så lade søvnen komme af sig selv.</p>
+     </div>
+     <div class="quote lock">
+       <h3>Du behøver ikke jage tabt søvn</h3>
+       <p>Der findes ikke ét rigtigt antal timers søvn, der passer alle. Nogle har brug for få timer, andre for mange — og det ændrer sig gennem livet.</p>
+       <p>Din krop har en indbygget evne til at indhente søvn, når den har brug for det. Så en enkelt dårlig nat er ikke noget at bekæmpe. Jo mindre du bekymrer dig om tabt søvn og forsøger at hente den ind, jo bedre — bekymringen og jagten er selv med til at holde søvnproblemet ved lige.</p>
+     </div>
+
+     <div class="quote lock">
        <h3>Konstruktiv bekymring</h3>
-       <p>Tidligt på aftenen (ikke ved sengetid) skriver du i to kolonner: <b>"Det fylder"</b> og <b>"Næste skridt"</b>. Så er hovedet mere tomt, når du skal sove. Melder bekymringen sig i sengen: mind dig selv om, at du allerede har taget hånd om tingene, så godt du kunne.</p>
+       <p>Mange, der sover dårligt, oplever, at "uafsluttede ting" følger dem i seng og holder hovedet i gang. Sengen bliver tit det første rolige tidspunkt på dagen, hvor hjernen prøver at gøre dagens tanker færdige — netop når du helst vil sove.</p>
+       <p>Konstruktiv bekymring flytter det arbejde til <b>tidligt på aftenen i stedet</b>, så hovedet er mere tomt ved sengetid. Det tager cirka 15 minutter.</p>
+       <p><b>Sådan gør du</b> (gør det mindst 2 timer før sengetid):</p>
+       <ol style="margin:.3em 0 .6em;padding-left:1.2em">
+         <li><b>Skriv dine bekymringer ned</b> i kolonnen "Det fylder" — de ting, der har størst chance for at holde dig vågen.</li>
+         <li><b>Skriv det næste lille skridt</b> ud for hver, i kolonnen "Næste skridt". Det behøver ikke være hele løsningen — bare det næste, du kan gøre. Du laver øvelsen igen i morgen.
+           <ul style="margin:.2em 0">
+             <li>Ved du, hvordan du løser det? Skriv det.</li>
+             <li>Er det egentlig ikke så stort? Skriv "tager det, når det kommer".</li>
+             <li>Ved du det ikke? Skriv, hvem du kan spørge.</li>
+             <li>Er der ingen god løsning lige nu? Skriv det — og at du må leve med det, til en idé dukker op.</li>
+           </ul>
+         </li>
+         <li><b>Fold sedlen sammen, læg den på natbordet, og glem den</b> til i morgen.</li>
+         <li><b>Hvis bekymringen melder sig ved sengetid:</b> mind dig selv om, at du allerede har taget hånd om tingene, så godt du kunne — og at mere grublen lige nu kun gør det sværere at sove. Du arbejder videre i morgen aften.</li>
+       </ol>
        <div class="twocol">
          <div class="field"><label>Det fylder</label><textarea placeholder="fx: regningen i næste uge"></textarea></div>
          <div class="field"><label>Næste skridt</label><textarea placeholder="fx: ringe til banken i morgen kl. 10"></textarea></div>
        </div>
+       <p style="color:var(--muted);font-size:14px;margin-top:.4em">Hvis ingen bekymringer i dag → skriv "Ingenting i dag".</p>
      </div>
-     <div class="quote draft">
-       <h3>Tankerne der skræmmer (dekatastrofering)</h3>
-       <p>Skriv den værste tanke, der melder sig, når du ligger vågen, og hvor sikker den føles. Tænk så på alle de dårlige nætter, du har haft — hvor tit skete katastrofen <i>virkelig</i>? Næsten altid: meget sjældnere, end frygten siger. Svar tanken: <i>"Måske ikke. Faktisk er det ret usandsynligt."</i></p>
+
+     <div class="quote lock">
+       <h3>Tankerne om søvn</h3>
+       <p>Når vi sover dårligt, kommer der ofte tanker om, hvad det betyder: "jeg kan ikke klare i morgen", "der er noget galt med mig", "jeg mister grebet". De tanker er forståelige — men de skaber selv uro, der gør det sværere at sove.</p>
+       <p>Her ser vi på de tanker sammen: ikke for at sige, de er forkerte, men for at undersøge, om de holder hele vejen — og finde en mere rolig måde at se det på.</p>
+       <p><b>Tankerne der skræmmer (dekatastrofering)</b></p>
+       <p>Prøv denne: Skriv den værste tanke, der melder sig, når du ligger vågen — fx "hvis jeg ikke sover, går det helt galt i morgen". Hvor sikker føles den, når du ligger der? (fx 85%).</p>
+       <p>Tænk så på alle de nætter, du faktisk har sovet dårligt gennem årene. Hvor mange gange skete katastrofen så <i>virkelig</i>? Næsten altid er svaret: meget, meget sjældnere, end frygten siger. Når du ligger vågen, føles katastrofen lige om hjørnet — men i virkeligheden sker den næsten aldrig.</p>
+       <p>Når tanken kommer igen, kan du svare den: <i>"Måske ikke. Faktisk er det ret usandsynligt."</i></p>
      </div>
-     <div class="note"><b>Udkast-tekster</b> — din psykolog låser den endelige ordlyd. De gennemgås typisk sammen de første gange (ikke ren selvhjælp).</div>
+     <div class="note"><b>Låst tekst (Viktor 3/6).</b> Thought Record-arbejdet gennemgås <b>sammen med din psykolog de første gange</b> — det er ikke ren selvhjælp. Anker: Edinger Workbook pp.43-44 · Perlis p.40 (depriming) · Workbook p.25 (jetlag).</div>
    </div>`},
 
  {key:"m4", tab:"7 · Forholdet til tanker", render:()=>`
    <div class="card">
      <p class="eyebrow">Modul 4 · metakognitivt (valgfrit)</p>
-     <h1>At ændre forholdet til tankerne <span class="badge draft">udkast</span></h1>
-     <p class="lead">For nogle bliver søvnen bedre, men hovedet bliver ved med at arbejde for meget <i>omkring</i> søvn. Dette modul handler ikke om at få <i>færre</i> tanker — men om at ændre dit <i>forhold</i> til dem.</p>
-     <div class="quote draft">
+     <h1>At ændre forholdet til tankerne <span class="badge lock">låst tekst ✓</span></h1>
+     <p class="lead">For nogle bliver søvnen bedre, men hovedet bliver ved med at arbejde for meget omkring søvn — en vane med at overvåge, kontrollere eller kæmpe med tankerne om natten. Hvis det lyder som dig, kan dette modul hjælpe. Det handler ikke om at få <i>færre</i> tanker, men om at ændre dit <i>forhold</i> til dem.</p>
+     <div class="quote lock">
        <h3>To forskellige måder at arbejde med tanker (vælg én ad gangen)</h3>
        <p>Tidligere kiggede vi <i>på</i> tankerne: vi undersøgte, om en bekymret tanke holdt hele vejen, og fandt en mere rolig måde at se den på. Det er at arbejde <b>med tankens indhold</b> — godt, når en konkret tanke skal efterprøves.</p>
        <p>Her gør vi noget andet. Vi går ikke ind i indholdet og diskuterer, om tanken er rigtig eller forkert. Vi træder et skridt tilbage og lader tanken være — ændrer <b>forholdet</b> til den i stedet for indholdet.</p>
        <p>Begge dele virker — men ikke samtidig. Når du efterprøver en tanke, <i>engagerer</i> du dens indhold; når du tager et skridt tilbage, <i>slipper</i> du det. Brug den ene tilgang ad gangen for en given tanke. (Din behandler hjælper dig med, hvornår hvad passer.)</p>
      </div>
-     <div class="quote draft">
-       <h3>Lad tankerne være (detached mindfulness)</h3>
-       <p>Når tankerne kører om natten, kæmper de fleste med dem eller prøver at skubbe dem væk — begge dele holder hovedet vågent. Der findes en tredje vej: at lægge mærke til tankerne, som man ser skyer drive forbi, uden at gribe fat. Du behøver ikke gøre noget ved dem. De passerer af sig selv.</p>
+     <div class="quote lock">
+       <h3>Detached mindfulness (forholdet til tankerne)</h3>
+       <p>Når tankerne kører om natten, gør de fleste én af to ting: enten kæmper de med dem (prøver at tænke sig ud af det), eller de prøver at skubbe dem væk. Begge dele holder hovedet vågent.</p>
+       <p>Der findes en tredje vej: at <i>lade tankerne være</i> — lægge mærke til dem, som man ser skyer drive forbi, uden at gribe fat, analysere eller bekæmpe dem. Du behøver ikke gøre noget ved dem. De passerer af sig selv.</p>
      </div>
-     <div class="quote draft">
-       <h3>Opmærksomheds-træning (om dagen)</h3>
-       <p>Dette er en øvelse, du laver <b>om dagen — ikke for at falde i søvn</b> (det ville være endnu en måde at "prøve hårdt" på). Den træner din evne til at flytte opmærksomheden frit. Tænk på det som motion for opmærksomheden.</p>
+     <div class="quote lock">
+       <h3>Opmærksomheds-træning (ATT) — eksperimentel dagtids-øvelse, ikke sovehjælp</h3>
+       <p>Dette er en øvelse, du laver <b>om dagen</b> — ikke for at falde i søvn (det ville være endnu en måde at "prøve hårdt" på). Den træner din evne til at flytte opmærksomheden frit.</p>
+       <p>Det er en <b>generel opmærksomhedsøvelse</b> — den er ikke specifikt afprøvet som søvnbehandling, men nogle oplever, at den gør det lettere at slippe den indre overvågning, der ellers kan holde én vågen. <b>Vi prøver den af og ser, om den hjælper netop dig.</b> Tænk på det som motion for opmærksomheden.</p>
        <p style="color:var(--muted);font-size:14px">🎧 Lyd-guide (12 min) — placeholder; indspilles + godkendes af din psykolog inden brug.</p>
      </div>
-     <div class="note"><b>Udkast + valgfrit modul.</b> Det metakognitive lag er din psykologs kliniske tilføjelse oven på kernen — ærligt mærket som lovende, ikke et færdigt standalone-program.</div>
+     <div class="note"><b>Låst tekst (Viktor 3/6) · valgfrit modul.</b> Det metakognitive lag er din psykologs kliniske tilføjelse oven på kernen — <b>monitoreret klinisk innovation, ikke et evidensbaseret standalone-program.</b> ATT er en generel opmærksomheds-teknik uden RCT for søvn; medtages eksperimentelt.</div>
    </div>`},
 
  {key:"m5", tab:"8 · Fremover", render:()=>`
    <div class="card">
      <p class="eyebrow">Modul 5 · vedligehold</p>
-     <h1>At holde fast — og hvad du gør, hvis det glider <span class="badge draft">udkast</span></h1>
+     <h1>At holde fast — og hvad du gør, hvis det glider <span class="badge lock">låst tekst ✓</span></h1>
      <p class="lead">Når søvnen er stabil, samler vi op: hvad gjorde forskellen for <i>dig</i>? Det er dine egne ændringer — og dem tager du med dig.</p>
-     <div class="quote draft">
-       <h3>En dårlig nat er normal</h3>
-       <p>Stress, rejser, sygdom — søvnen kan dykke. Det er ikke et tilbagefald. Behold de faste vaner: samme opvågningstid hver dag, seng kun til søvn, ingen lure. Jag ikke den tabte søvn.</p>
+     <div class="quote lock">
+       <h3>Dårlige nætter hører livet til</h3>
+       <p>Du har nu de værktøjer, der skabte bedre søvn. Lige så vigtigt er det at vide, hvad du gør, når søvnen driller igen — for det kommer den til, og det er helt normalt.</p>
+       <p>Stress, sygdom, en rejse, en svær periode — alt sammen kan give nogle dårlige nætter. Det er ikke et tegn på, at problemet er tilbage. Det er din krop, der reagerer normalt på livet. En enkelt eller to dårlige nætter retter sig oftest af sig selv, hvis du bare fortsætter som vanligt.</p>
      </div>
-     <div class="quote draft">
+     <div class="quote lock">
+       <h3>Forskellen på en enkelt nat og et tilbagefald</h3>
+       <p><b>En enkelt dårlig nat</b> (eller to) går over af sig selv — gør ikke noget særligt.</p>
+       <p><b>Et tilbagefald</b> er, når søvnen er svær flere nætter om ugen, over en uge eller to, og det begynder at fylde i tankerne igen. Det er den forskel, der afgør, om du skal gøre noget aktivt.</p>
+     </div>
+     <div class="quote lock">
        <h3>Din plan, hvis det varer ved</h3>
-       <p>Dykker søvnen i mere end et par uger, kan du selv stramme vinduet lidt igen — du har jo lært hvordan. Varer det ved, eller dukker noget nyt op, så skriver du til din psykolog, så vi tager en kort opfølgning.</p>
+       <p>Trækker det ud, så gå tilbage til det, der virkede:</p>
+       <ul style="margin:.3em 0">
+         <li><b>Stå op på samme tid hver dag</b> — også efter en dårlig nat.</li>
+         <li><b>Lad være med at sove længe eller tage lure</b> for at indhente.</li>
+         <li><b>Brug konstruktiv bekymring igen</b>, hvis hovedet er i gang om aftenen.</li>
+         <li><b>Stram dit søvnvindue lidt</b>, som vi gjorde i starten.</li>
+       </ul>
+       <p>Giv det en uges tid. Ofte er det nok til, at søvnen finder tilbage af sig selv.</p>
      </div>
-     <div class="note">Forløbet efterlader dig <b>selv-kompetent</b> — ikke afhængig af en app. Valgfri opfølgning efter 1 og 3 måneder fanger et evt. tilbagefald i tide.</div>
+     <div class="quote lock">
+       <h3>Hvornår du skriver til mig</h3>
+       <p>Skriver søvnen sig ikke ind igen efter en uges egen indsats — eller er der sket noget nyt (en ny sygdom, ny medicin, en stor livsændring) — så skriv til mig. Så tager vi en kort snak og justerer sammen.</p>
+       <p>Du behøver ikke vente, til det er helt galt.</p>
+     </div>
+     <div class="note">Forløbet efterlader dig <b>selv-kompetent</b> — ikke afhængig af en app. Valgfri opfølgning fanger et evt. tilbagefald i tide; ved noget nyt (ny medicin/sygdom/livsændring) re-screener vi før en booster.</div>
+   </div>`},
+
+ {key:"gk4", tab:"9 · GUL · blødt vindue", render:()=>`
+   <div class="card">
+     <p class="eyebrow">GUL-spor · blødere tilgang (kun triagerede klienter)</p>
+     <h1>Et blødere søvnvindue <span class="badge lock">låst tekst ✓</span></h1>
+     <span class="pill amber">GUL · gradvis komprimering</span>
+     <p class="lead">Dette er et <b>alternativ til det stramme vindue (trin 4)</b>. Det bruges kun, når din psykolog vurderer, at en blødere, gradvis tilgang passer dig bedre — fx ved højere alder eller sårbarhed. Standard-forløbet bruger den låste tekst fra trin 4.</p>
+     <div class="quote lock">
+       <h3>Sådan gør vi</h3>
+       <p>De næste uger justerer vi langsomt den tid, du er i sengen, så den kommer til at passe bedre til den søvn, din krop faktisk bruger. Vi går forsigtigt — et lille skridt ad gangen — så det ikke bliver hårdt undervejs.</p>
+     </div>
+     <div class="quote lock">
+       <h3>Det ugentlige vindue</h3>
+       <p>Du får et tidsrum at sove i, som vi strammer en lille smule hver uge. Følg det så godt du kan — læg dig og stå op inden for det. Det kan føles uvant i starten, men det er sådan, søvnen samler sig igen.</p>
+       <p>Vi finjusterer sammen undervejs ud fra, hvordan det går for dig. Det skal ikke være ubehageligt — mærker du, at det bliver for hårdt, så sig til, så tilpasser vi.</p>
+     </div>
+     <div class="note"><b>Låst tekst (Viktor 3/6).</b> GUL-sporet er bevidst blødere end standard-vinduet — populationen tolererer abrupt restriktion dårligt. "Sig til, så tilpasser vi" er en indbygget sikkerheds-ventil (menneske-i-loop).</div>
    </div>
    <div class="card">
      <p class="eyebrow">Tak fordi du klikkede igennem</p>
-     <p>Det var hele klient-rejsen — fra velkomst til vedligehold. Brug trin-knapperne øverst til at hoppe rundt. <b>Tjek-liste til gennemgangen er sendt i SMS/mail.</b></p>
+     <p>Det var hele klient-rejsen — fra velkomst til vedligehold, inkl. det bløde GUL-spor. Brug trin-knapperne øverst til at hoppe rundt. <b>Tjek-liste til gennemgangen er sendt i SMS/mail.</b></p>
    </div>`}
 ];
 
