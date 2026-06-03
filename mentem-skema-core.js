@@ -187,7 +187,7 @@ export const CSD_SOEVNDAGBOG = {
     { key: 'quality',         kind: 'scale',  text: 'Hvordan vil du vurdere kvaliteten af din søvn?',
       scale: ['Meget dårlig', 'Dårlig', 'Nogenlunde', 'God', 'Meget god'] },
     { key: 'naps',            kind: 'text',   text: 'Tog du dig en lur eller blund i løbet af gårsdagen? (antal og samlet varighed, valgfrit)', optional: true, default: 'Nej' },
-    { key: 'medication',      kind: 'text',   text: 'Tog du søvnmedicin, alkohol eller koffein i går? (hvad og hvornår, valgfrit)', optional: true, default: 'Intet' },
+    { key: 'substans',        kind: 'substans', ramme: 'igaar', text: 'Tog du søvnmedicin, alkohol eller koffein i går?', optional: true },
   ],
 };
 
@@ -217,8 +217,7 @@ export const SOEVN_BASELINE = {
       options: ['Svært ved at falde i søvn i starten af natten', 'Vågner meget i løbet af natten', 'Vågner for tidligt om morgenen', 'En blanding'] },
     { key: 'varighed',         kind: 'radio',  text: 'Hvor længe har du haft søvnvanskeligheder?',
       options: ['Under 3 måneder', '3 måneder eller mere'] },
-    { key: 'sovemedicin',      kind: 'text',   text: 'Tager du sovemedicin? (hvad og hvor ofte — valgfrit)', optional: true },
-    { key: 'stimulanser',      kind: 'text',   text: 'Kaffe/te, alkohol og nikotin på en typisk dag? (valgfrit)', optional: true },
+    { key: 'substans',         kind: 'substans', ramme: 'vanligt', text: 'Dit vanlige mønster: søvnmedicin, alkohol eller koffein?', optional: true },
     { key: 'lure',             kind: 'radio',  text: 'Tager du dig lure i dagtimerne?',
       options: ['Nej', 'Ja, under 30 min', 'Ja, 30-60 min', 'Ja, over 60 min'] },
     { key: 'vanligOpvaagning', kind: 'time',   text: 'Hvad tid står du normalt op om morgenen?' },

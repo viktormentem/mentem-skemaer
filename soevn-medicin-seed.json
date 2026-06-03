@@ -1,0 +1,22 @@
+{
+  "_note": "SEED — kurateret delmængde af almindelige søvn-relevante præparater i DK (navn + ATC). Erstattes/udvides af Lægemiddelstyrelsens fulde åbne 'Liste over godkendte lægemidler' (filtrér 'Er i Medicinpriser=Ja') konverteret til JSON ved build. ATC = WHO ATC (offentlig). Bruges KUN til autocomplete/standardisering i klient-dagbogen; medicin-opslag sker via licens-ren Lægemiddelstyrelse-søgning (ikke min.medicin.dk).",
+  "_kilde": "https://laegemiddelstyrelsen.dk/da/godkendelse/godkendelse-af-medicin/lister-over-godkendte-og-afregistrerede-laegemidler/",
+  "praeparater": [
+    { "navn": "Melatonin", "atc": "N05CH01" },
+    { "navn": "Circadin (melatonin)", "atc": "N05CH01" },
+    { "navn": "Zopiclon (Imovane)", "atc": "N05CF01" },
+    { "navn": "Zolpidem (Stilnoct)", "atc": "N05CF02" },
+    { "navn": "Nitrazepam (Mogadon/Pacisyn)", "atc": "N05CD02" },
+    { "navn": "Oxazepam", "atc": "N05BA04" },
+    { "navn": "Diazepam (Stesolid/Valium)", "atc": "N05BA01" },
+    { "navn": "Promethazin (Phenergan)", "atc": "R06AD02" },
+    { "navn": "Alimemazin (Vallergan)", "atc": "R06AD01" },
+    { "navn": "Mirtazapin", "atc": "N06AX11" },
+    { "navn": "Quetiapin (Seroquel)", "atc": "N05AH04" },
+    { "navn": "Chlorprothixen (Truxal)", "atc": "N05AF03" },
+    { "navn": "Levomepromazin (Nozinan)", "atc": "N05AA02" },
+    { "navn": "Clomethiazol (Heminevrin)", "atc": "N05CM02" },
+    { "navn": "Lormetazepam", "atc": "N05CD06" },
+    { "navn": "Triazolam", "atc": "N05CD05" }
+  ]
+}

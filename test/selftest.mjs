@@ -142,14 +142,14 @@ check('soevndagbog IKKE i SKEMA_ORDER (standalone)', !SKEMA_ORDER.includes('soev
 check('CSD_SOEVNDAGBOG === SKEMAER.soevndagbog (drop-in-handle)', CSD_SOEVNDAGBOG === SKEMAER.soevndagbog);
 check('CSD har Carney-attribution', /Carney/.test(SKEMAER.soevndagbog.attribution || ''));
 const diaryKeys = CSD_SOEVNDAGBOG.fields.map(f => f.key);
-for (const k of ['bedtime','lightsOut','sleepLatencyMin','awakeningsCount','awakeningsMin','finalAwake','outOfBed','quality','naps','medication']) {
+for (const k of ['bedtime','lightsOut','sleepLatencyMin','awakeningsCount','awakeningsMin','finalAwake','outOfBed','quality','naps','substans']) {
   check(`CSD-felt: ${k}`, diaryKeys.includes(k));
 }
 
 console.log('buildPayloadCSD:');
 const csdEntries = [
-  { date:'2026-06-01', bedtime:'23:15', lightsOut:'23:30', sleepLatencyMin:25, awakeningsCount:2, awakeningsMin:30, finalAwake:'06:45', outOfBed:'07:00', quality:3, naps:'', medication:'' },
-  { date:'2026-06-02', bedtime:'23:00', lightsOut:'23:20', sleepLatencyMin:15, awakeningsCount:1, awakeningsMin:10, finalAwake:'06:30', outOfBed:'06:50', quality:4, naps:'20 min ved middag', medication:'1 glas vin kl. 20' },
+  { date:'2026-06-01', bedtime:'23:15', lightsOut:'23:30', sleepLatencyMin:25, awakeningsCount:2, awakeningsMin:30, finalAwake:'06:45', outOfBed:'07:00', quality:3, naps:'', substans:{ intet:true } },
+  { date:'2026-06-02', bedtime:'23:00', lightsOut:'23:20', sleepLatencyMin:15, awakeningsCount:1, awakeningsMin:10, finalAwake:'06:30', outOfBed:'06:50', quality:4, naps:'20 min ved middag', substans:{ intet:false, alkohol:[{ antalGenstande:1, tidspunkt:'Nat' }], natFlag:true } },
 ];
 const csd = buildPayloadCSD(csdEntries, { name:'Søvn Klient', startedAt:'2026-06-01', plannedDays:14 });
 check('csd version 1', csd.version === 1);
@@ -161,8 +161,11 @@ check('csd plannedDays', csd.plannedDays === 14);
 check('csd exportedAt no-frac', ISO_NOFRAC.test(csd.exportedAt), `(${csd.exportedAt})`);
 check('csd sleepDiary 2 entries', csd.sleepDiary.length === 2);
 check('csd entry bevarer felter', csd.sleepDiary[0].bedtime === '23:15' && csd.sleepDiary[0].sleepLatencyMin === 25);
-check('csd dropper tomme valgfri felter', csd.sleepDiary[0].naps === undefined && csd.sleepDiary[0].medication === undefined);
+check('csd dropper tomme valgfri felter', csd.sleepDiary[0].naps === undefined);
 check('csd beholder udfyldte valgfri felter', csd.sleepDiary[1].naps === '20 min ved middag');
+check('csd substans intet bevaret', csd.sleepDiary[0].substans && csd.sleepDiary[0].substans.intet === true);
+check('csd substans struktureret bevaret', csd.sleepDiary[1].substans.alkohol[0].antalGenstande === 1 && csd.sleepDiary[1].substans.alkohol[0].tidspunkt === 'Nat');
+check('csd substans natFlag bevaret', csd.sleepDiary[1].substans.natFlag === true);
 check('csd INGEN scoring (nul-score)', csd.questionnaireScores === undefined && csd.sleepDiary[0].tst === undefined && csd.sleepDiary[0].se === undefined);
 
 // Round-trip: CSD-payload krypteres + dekrypteres → sleepDiary intakt.
@@ -211,7 +214,7 @@ check('baseline kind=baseline', SKEMAER['soevn-baseline'].kind === 'baseline');
 check('baseline IKKE i SKEMA_ORDER', !SKEMA_ORDER.includes('soevn-baseline'));
 check('SOEVN_BASELINE === SKEMAER[soevn-baseline]', SOEVN_BASELINE === SKEMAER['soevn-baseline']);
 const blKeys = SOEVN_BASELINE.fields.map(f => f.key);
-for (const k of ['alder','koen','undertype','varighed','sovemedicin','stimulanser','lure','vanligOpvaagning']) {
+for (const k of ['alder','koen','undertype','varighed','substans','lure','vanligOpvaagning']) {
   check(`baseline-felt: ${k}`, blKeys.includes(k));
 }
 check('baseline INGEN alder i daglig CSD', !CSD_SOEVNDAGBOG.fields.some(f => f.key === 'alder'));
@@ -219,7 +222,8 @@ check('baseline INGEN alder i daglig CSD', !CSD_SOEVNDAGBOG.fields.some(f => f.k
 console.log('buildPayloadBaseline:');
 const blAnswers = {
   alder: 67, koen: 'Kvinde', undertype: 'Vågner for tidligt om morgenen',
-  varighed: '3 måneder eller mere', sovemedicin: '', stimulanser: '2 kopper kaffe',
+  varighed: '3 måneder eller mere',
+  substans: { intet: false, koffein: [{ antalEnheder: 2, tidspunkt: 'Morgen' }], natFlag: false },
   lure: 'Ja, 30-60 min', vanligOpvaagning: '06:30',
 };
 const bl = buildPayloadBaseline(blAnswers, { name: 'Baseline Klient' });
@@ -228,8 +232,8 @@ check('bl categories = [soevn-baseline]', JSON.stringify(bl.categories) === JSON
 check('bl baselineType', bl.baselineType === 'soevn-intake');
 check('bl exportedAt no-frac', ISO_NOFRAC.test(bl.exportedAt));
 check('bl bevarer felter', bl.baseline.alder === 67 && bl.baseline.vanligOpvaagning === '06:30');
-check('bl dropper tomme valgfri', bl.baseline.sovemedicin === undefined);
-check('bl beholder udfyldte valgfri', bl.baseline.stimulanser === '2 kopper kaffe');
+check('bl substans struktureret bevaret', bl.baseline.substans && bl.baseline.substans.koffein[0].antalEnheder === 2 && bl.baseline.substans.koffein[0].tidspunkt === 'Morgen');
+check('bl substans natFlag bevaret', bl.baseline.substans.natFlag === false);
 check('bl INGEN scoring (nul-score)', bl.questionnaireScores === undefined && bl.baseline.score === undefined);
 const blRT = await nodeDecrypt(await mentemEncrypt(recipientPubB64, bl), recipient.privateKey);
 check('bl round-trip baseline bevaret', blRT.baseline.alder === 67 && blRT.baseline.koen === 'Kvinde');
