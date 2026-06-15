@@ -97,6 +97,15 @@
   .done-status { font-size:14px; color:var(--accent); margin-top:16px; min-height:20px; }
   .disclaimer { background:var(--border); border-radius:8px; padding:12px 16px; font-size:12px; color:var(--muted); margin-top:24px; line-height:1.5; }
   .start-note { text-align:center; font-size:14px; color:var(--muted); margin-top:14px; line-height:1.5; }
+  /* §1 privatliv + §2 Art.9-samtykke (server-opbevaring) — vist FØR dagbogs-start */
+  .diary-consent { background:var(--accent-light); border:1.5px solid var(--accent); border-radius:10px; padding:16px 18px; margin-bottom:18px; text-align:left; font-size:14px; line-height:1.55; color:var(--ink); }
+  .diary-consent h3 { font-size:15px; margin:0 0 8px; font-weight:700; }
+  .diary-consent p { margin:0 0 10px; }
+  .diary-consent ul { margin:0 0 14px; padding-left:18px; }
+  .diary-consent li { margin-bottom:6px; }
+  .diary-consent-label { display:flex; gap:10px; align-items:flex-start; cursor:pointer; padding-top:12px; border-top:1px solid var(--border); }
+  .diary-consent-label input { margin-top:3px; width:18px; height:18px; flex:none; cursor:pointer; }
+  .diary-consent-status { margin:10px 0 0; font-size:13px; color:var(--muted); }
   .footer-credit { font-size:11px; color:var(--muted); margin-top:20px; line-height:1.5; text-align:center; }
 
   @keyframes fadeIn { from{opacity:0;transform:translateY(14px);} to{opacity:1;transform:translateY(0);} }
@@ -228,6 +237,7 @@
       <div class="diary-progress-big" id="diary-progress-text">Dag 1</div>
       <div class="diary-dots" id="diary-dots"></div>
     </div>
+    <div class="diary-consent" id="diary-consent" style="display:none"></div>
     <button class="btn-primary" id="diary-start-btn">Udfyld for i nat</button>
     <button class="btn-secondary" id="diary-backfill-btn" style="display:none">Udfyld for i går</button>
     <button class="btn-secondary" id="diary-update-btn" style="display:none">Send opdatering til psykolog</button>
@@ -559,6 +569,21 @@ function clearCSDState() {
   try { localStorage.removeItem(CSD_LS_KEY); } catch (e) { /* ignore */ }
 }
 
+// ── Server-opbevaring: Art.9-samtykke (D1/D2) ───────────────────────────────
+// Samtykket (låst §2-ordlyd) GATER pushDraft(): uden accept rammer dagbogen
+// ALDRIG serveren — den bliver i localStorage (fallback). Registreres data-
+// minimalt {accepted,timestamp,version} INDE i den krypterede container der
+// PUT'es (buildPayloadCSD meta.consent). Persisteres i diaryState (saveCSDState)
+// → overlever reload. Afkrydsning fjernet = samtykke trukket tilbage → sync FRA.
+const CONSENT_TEXT_VERSION = '2026-06-03';   // = låst doc server-privatlivstekst-samtykke
+function consentAccepted() { return !!(diaryState && diaryState.consent && diaryState.consent.accepted); }
+function recordConsent(accepted) {
+  if (!diaryState) return;
+  if (accepted) diaryState.consent = { accepted: true, timestamp: new Date().toISOString(), version: CONSENT_TEXT_VERSION };
+  else delete diaryState.consent;
+  saveCSDState(diaryState);
+}
+
 let diaryState = null;   // { startedAt, plannedDays, contentVersion, dirty, entries:[{date, …felter, savedAt}] }
 let diaryDraft = {};     // dagens igangværende svar
 let diarySkema = null;
@@ -600,11 +625,14 @@ async function runDiary(id) {
 
 // Krypter HELE den akkumulerede dagbog → PUT. Offline → behold som localStorage-buffer.
 async function pushDraft() {
-  if (!draftEnabled() || !keyCheck.ok || diaryState.entries.length === 0) return;
+  // HARD-BLOCK (D1): server-PUT fyrer ALDRIG uden et registreret Art.9-samtykke.
+  // Uden accept bliver dagbogen i localStorage (fallback) — intet rammer serveren.
+  if (!draftEnabled() || !keyCheck.ok || !consentAccepted() || diaryState.entries.length === 0) return;
   try {
     const payload = buildPayloadCSD(diaryState.entries, {
       startedAt: diaryState.startedAt, plannedDays: diaryState.plannedDays,
-      forloebId: draftToken, contentVersion: diaryState.contentVersion });
+      forloebId: draftToken, contentVersion: diaryState.contentVersion,
+      consent: diaryState.consent });   // D2: samtykke-record INDE i ciphertext
     const container = await mentemEncrypt(keyCheck.key, payload, keyCheck.keyId);
     const res = await fetch(draftUrl(), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(container) });
     diaryState.dirty = !res.ok;
@@ -652,11 +680,16 @@ function renderDiaryWelcome() {
 
   intro.textContent = 'Udfyld dagbogen kort hver morgen for natten, der gik. Det tager et øjeblik — skriv bare som du husker den. Til sidst samler vi alle dagene i én fil, som du sender til din psykolog.';
 
-  // Privatlivstekst: v1 (localStorage-only) ELLER server-kladde-tekst.
+  // Privatlivstekst.
+  // - localStorage-variant: v1-tekst i diary-privacy (under knappen, uændret).
+  // - server-path (!LOCAL_ONLY): §1 verbatim + §2-samtykke samles i diary-consent
+  //   OVER knappen (så "som beskrevet ovenfor" i §2 reelt peger på §1 ovenfor).
+  //   diary-privacy tømmes for at undgå dublet. Se renderDiaryConsent().
   const priv = document.getElementById('diary-privacy');
   if (priv) priv.innerHTML = LOCAL_ONLY
     ? '🔒 <strong>Privatliv:</strong> Dine svar gemmes kun i denne browser på din egen enhed. Når du er klar, samles de i én krypteret fil, som kun din psykolog kan åbne, og du sender den selv. <strong>Bemærk:</strong> rydder du browseren eller skifter enhed, mistes de dage, du har gemt, og du må starte forfra.'
-    : '🔒 <strong>Privatliv:</strong> Dine svar krypteres på din egen enhed, før noget sendes. En krypteret kopi gemmes midlertidigt på en sikker server (i EU), så din dagbog ikke går tabt, hvis du rydder browseren eller skifter enhed. Kun din psykolog kan åbne den — serveren ser kun ulæselig, krypteret tekst. Kopien slettes automatisk, når perioden er slut (senest efter 45 dage).';
+    : '';
+  renderDiaryConsent();
 
   // Open-ended: vis reelt dag-tal; "af N" kun mens inden for målet, ellers "(fortsat)".
   const dagNu = done + (filledToday ? 0 : 1);
@@ -713,6 +746,42 @@ function renderDiaryWelcome() {
   document.getElementById('diary-attribution').textContent = diarySkema.attribution || '';
   const fp = document.getElementById('diary-key-fp');
   if (fp) fp.textContent = 'Krypteret til din psykologs nøgle · ID ' + PINNED_KEY_ID;
+}
+
+// §1 (privatliv, verbatim) + §2 (Art.9-samtykke, verbatim checkbox) — server-path.
+// Ordlyd LÅST i soevn/server-privatlivstekst-samtykke-2026-06-03.md (§1+§2). MÅ
+// IKKE ændres. Samtykket gater pushDraft(); afkrydset = server-opbevaring til.
+function renderDiaryConsent() {
+  const el = document.getElementById('diary-consent');
+  if (!el) return;
+  // Vises kun i server-pathen (ikke localStorage-variant) og kun ved gyldig nøgle.
+  if (LOCAL_ONLY || !keyCheck.ok) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  el.style.display = 'block';
+  const accepted = consentAccepted();
+  // §1 — VERBATIM. §2 — VERBATIM (☐ → ægte checkbox). Status-linjen er supplerende
+  // UI (ikke låst tekst): viser at server-PUT er blokeret til samtykke er givet.
+  el.innerHTML = `
+    <h3>Sådan opbevares dine svar</h3>
+    <p>Dine svar gemmes <strong>krypteret</strong>, så du kan vende tilbage til dem fra det samme link — også hvis du skifter telefon eller rydder din browser. Det betyder, at du ikke mister de dage, du allerede har udfyldt.</p>
+    <ul>
+      <li><strong>Kun jeg (din psykolog) kan låse dine svar op.</strong> De opbevares krypteret, så ingen andre kan læse dem — heller ikke der, hvor de ligger.</li>
+      <li><strong>Linket indeholder ikke dit navn</strong> eller andre oplysninger om dig.</li>
+      <li>Dine data ligger på en server i <strong>EU</strong> og <strong>slettes automatisk efter 45 dage</strong>.</li>
+      <li>Du kan <strong>når som helst bede mig om at slette dem</strong> — eller trække dit samtykke tilbage.</li>
+    </ul>
+    <label class="diary-consent-label">
+      <input type="checkbox" id="diary-consent-cb"${accepted ? ' checked' : ''}>
+      <span><strong>Jeg accepterer, at mine søvn-svar opbevares krypteret som beskrevet ovenfor</strong>, så jeg kan fortsætte forløbet på tværs af enheder. Jeg ved, at det er helbredsoplysninger, at kun min psykolog kan læse dem, og at jeg kan trække mit samtykke tilbage når som helst.</span>
+    </label>
+    <p class="diary-consent-status">${accepted
+      ? 'Tak. Dine svar gemmes nu krypteret, så du kan fortsætte på tværs af enheder.'
+      : 'Indtil du sætter flueben, gemmes dine svar kun på denne enhed — de sendes ikke til serveren.'}</p>`;
+  const cb = document.getElementById('diary-consent-cb');
+  cb.addEventListener('change', () => {
+    recordConsent(cb.checked);
+    if (cb.checked) pushDraft();   // samtykke givet → flush evt. lokal buffer til server
+    renderDiaryConsent();          // opdatér status-linje (ingen fuld re-render nødvendig)
+  });
 }
 
 function lastEntryBefore(dateStr) {
@@ -1175,6 +1244,7 @@ async function byggDiaryContainerJSON(afslut) {
     startedAt: diaryState.startedAt, plannedDays: diaryState.plannedDays,
     forloebId: draftToken || null, contentVersion: diaryState.contentVersion,
     endedAt: afslut ? new Date().toISOString().replace(/\.\d{3}Z$/, 'Z') : null,
+    consent: diaryState.consent || null,   // D2: samtykke-record med i delt fil (= psykologens autoritative kopi)
   });
   return JSON.stringify(await mentemEncrypt(keyCheck.key, payload, keyCheck.keyId));   // ALTID pinned key
 }

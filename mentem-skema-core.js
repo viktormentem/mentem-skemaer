@@ -356,6 +356,10 @@ export function buildPayloadCSD(entries, meta = {}) {
     diaryType: 'consensus-sleep-diary',
     diaryStartedAt: startedAt,
     plannedDays: (meta.plannedDays != null) ? meta.plannedDays : null,
+    // Art.9-samtykke (server-opbevaring) — data-minimalt, INDE i ciphertext.
+    // Additivt: ældre containere mangler feltet (=> null), ingen krypto-/format-
+    // ændring, ingen migration. Localstorage-variant => null (intet samtykke krævet).
+    consent: meta.consent || null,
     // Versions-blok (§6) — klartekst INDE i ciphertext (serveren ser den aldrig).
     meta: {
       schemaVersion: SCHEMA_VERSION,
