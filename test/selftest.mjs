@@ -26,6 +26,7 @@ import {
   PINNED_KEY_ID,
   resolveRecipientKey,
 } from '../mentem-skema-core.js';
+import { scanText, runGuard, GUARDED_FILES } from './emoji-guard.mjs';
 
 let failures = 0;
 function check(name, cond, detail = '') {
@@ -248,6 +249,30 @@ check('bl substans natFlag bevaret', bl.baseline.substans.natFlag === false);
 check('bl INGEN scoring (nul-score)', bl.questionnaireScores === undefined && bl.baseline.score === undefined);
 const blRT = await nodeDecrypt(await mentemEncrypt(recipientPubB64, bl), recipient.privateKey);
 check('bl round-trip baseline bevaret', blRT.baseline.alder === 67 && blRT.baseline.koen === 'Kvinde');
+
+// ── VERA-guard #1: emoji/glyf-detektor (regressions-lås) ───────────────────
+// Unit-tests af scanText() (deterministisk — uafhængig af repo-tilstand) + en
+// run mod de FAKTISKE klient-facing filer (fanger en ægte regression i CI).
+console.log('emoji-guard (VERA #1):');
+const G = (t) => scanText(t, 't').length;
+// catch: emoji-som-ikon i renderet flade
+check('guard fanger 🔒 i HTML-tekst', G('<button>Gem 🔒</button>') === 1);
+check('guard fanger ✓ (U+2713) i label', G('<span>✓Intet</span>') === 1);
+check('guard fanger 🌙/🔎/🔊/✅', G('<i>🌙</i><i>🔎</i><i>🔊</i><i>✅</i>') === 1);
+check('guard fanger emoji i JS-strengliteral', G("el.textContent = 'Færdig 🎉';") === 1);
+// pass: typografi + kommentarer renderer ikke / er ikke ikoner
+check('guard tillader typografisk pil →', G('<button>Færdig →</button>') === 0);
+check('guard ignorerer emoji i // linje-kommentar', G('const x = 1; // note 🔒 her') === 0);
+check('guard ignorerer emoji i /* blok */-kommentar', G('a;/* tag ✅ */b;') === 0);
+check('guard ignorerer emoji i <!-- HTML-kommentar -->', G('x<!-- 🔒 -->y') === 0);
+check('guard fejl-stripper IKKE https:// (URL bevares)', G("a='see http://x 🔒';") === 1);
+// allowlist: bevidst-beholdt prosa med eksplicit markør
+check('guard respekterer emoji-guard:allow-markør', G('<p>Tillykke 🎉</p> <!-- emoji-guard:allow: fejring -->') === 0);
+check('guard fanger stadig UDEN markør', G('<p>Tillykke 🎉</p>') === 1);
+// real-file run (c9fcaab skal være ren)
+const liveViolations = runGuard();
+check(`guard GRØN mod live ${GUARDED_FILES.join('+')} (0 regressioner)`, liveViolations.length === 0,
+  liveViolations.map(v => `${v.file}:${v.line} ${v.glyphs.join(' ')}`).join(' | '));
 
 console.log('');
 if (failures > 0) { console.error(`SELFTEST FAILED: ${failures} fejl`); process.exit(1); }
