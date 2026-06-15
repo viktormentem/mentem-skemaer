@@ -968,7 +968,7 @@ function renderDiaryFields() {
         const opt = document.createElement('label');
         opt.className = 'radio-option' + (val === v ? ' checked' : '');
         opt.setAttribute('for', rid);
-        opt.innerHTML = `<input type="radio" id="${rid}" name="${f.key}" value="${v}" ${val === v ? 'checked' : ''}><span>${label}</span>`;
+        opt.innerHTML = `<input type="radio" id="${rid}" name="${f.key}" value="${v}" aria-label="${label}" ${val === v ? 'checked' : ''}><span>${label}</span>`;
         opt.querySelector('input').addEventListener('change', () => {
           diaryDraft[f.key] = v;
           group.querySelectorAll('.radio-option').forEach(o => o.classList.remove('checked'));
@@ -1057,6 +1057,9 @@ function updateDiaryProgress() {
 function teardownDiaryStepper() {
   document.querySelectorAll('.a11y-step-head, .a11y-stepnav').forEach(el => el.remove());
   document.querySelectorAll('#diary-fields > *').forEach(el => { el.hidden = false; el.removeAttribute('aria-current'); });
+  // Gendan intro + "Samme som i går" (stepperen skjuler dem på trin 2-N).
+  const instr = document.getElementById('diary-form-instruction'); if (instr) instr.hidden = false;
+  const sameBtn = document.getElementById('diary-sameasyesterday-btn'); if (sameBtn) sameBtn.hidden = false;
   const save = document.getElementById('diary-save-btn'); if (save) save.style.display = '';
 }
 
@@ -1097,6 +1100,14 @@ function showDiaryStep(i, moveFocus = true) {
     s.hidden = !on;
     if (on) s.setAttribute('aria-current', 'step'); else s.removeAttribute('aria-current');
   });
+  // Intro-boksen + den globale "Samme som i går"-genvej hører KUN til trin 1.
+  // Ellers læser skærmlæseren intro'en op igen ved HVERT trin-skift (FEJL 1,
+  // VoiceOver-feedback 15/6). "Samme som i går" genudfylder ALLE felter (global,
+  // ikke per-spørgsmål) → samme regel.
+  const instr = document.getElementById('diary-form-instruction');
+  const sameBtn = document.getElementById('diary-sameasyesterday-btn');
+  if (instr) instr.hidden = i !== 0;
+  if (sameBtn) sameBtn.hidden = i !== 0;
   const last = i === steps.length - 1;
   const head = document.getElementById('a11y-step-head');
   if (head) head.textContent = `Spørgsmål ${i + 1} af ${steps.length}`;
@@ -1476,7 +1487,7 @@ function stopAloud() {
 function visibleScreenText() {
   const scr = document.querySelector('.screen.active');
   if (!scr) return '';
-  const sel = 'h1, h2, .intro, .schema-title, .schema-instruction, .question-text, label.diary-q, legend.diary-q, .done-wrap p';
+  const sel = 'h1, h2, .intro, .schema-title, .schema-instruction, .question-text, label.diary-q, legend.diary-q, .radio-option, .done-wrap p';
   const parts = [];
   scr.querySelectorAll(sel).forEach(el => {
     if (el.offsetParent !== null) { const t = (el.textContent || '').trim(); if (t) parts.push(t); }
