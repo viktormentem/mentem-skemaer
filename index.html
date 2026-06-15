@@ -951,7 +951,10 @@ function renderDiaryFields() {
   diarySkema.fields.forEach((f, i) => {
     const inputId = `dfield-${f.key}`;
     const optTag = f.optional ? '<span class="diary-optional">valgfrit</span>' : '';
-    const qHtml = `<span class="question-num">${i + 1}.</span>${f.text}${optTag}`;
+    // Nummeret er KUN en visuel ordinal — skjult for skærmlæser (aria-hidden) så
+    // spørgsmålet læses ordret. "Spørgsmål X af Y" annoncerer allerede positionen
+    // (oplæsnings-venlig tilstand), så et oplæst "8." foran ville være redundant.
+    const qHtml = `<span class="question-num" aria-hidden="true">${i + 1}.</span>${f.text}${optTag}`;
     const val = diaryDraft[f.key];
 
     // Scale → <fieldset>/<legend> om radioknapperne (semantisk gruppe, A11Y).
@@ -1484,13 +1487,22 @@ function stopAloud() {
   if ('speechSynthesis' in window) { try { speechSynthesis.cancel(); } catch (e) {} }
   aloudOn = false; setAloudLabel();
 }
+// Læs et elements tekst som en skærmlæser ville — uden aria-hidden-børn (fx den
+// visuelle "8."-ordinal i .question-num). Klon → fjern aria-hidden → textContent.
+function a11yVisibleText(el) {
+  const clone = el.cloneNode(true);
+  clone.querySelectorAll('[aria-hidden="true"]').forEach(n => n.remove());
+  return (clone.textContent || '').trim();
+}
 function visibleScreenText() {
   const scr = document.querySelector('.screen.active');
   if (!scr) return '';
   const sel = 'h1, h2, .intro, .schema-title, .schema-instruction, .question-text, label.diary-q, legend.diary-q, .radio-option, .done-wrap p';
   const parts = [];
   scr.querySelectorAll(sel).forEach(el => {
-    if (el.offsetParent !== null) { const t = (el.textContent || '').trim(); if (t) parts.push(t); }
+    if (el.offsetParent !== null && el.getAttribute('aria-hidden') !== 'true') {
+      const t = a11yVisibleText(el); if (t) parts.push(t);
+    }
   });
   return parts.join('. ');
 }
