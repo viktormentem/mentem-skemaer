@@ -1,0 +1,78 @@
+#!/bin/bash
+#
+# pre-push (emoji-guard-haard-merge-gate) — git pre-push-hook: gør VERA-guard #1 til en
+# BLOKERENDE merge-gate for mentem-skemaer (prod-web → GitHub Pages).
+#
+# Født af handoff-vera-guard-1-haard-merge-gate-2026-06-15: guard #1 (test/emoji-guard.mjs)
+# var et SIGNAL (rapporterede fil:linje+codepoint) men intet aborterede et push til prod-main
+# paa roed guard. Et menneske kunne ignorere signalet og pushe en emoji-som-ikon-regression
+# til prod-Pages alligevel. Denne hook lukker hullet: roed guard => exit 1 => push aborteret.
+#
+# SPEJLET PAA: release-range-guard-pre-push.sh (PsykologInvitation/MEMTEM-lanen) — samme
+# moenster: pre-push-hook gated til release-ref'en (main), no-op for alt andet, install-script
+# med sha live==canonical, dokumenteret positiv-kontrol (roed BLOK / ren ALLOW / non-main NO-OP).
+#
+# ADFAERD: ved push hvis remote-ref = main koeres "node test/emoji-guard.mjs" mod working tree.
+#   - exit 0 (0 emoji-som-ikon) => push tilladt.
+#   - exit != 0 (regression)    => push BLOKERET (exit 1); guardens egen fil:linje+codepoint vises.
+# No-op for ALT andet end main (backup/*, feature/*, branch-sletning) — backup-pushes roeres aldrig.
+#
+# OVERRIDE (KVALITETS-gate, IKKE [verify-pause]-gate => INGEN env-token-override):
+#   - Bevidst-beholdt emoji i renderet prosa/alert/Psykoedukation: tilfoej markoeren
+#     "emoji-guard:allow: <begrundelse>" paa linjen (allerede bygget ind i guarden). Det er
+#     den legitime vej rundt — ikke et override-token.
+#   - "git push --no-verify" = sidste noedudgang (bevidst bypass). ALDRIG reflektorisk.
+#
+# git leverer pr. pushet ref een linje paa stdin: "<local-ref> <local-sha> <remote-ref> <remote-sha>".
+# Args: $1=remote-navn $2=remote-url.
+#
+# Source-of-truth: .githooks/pre-push (git-versioneret — single-repo guard, lever med koden den
+# beskytter). Deploy: test/install-emoji-guard-hook.sh => .git/hooks/pre-push (kør pr. klon).
+
+set -u
+
+GUARD_REF="${MENTEM_EMOJI_GUARD_REF:-refs/heads/main}"
+ZERO="0000000000000000000000000000000000000000"
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+GUARD="$REPO_ROOT/test/emoji-guard.mjs"
+
+relevant=0
+while read -r local_ref local_sha remote_ref remote_sha; do
+    # No-op for ALT andet end release-ref'en (backup/*, feature/*, no-upstream).
+    [ "$remote_ref" = "$GUARD_REF" ] || continue
+    # Branch-sletning (local-sha = nul) => intet at scanne.
+    [ "$local_sha" = "$ZERO" ] && continue
+    relevant=1
+done
+
+# Intet main-push i dette push => no-op (rør aldrig backup/feature-pushes).
+if [ "$relevant" -eq 0 ]; then
+    exit 0
+fi
+
+# Konservativ: kan guarden ikke koeres (node/fil mangler) => BLOKER (hellere stoppe end slippe
+# en uchecket prod-push igennem). Mirror af range-guardens konservative fallback-filosofi.
+if ! command -v node >/dev/null 2>&1; then
+    echo "🛑 emoji-guard: node ikke fundet — kan ikke koere guarden mod $GUARD_REF." >&2
+    echo "Installer node, ELLER (bevidst, sidste udvej): git push --no-verify." >&2
+    exit 1
+fi
+if [ ! -f "$GUARD" ]; then
+    echo "🛑 emoji-guard: $GUARD mangler — kan ikke verificere $GUARD_REF." >&2
+    echo "(Bevidst bypass, sidste udvej: git push --no-verify.)" >&2
+    exit 1
+fi
+
+# Koer guarden mod working tree. Ved ren tree (clean-tree-foer-push-SOP) == HEAD der pushes.
+# Guarden printer selv "emoji-guard ✗ — … fil:linje  glyf (U+codepoint)" paa stderr ved roed.
+if node "$GUARD"; then
+    echo "✅ emoji-guard: 0 emoji-som-ikon — push til $GUARD_REF tilladt."
+    exit 0
+fi
+
+echo "" >&2
+echo "🛑 emoji-guard: BLOKERET push til $GUARD_REF — emoji-som-ikon-regression (se fil:linje+codepoint ovenfor)." >&2
+echo "FIX: erstat med eget house-style-SVG-ikon (aria-hidden=\"true\"), ELLER — hvis bevidst" >&2
+echo "prosa/alert/Psykoedukation — tilfoej 'emoji-guard:allow: <begrundelse>' paa linjen." >&2
+echo "(Sidste noedudgang, ALDRIG reflektorisk: git push --no-verify.)" >&2
+exit 1
