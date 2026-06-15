@@ -132,6 +132,18 @@
   label.diary-q { display:block; }
   fieldset.diary-field { min-width:0; }
   legend.diary-q { padding:0; }
+
+  /* ── Oplæsnings-venlig tilstand (synshandicap / skærmlæser-brugere) ─────── */
+  .a11y-toggle-btn { min-height:44px; padding:8px 14px; border:2px solid rgba(255,255,255,0.35); background:transparent; color:white; border-radius:8px; cursor:pointer; font-family:'DM Sans',sans-serif; font-size:14px; }
+  .a11y-toggle-btn[aria-pressed="true"] { background:rgba(255,255,255,0.22); border-color:white; font-weight:700; }
+  .a11y-toggle-btn:focus-visible { outline:2px solid white; outline-offset:2px; }
+  /* Læst-først fremskridts-overskrift: "Spørgsmål X af Y" (fokuseres v. trin-skift). */
+  .a11y-step-head { font-family:'DM Serif Display',serif; font-size:22px; color:var(--accent); margin:6px 0 20px; padding:0; }
+  .a11y-step-head:focus-visible { outline:3px solid var(--accent); outline-offset:4px; border-radius:6px; }
+  .a11y-stepnav { display:flex; gap:12px; margin-top:22px; }
+  .a11y-stepnav button { flex:1; margin-top:0; }
+  /* I tilstanden erstatter den læste "Spørgsmål X af Y" den visuelle bjælke. */
+  html[data-a11y="1"] #screen-diary-form .form-progress { display:none; }
 </style>
 <script>
   /* A11Y: gendan tekststørrelse FØR render (ingen flash). Non-PII UI-præference. */
@@ -149,6 +161,7 @@
   </div>
   <div class="header-right">
     <div class="header-a11y">
+      <button type="button" id="a11y-mode-btn" class="a11y-toggle-btn" aria-pressed="false">Oplæsnings-venlig visning: fra</button>
       <div class="ts-toggle" role="group" aria-label="Tekststørrelse">
         <button type="button" class="ts-btn" data-ts="normal" aria-label="Normal tekststørrelse" aria-pressed="true">A</button>
         <button type="button" class="ts-btn" data-ts="stor" aria-label="Større tekst" aria-pressed="false">A+</button>
@@ -545,6 +558,7 @@ let diaryDraft = {};     // dagens igangværende svar
 let diarySkema = null;
 let recoveredBlob = null;   // opaque server-kladde efter ITP-wipe (kan IKKE dekrypteres klient-side)
 let diaryFillDate = null;   // hvilken kalenderdag formularen udfylder (i dag / i går-backfill)
+let diaryStepIndex = 0;     // oplæsnings-venlig tilstand: aktivt trin (ét spørgsmål ad gangen)
 
 function diaryPlannedDays() {
   if (dParam && dParam > 0 && dParam <= 60) return dParam;   // ?d= ved første åbning
@@ -737,6 +751,10 @@ function startDiaryEntry(forDate, prefillEntry) {
   renderDiaryFields();
   showScreen('screen-diary-form');
   updateDiaryProgress();
+  // Oplæsnings-venlig tilstand: ét spørgsmål ad gangen (ellers hele dagen på én side).
+  diaryStepIndex = 0;
+  teardownDiaryStepper();
+  if (a11yOn()) applyDiaryStepper();
   window.scrollTo(0, 0);
 }
 
@@ -1029,6 +1047,69 @@ function updateDiaryProgress() {
   const btn = document.getElementById('diary-save-btn');
   btn.disabled = filled < req.length;
   btn.textContent = filled < req.length ? `Mangler ${req.length - filled} svar` : 'Gem';
+}
+
+// ── Oplæsnings-venlig stepper (synshandicap / skærmlæser) ──────────────────
+// Hvert top-niveau-felt i #diary-fields er ÉT trin. Trinene skjules/vises ét ad
+// gangen; data-bindingen (diaryDraft) er uændret, så svar bevares på tværs af
+// Næste/Forrige. "Spørgsmål X af Y" læses FØRST (fokuseres + aria-live), fokus
+// flyttes til trinnets overskrift, aktivt trin bærer aria-current="step".
+function teardownDiaryStepper() {
+  document.querySelectorAll('.a11y-step-head, .a11y-stepnav').forEach(el => el.remove());
+  document.querySelectorAll('#diary-fields > *').forEach(el => { el.hidden = false; el.removeAttribute('aria-current'); });
+  const save = document.getElementById('diary-save-btn'); if (save) save.style.display = '';
+}
+
+function applyDiaryStepper() {
+  const root = document.getElementById('diary-fields');
+  if (!root || !root.children.length) return;
+  const head = document.createElement('h2');
+  head.id = 'a11y-step-head'; head.className = 'a11y-step-head';
+  head.tabIndex = -1;
+  head.setAttribute('role', 'status');
+  head.setAttribute('aria-live', 'polite');
+  head.setAttribute('aria-atomic', 'true');
+  root.parentNode.insertBefore(head, root);
+
+  const nav = document.createElement('div');
+  nav.className = 'a11y-stepnav';
+  const prev = document.createElement('button');
+  prev.type = 'button'; prev.className = 'btn-secondary'; prev.id = 'a11y-prev'; prev.textContent = 'Forrige';
+  prev.addEventListener('click', () => showDiaryStep(diaryStepIndex - 1));
+  const next = document.createElement('button');
+  next.type = 'button'; next.className = 'btn-primary'; next.id = 'a11y-next'; next.textContent = 'Næste';
+  next.addEventListener('click', () => showDiaryStep(diaryStepIndex + 1));
+  nav.appendChild(prev); nav.appendChild(next);
+  root.parentNode.insertBefore(nav, root.nextSibling);
+
+  showDiaryStep(Math.min(diaryStepIndex, root.children.length - 1), false);
+}
+
+function showDiaryStep(i, moveFocus = true) {
+  const root = document.getElementById('diary-fields');
+  if (!root) return;
+  const steps = Array.from(root.children);
+  if (!steps.length) return;
+  i = Math.max(0, Math.min(i, steps.length - 1));
+  diaryStepIndex = i;
+  steps.forEach((s, idx) => {
+    const on = idx === i;
+    s.hidden = !on;
+    if (on) s.setAttribute('aria-current', 'step'); else s.removeAttribute('aria-current');
+  });
+  const last = i === steps.length - 1;
+  const head = document.getElementById('a11y-step-head');
+  if (head) head.textContent = `Spørgsmål ${i + 1} af ${steps.length}`;
+  const prev = document.getElementById('a11y-prev');
+  const next = document.getElementById('a11y-next');
+  const save = document.getElementById('diary-save-btn');
+  if (prev) prev.disabled = i === 0;
+  if (next) next.style.display = last ? 'none' : '';
+  if (save) save.style.display = last ? '' : 'none';
+  window.scrollTo(0, 0);
+  // Fokus til "Spørgsmål X af Y" → skærmlæser læser fremskridtet FØRST, derefter
+  // navigerer brugeren til selve spørgsmålet. rAF: efter layout/visibility-skift.
+  if (moveFocus && head) requestAnimationFrame(() => { try { head.focus(); } catch (e) {} });
 }
 
 function saveDiaryEntry() {
@@ -1425,8 +1506,46 @@ function initAloud() {
   }
   window.addEventListener('pagehide', stopAloud);
 }
+// ── Oplæsnings-venlig tilstand: state + toggle ─────────────────────────────
+// Persisteres i localStorage (non-PII UI-præference) → overlever reload + dag-
+// til-dag. G2: et &a11y=1-link vinder ved FØRSTE load; derefter patientens egen
+// toggle. Gælder hele siden (chrome); ét-spørgsmål-flowet rammer dagbogs-formularen.
+const A11Y_KEY = 'mentem_a11y_mode';
+function a11yOn() { try { return localStorage.getItem(A11Y_KEY) === '1'; } catch (e) { return false; } }
+function setA11y(on) { try { localStorage.setItem(A11Y_KEY, on ? '1' : '0'); } catch (e) {} }
+function updateA11yToggleBtn() {
+  const btn = document.getElementById('a11y-mode-btn');
+  if (!btn) return;
+  const on = a11yOn();
+  btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  btn.textContent = on ? 'Oplæsnings-venlig visning: til' : 'Oplæsnings-venlig visning: fra';
+}
+function onA11yToggle() {
+  const on = !a11yOn();
+  setA11y(on);
+  document.documentElement.setAttribute('data-a11y', on ? '1' : '0');
+  updateA11yToggleBtn();
+  // Re-layout den aktive dagbogs-formular hvis den er åben (ellers virker det v. næste trin-skift).
+  const diaryForm = document.getElementById('screen-diary-form');
+  if (diaryForm && diaryForm.classList.contains('active')) {
+    teardownDiaryStepper();
+    if (on) { diaryStepIndex = 0; applyDiaryStepper(); }
+  }
+}
+function initA11yMode() {
+  let stored = null;
+  try { stored = localStorage.getItem(A11Y_KEY); } catch (e) {}
+  // G2-A: &a11y=1 slår til ved FØRSTE load — kun hvis klienten ikke selv har valgt
+  // endnu (stored === null). Derefter respekteres patientens egen toggle (stored '0'/'1').
+  if (params.get('a11y') === '1' && stored === null) { stored = '1'; setA11y(true); }
+  document.documentElement.setAttribute('data-a11y', stored === '1' ? '1' : '0');
+  const btn = document.getElementById('a11y-mode-btn');
+  if (btn) btn.addEventListener('click', onA11yToggle);
+  updateA11yToggleBtn();
+}
 initTextsize();
 initAloud();
+initA11yMode();
 </script>
 <p class="a11y-hint">Vil du have siden læst op? På iPhone: slå "Læs skærm op" til i Indstillinger → Tilgængelighed → Talt indhold, og stryg ned med to fingre.</p>
 </body>
