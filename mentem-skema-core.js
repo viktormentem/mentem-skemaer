@@ -186,7 +186,10 @@ export const CSD_SOEVNDAGBOG = {
     { key: 'outOfBed',        kind: 'time',   text: 'Hvad tid stod du op af sengen?' },
     { key: 'quality',         kind: 'scale',  text: 'Hvordan vil du vurdere kvaliteten af din søvn?',
       scale: ['Meget dårlig', 'Dårlig', 'Nogenlunde', 'God', 'Meget god'] },
-    { key: 'naps',            kind: 'text',   text: 'Tog du dig en lur eller blund i løbet af gårsdagen? (antal og samlet varighed, valgfrit)', optional: true, default: 'Nej' },
+    // Ingen `default` — et felt må ALDRIG bære en committed default der tæller som
+    // svar (spec-ux-soevndagbog-udfyldning §1: fantom-defaults korrumperer kliniske
+    // data). Tomt = ubesvaret. Det eneste der må forudfylde er "Samme som i går".
+    { key: 'naps',            kind: 'text',   text: 'Tog du dig en lur eller blund i løbet af gårsdagen? (antal og samlet varighed, valgfrit)', optional: true },
     { key: 'substans',        kind: 'substans', ramme: 'igaar', text: 'Tog du søvnmedicin, alkohol eller koffein i går?', optional: true },
   ],
 };

@@ -789,6 +789,24 @@ function lastEntryBefore(dateStr) {
   return before.length ? before[before.length - 1] : null;
 }
 
+// Diskret aria-live-annoncering (oplæsnings-venlig tilstand + skærmlæser). Ét delt,
+// visuelt skjult polite-område der overlever re-render af #diary-fields.
+function announceA11y(msg) {
+  let region = document.getElementById('a11y-live-region');
+  if (!region) {
+    region = document.createElement('div');
+    region.id = 'a11y-live-region';
+    region.setAttribute('role', 'status');
+    region.setAttribute('aria-live', 'polite');
+    region.setAttribute('aria-atomic', 'true');
+    region.style.cssText = 'position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0';
+    document.body.appendChild(region);
+  }
+  region.textContent = '';
+  // Clear → set efter en tick tvinger en ny annoncering selv ved gentaget tekst.
+  setTimeout(() => { region.textContent = msg; }, 60);
+}
+
 function startDiaryEntry(forDate, prefillEntry) {
   diaryFillDate = forDate || todayISO();
   const existing = diaryState.entries.find(e => e.date === diaryFillDate);
@@ -796,12 +814,10 @@ function startDiaryEntry(forDate, prefillEntry) {
   const src = existing || prefillEntry || null;
   diaryDraft = src ? { ...src } : {};
   delete diaryDraft.date; delete diaryDraft.savedAt;
-  // Valgfri felter får en blød default ("Nej"/"Intet") hvis intet er sat.
-  diarySkema.fields.forEach(f => {
-    if (f.optional && f.default != null && (diaryDraft[f.key] == null || diaryDraft[f.key] === '')) {
-      diaryDraft[f.key] = f.default;
-    }
-  });
+  // INGEN committed defaults (spec-ux-soevndagbog-udfyldning §1+§2-Fælde-C): et
+  // urørt valgfrit felt skal forblive ubesvaret, aldrig auto-fyldes med "Nej"/"Intet"
+  // — en fantom-default registreres som et falsk svar og forurener kliniske data.
+  // Det eneste der forudfylder er `src` ("Samme som i går" / rettelse af eksisterende).
 
   // Dag-label: "I går" ved backfill, ellers "Dag k".
   const priorCount = diaryState.entries.filter(e => e.date < diaryFillDate).length;
@@ -817,7 +833,11 @@ function startDiaryEntry(forDate, prefillEntry) {
   if (sameBtn) {
     if (prev && !existing && !prefillEntry) {
       sameBtn.style.display = 'block';
-      sameBtn.onclick = () => startDiaryEntry(diaryFillDate, prev);
+      sameBtn.onclick = () => {
+        startDiaryEntry(diaryFillDate, prev);
+        // a11y: annoncér effekten (spec-ux §3) — felterne bærer nu gårsdagens svar.
+        announceA11y('Udfyldt med dine svar fra i går — du kan rette dem.');
+      };
     } else {
       sameBtn.style.display = 'none';
     }
@@ -853,7 +873,10 @@ fetch('soevn-medicin-seed.json').then(r => r.json())
 const SUBSTANS_TIDER = ['Morgen', 'Eftermiddag', 'Aften', 'Nat'];
 
 function buildSubstansField(f, draft, afterChange) {
-  const st = (draft[f.key] && typeof draft[f.key] === 'object') ? draft[f.key] : { intet: true };
+  // Start UVALGT (spec-ux §2-Fælde-C: "Q10-substanser uvalgte"): hverken "Intet"
+  // eller en chip er forvalgt. "Intet" bliver først et aktivt svar når brugeren
+  // taster det — ellers ville et urørt valgfrit felt registreres som falsk "tog intet".
+  const st = (draft[f.key] && typeof draft[f.key] === 'object') ? draft[f.key] : {};
   draft[f.key] = st;
   const igaar = f.ramme === 'igaar';
 
@@ -1201,13 +1224,27 @@ function showDiaryStep(i, moveFocus = true) {
   if (moveFocus && head) requestAnimationFrame(() => { try { head.focus(); } catch (e) {} });
 }
 
+// Q10 substans har indhold KUN hvis "Intet" aktivt er valgt eller mindst én chip er
+// udfyldt. Et urørt substans-felt (start-tilstand {}) er ubesvaret → persistér det
+// ikke som et tomt objekt (ellers snige et falsk "svar" forbi; spec-ux §1+§4).
+function substansHasContent(v) {
+  if (!v || typeof v !== 'object') return false;
+  if (v.intet === true) return true;
+  return ['soevnmedicin', 'alkohol', 'koffein'].some(k => Array.isArray(v[k]) && v[k].length);
+}
+
 function saveDiaryEntry() {
   const req = diarySkema.fields.filter(f => !f.optional);
   if (req.some(f => { const v = diaryDraft[f.key]; return v == null || v === ''; })) return;
 
   const date = diaryFillDate || todayISO();    // i dag ELLER i går-backfill
   const entry = { date, savedAt: new Date().toISOString() };   // savedAt → newest-wins-merge
-  diarySkema.fields.forEach(f => { const v = diaryDraft[f.key]; if (v != null && v !== '') entry[f.key] = v; });
+  diarySkema.fields.forEach(f => {
+    const v = diaryDraft[f.key];
+    if (v == null || v === '') return;
+    if (f.kind === 'substans' && !substansHasContent(v)) return;   // urørt valgfrit felt = ubesvaret
+    entry[f.key] = v;
+  });
 
   // Dag-dedup: én entry pr. kalenderdag (overskriv hvis samme dag gemmes igen).
   const idx = diaryState.entries.findIndex(e => e.date === date);

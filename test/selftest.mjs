@@ -145,6 +145,17 @@ const diaryKeys = CSD_SOEVNDAGBOG.fields.map(f => f.key);
 for (const k of ['bedtime','lightsOut','sleepLatencyMin','awakeningsCount','awakeningsMin','finalAwake','outOfBed','quality','naps','substans']) {
   check(`CSD-felt: ${k}`, diaryKeys.includes(k));
 }
+// INVARIANT (spec-ux-soevndagbog-udfyldning §1): intet CSD-felt må bære en committed
+// `default` — en fantom-default registreres som falsk svar og forurener kliniske data.
+check('CSD: ingen felter med committed default (fantom-guard)',
+  CSD_SOEVNDAGBOG.fields.every(f => f.default == null));
+// SOL + WASO er VARIGHEDER → number (minutter), ALDRIG ur/tids-vælger (§2-Fælde-B).
+check('CSD: SOL = number m. enhed minutter (ikke ur)',
+  CSD_SOEVNDAGBOG.fields.find(f => f.key === 'sleepLatencyMin').kind === 'number' &&
+  CSD_SOEVNDAGBOG.fields.find(f => f.key === 'sleepLatencyMin').unit === 'minutter');
+check('CSD: WASO = number m. enhed minutter (ikke ur)',
+  CSD_SOEVNDAGBOG.fields.find(f => f.key === 'awakeningsMin').kind === 'number' &&
+  CSD_SOEVNDAGBOG.fields.find(f => f.key === 'awakeningsMin').unit === 'minutter');
 
 console.log('buildPayloadCSD:');
 const csdEntries = [
