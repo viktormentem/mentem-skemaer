@@ -1,0 +1,43 @@
+# VERA-guard #1 — emoji-som-ikon-detektor som SERVER-SIDE merge-gate (GitHub Actions).
+#
+# HVORFOR (maskin-uafhængig backstop): den hårde gate lever pt. KUN som en lokal
+# pre-push-hook (.githooks/pre-push → install pr. klon via test/install-emoji-guard-hook.sh).
+# git versionerer ikke .git/hooks/ → en frisk klon / et CI-miljø / en kollega uden hooken
+# installeret kan pushe en emoji-som-ikon-regression til prod-main (GitHub Pages) uopdaget.
+# Denne workflow lukker det hul server-side: GitHub kører guarden på HVER PR mod main og på
+# HVERT push til main — uafhængigt af om nogen lokal hook er installeret. Rød guard → rød check.
+#
+# SPEJLER pre-push-hookens kerne 1:1: kører nøjagtig samme kommando, "node test/emoji-guard.mjs",
+# mod working tree. Allow-markør-overriden ("emoji-guard:allow: <begrundelse>") er bygget IND i
+# guarden selv (test/emoji-guard.mjs honorerer den pr. linje) → kører her automatisk, ingen
+# duplikeret logik. Exit 0 = grøn check; exit 1 = rød/blokerende check (samme adfærd som hooken).
+#
+# Guarden er ren Node-ESM (node:fs/url/path) uden npm-deps og uden lokal state → ingen
+# `npm install`; kun checkout + node. Node pinnet til LTS 20 for reproducerbarhed.
+#
+# Source-of-truth for selve reglen: test/emoji-guard.mjs (+ .githooks/pre-push lokal-spejl).
+# Branch-protection (required status check) sættes separat i repo-settings — ikke i denne fil.
+
+name: "VERA-guard #1 — emoji-som-ikon (klient-web)"
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  emoji-guard:
+    name: emoji-som-ikon-detektor
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node (LTS 20)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: "Kør VERA-guard #1 (node test/emoji-guard.mjs)"
+        run: node test/emoji-guard.mjs
