@@ -190,7 +190,7 @@
     <div class="schema-cards" id="schema-cards"></div>
     <button class="btn-primary" id="start-btn" disabled>Start</button>
     <p class="start-note">Til sidst får du én fil, som du nemt deler med din psykolog — vi viser dig hvordan.</p>
-    <div class="disclaimer"><span aria-hidden="true" style="display:inline-flex;width:1em;height:1em;vertical-align:-2px;margin-right:5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><strong>Privatliv:</strong> Du udfylder alt i din egen browser. Når du er færdig, samles svarene i én krypteret fil, som kun din psykolog kan åbne. Intet gemmes på en server, og du sender selv filen.</div>
+    <div class="disclaimer"><span aria-hidden="true" style="display:inline-flex;width:1em;height:1em;vertical-align:-2px;margin-right:5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><span class="disc-body" data-autosend="<strong>Privatliv:</strong> Du udfylder alt i din egen browser. Når du er færdig, sendes svarene sikkert og krypteret direkte til din psykolog — kun din psykolog kan åbne dem."><strong>Privatliv:</strong> Du udfylder alt i din egen browser. Når du er færdig, samles svarene i én krypteret fil, som kun din psykolog kan åbne. Intet gemmes på en server, og du sender selv filen.</span></div>
     <p class="footer-credit">Skemaerne bygger på anerkendte spørgeskemaer (GAD-7, PHQ-9, WHO-5, WSAS), som din psykolog bruger til at følge din udvikling.</p>
     <p class="footer-credit" id="key-fp"></p>
   </div>
@@ -273,7 +273,7 @@
     <p class="intro" id="baseline-intro"></p>
     <button class="btn-primary" id="baseline-start-btn">Start</button>
     <p class="start-note">Det tager et par minutter og udfyldes kun denne ene gang.</p>
-    <div class="disclaimer"><span aria-hidden="true" style="display:inline-flex;width:1em;height:1em;vertical-align:-2px;margin-right:5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><strong>Privatliv:</strong> Du udfylder alt i din egen browser. Til sidst samles svarene i én krypteret fil, som kun din psykolog kan åbne, og du sender den selv. Intet gemmes på en server.</div>
+    <div class="disclaimer"><span aria-hidden="true" style="display:inline-flex;width:1em;height:1em;vertical-align:-2px;margin-right:5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><span class="disc-body" data-autosend="<strong>Privatliv:</strong> Du udfylder alt i din egen browser. Til sidst sendes svarene sikkert og krypteret direkte til din psykolog — kun din psykolog kan åbne dem."><strong>Privatliv:</strong> Du udfylder alt i din egen browser. Til sidst samles svarene i én krypteret fil, som kun din psykolog kan åbne, og du sender den selv. Intet gemmes på en server.</span></div>
     <p class="footer-credit" id="baseline-key-fp"></p>
   </div>
 </div>
@@ -335,6 +335,48 @@ function draftUrl() { return `${draftBase()}/api/soevn-draft/${draftToken}`; }
 const TEST_HOST = /mentem-skemaer-preview|localhost|127\.0\.0\.1|\.loca\.lt|\.trycloudflare\.com/
   .test(location.host + location.pathname);
 const testDayOffset = (TEST_HOST && params.get('testday')) ? (parseInt(params.get('testday'), 10) || 0) : 0;
+
+// ── Auto-send til ingest-worker (#1/#2 producent-ben) ──────────────────────
+// GATING-LAG 1: KUN it=-bærende links auto-sender. Uden it= → autoSendEnabled()
+// false → præcis den nuværende download/del-sti (prod-adfærd UÆNDRET). Web
+// krypterer til en SEPARAT ingest-X25519-HPKE-nøgle (INGEST_PUBKEY/INGEST_KEY_ID,
+// hash-pin) — IKKE journal-nøglen 8aa536a1 (download/del-stien). Konvolutten
+// dekrypteres modtager-side med ingest-privatnøglen, ikke journal-nøglen.
+// SYNTETISK pin nu (worker ej deployet) → ægte INGEST_PUBKEY sættes ved go-live
+// (rotation = redeploy web med ny pin, spec §4). it=-links møntes først ved
+// Viktor-GO + G3 grøn → ingen prod-adfærdsændring før da.
+const INGEST_API_BASE = 'https://ingest.mycel.dk';                   // contracted domæne (worker p.t. ikke deployet → POST fejler → fallback)
+const INGEST_PUBKEY   = '4NtWE2ZkITiNAkpXPVksNArWrnaTXaG0u0aJRhEHYRc'; // SYNTETISK hash-pin; ægte sættes ved go-live
+const INGEST_KEY_ID   = 'cce9b373';                                  // = første 8 hex af SHA-256(rå ingest-pubkey)
+const ingestToken = params.get('it');                                // v1.<pseudonym>.<udløb>.<scope>.<Ed25519-sig> (auth)
+// Manipuleret-nøgle-/endpoint-forsvar: pin er autoritativ; override KUN på TEST_HOST (som ?testday).
+const ingestPkOverride  = TEST_HOST ? params.get('ingestpk')  : null;
+const ingestApiOverride = TEST_HOST ? params.get('ingestapi') : null;
+function ingestRecipient() { return ingestPkOverride || INGEST_PUBKEY; }
+function ingestBase() { return (ingestApiOverride || INGEST_API_BASE || '').replace(/\/+$/, ''); }
+function autoSendEnabled() {
+  return !!(ingestToken && /^v1\.[^.]+\.\d+\.[^.]+\.[^.]+$/.test(ingestToken) && ingestBase());
+}
+// Returnerer 'sendt' | null (null → kalderen falder til leverKrypteretFil download/del).
+async function sendTilIngest(payload, schemaType) {
+  try {
+    const container = await mentemEncrypt(ingestRecipient(), payload, INGEST_KEY_ID);   // til INGEST-nøgle, IKKE pinned journal-nøgle
+    const body = JSON.stringify({
+      token: ingestToken, envelopeVersion: 1,
+      submissionUUID: (crypto.randomUUID && crypto.randomUUID()) || (String(Date.now()) + Math.random()),
+      schemaType, size: 0, ciphertext: JSON.stringify(container),
+    });
+    const r = await fetch(ingestBase() + '/submit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+    const j = await r.json().catch(() => ({}));
+    return (r.ok && (j.status === 'received' || j.duplicate)) ? 'sendt' : null;
+  } catch (e) { console.error('[mentem] auto-send fejlede -> fallback', e); return null; }
+}
+// #F privatlivstekst: når auto-send er aktiv, lover vi "sendes direkte" i st.f.
+// "intet gemmes / du sender selv". Gated på autoSendEnabled → prod-tekst uændret uden it=.
+function gatePrivacyTekst() {
+  if (!autoSendEnabled()) return;
+  document.querySelectorAll('.disc-body[data-autosend]').forEach((el) => { el.innerHTML = el.getAttribute('data-autosend'); });
+}
 
 // SIKKERHED: krypteringsnøglen er PINNED i koden (ikke fra ?pk=). Et ?pk= i
 // URL'en bruges KUN som cross-check — afviger det fra pinned nøgle, nægter vi
@@ -595,10 +637,10 @@ async function shareEncrypted() {
   status.style.color = 'var(--accent)';
   status.textContent = 'Krypterer …';
   // TRIN 1 — kryptering (kun en ægte krypto-fejl må vise krypto-fejl-beskeden).
-  let containerJSON;
+  let containerJSON, payload;
   try {
     const name = (document.getElementById('patient-name').value || '').trim();
-    const payload = buildPayload(answers, { name, sessionNumber: sessionN });
+    payload = buildPayload(answers, { name, sessionNumber: sessionN });
     containerJSON = JSON.stringify(await mentemEncrypt(keyCheck.key, payload, keyCheck.keyId)); // ALTID pinned key
   } catch (e) {
     console.error('[mentem] kryptering fejlede', e && e.name, e && e.message, e);
@@ -606,6 +648,11 @@ async function shareEncrypted() {
     status.textContent = 'Noget gik galt under kryptering. Prøv igen, eller kontakt din psykolog.';
     btn.disabled = false;
     return;
+  }
+  // AUTO-SEND (#1/#2): kun it=-links. Lykkes → færdig; ellers fald til download/del.
+  if (autoSendEnabled()) {
+    const ok = await sendTilIngest(payload, 'batteri');
+    if (ok) { status.style.color = 'var(--accent)'; status.textContent = 'Dine svar er sendt sikkert og krypteret til din psykolog. Tak!'; return; }
   }
   // TRIN 2 — levering (deling el. robust download/kopiér-fallback; aldrig fastlås).
   const filename = `mentem-skema-${new Date().toISOString().slice(0, 10)}.json`;
@@ -767,7 +814,7 @@ function renderDiaryWelcome() {
   //   diary-privacy tømmes for at undgå dublet. Se renderDiaryConsent().
   const priv = document.getElementById('diary-privacy');
   if (priv) priv.innerHTML = LOCAL_ONLY
-    ? chipIcon('laas') + '<strong>Privatliv:</strong> Dine svar gemmes kun i denne browser på din egen enhed — de sendes ikke nogen steder undervejs. Udfyld alle dagene på den samme enhed. Når du er klar, samles svarene i én krypteret fil, som kun din psykolog kan åbne, og du sender den selv til sidst. <strong>Bemærk:</strong> rydder du browseren eller skifter enhed, mistes de dage, du har gemt, og du må starte forfra.'
+    ? chipIcon('laas') + '<strong>Privatliv:</strong> Dine svar gemmes kun i denne browser på din egen enhed — de sendes ikke nogen steder undervejs. Udfyld alle dagene på den samme enhed. Når du er klar, ' + (autoSendEnabled() ? 'sendes de sikkert og krypteret direkte til din psykolog, så kun din psykolog kan åbne dem.' : 'samles svarene i én krypteret fil, som kun din psykolog kan åbne, og du sender den selv til sidst.') + ' <strong>Bemærk:</strong> rydder du browseren eller skifter enhed, mistes de dage, du har gemt, og du må starte forfra.'
     : '';
   renderDiaryConsent();
 
@@ -1355,15 +1402,17 @@ function finishDiary() {
 
 // Byg krypteret container-JSON for hele den akkumulerede dagbog. `afslut` sætter
 // endedAt (terminal). Server-recovery (lokal tom + recoveredBlob) → den blob.
-async function byggDiaryContainerJSON(afslut) {
-  if (diaryState.entries.length === 0 && recoveredBlob) return recoveredBlob;
-  const payload = buildPayloadCSD(diaryState.entries, {
+function byggDiaryPayload(afslut) {
+  return buildPayloadCSD(diaryState.entries, {
     startedAt: diaryState.startedAt, plannedDays: diaryState.plannedDays,
     forloebId: draftToken || null, contentVersion: diaryState.contentVersion,
     endedAt: afslut ? new Date().toISOString().replace(/\.\d{3}Z$/, 'Z') : null,
     consent: diaryState.consent || null,   // D2: samtykke-record med i delt fil (= psykologens autoritative kopi)
   });
-  return JSON.stringify(await mentemEncrypt(keyCheck.key, payload, keyCheck.keyId));   // ALTID pinned key
+}
+async function byggDiaryContainerJSON(afslut) {
+  if (diaryState.entries.length === 0 && recoveredBlob) return recoveredBlob;
+  return JSON.stringify(await mentemEncrypt(keyCheck.key, byggDiaryPayload(afslut), keyCheck.keyId));   // ALTID pinned key
 }
 
 // TERMINAL: afslut + send. Rydder lokal kladde + sletter server-kladde.
@@ -1393,6 +1442,19 @@ async function shareDiaryEncrypted() {
     status.textContent = 'Noget gik galt under kryptering. Prøv igen, eller kontakt din psykolog.';
     btn.disabled = false;
     return;
+  }
+  // AUTO-SEND (#1/#2): kun it=-links + når der findes plaintext-entries (recoveredBlob-
+  // genoprettelse har ingen plaintext → kan ikke auto-sendes, falder til fil-fallback).
+  if (autoSendEnabled() && diaryState.entries.length > 0) {
+    const ok = await sendTilIngest(byggDiaryPayload(true), 'soevndagbog');
+    if (ok) {
+      status.style.color = 'var(--accent)';
+      status.textContent = 'Dine svar er sendt sikkert og krypteret til din psykolog. Tak!';
+      try { await deleteDraft(); } catch (e) { /* server-kladde-sletning er best-effort */ }
+      clearCSDState();
+      recoveredBlob = null;
+      return;
+    }
   }
   // TRIN 2 — levering (deling el. robust fallback). Filen ER nu produceret →
   // ryd kladde uanset om den blev native-delt eller hentet (klienten HAR filen).
@@ -1431,6 +1493,16 @@ async function sendDiaryOpdatering() {
     status.textContent = 'Noget gik galt. Prøv igen, eller kontakt din psykolog.';
     btn.disabled = false;
     return;
+  }
+  // AUTO-SEND (#1/#2): ikke-terminal → ryd ALDRIG kladden; knap forbliver brugbar.
+  if (autoSendEnabled() && diaryState.entries.length > 0) {
+    const ok = await sendTilIngest(byggDiaryPayload(false), 'soevndagbog');
+    if (ok) {
+      status.style.color = 'var(--accent)';
+      status.textContent = 'Opdateringen er sendt sikkert og krypteret til din psykolog. Tak! Du kan roligt fortsætte dagbogen.';
+      btn.disabled = false;
+      return;
+    }
   }
   // TRIN 2 — levering (deling el. robust fallback).
   const r = await leverKrypteretFil(containerJSON, `mentem-soevndagbog-${todayISO()}.json`, 'Søvndagbog-opdatering til min psykolog', status);
@@ -1595,11 +1667,11 @@ async function shareBaselineEncrypted() {
   status.style.color = 'var(--accent)';
   status.textContent = 'Krypterer …';
   // TRIN 1 — kryptering (kun ægte krypto-fejl viser krypto-fejl-beskeden).
-  let containerJSON;
+  let containerJSON, payload;
   try {
     const nameEl = document.getElementById('patient-name');
     const name = ((nameEl && nameEl.value) || '').trim();
-    const payload = buildPayloadBaseline(baselineDraft, { name });
+    payload = buildPayloadBaseline(baselineDraft, { name });
     containerJSON = JSON.stringify(await mentemEncrypt(keyCheck.key, payload, keyCheck.keyId)); // ALTID pinned key
   } catch (e) {
     console.error('[mentem] kryptering fejlede (baseline)', e && e.name, e && e.message, e);
@@ -1607,6 +1679,11 @@ async function shareBaselineEncrypted() {
     status.textContent = 'Noget gik galt under kryptering. Prøv igen, eller kontakt din psykolog.';
     btn.disabled = false;
     return;
+  }
+  // AUTO-SEND (#1/#2): kun it=-links. Lykkes → færdig; ellers fald til download/del.
+  if (autoSendEnabled()) {
+    const ok = await sendTilIngest(payload, 'soevn-baseline');
+    if (ok) { status.style.color = 'var(--accent)'; status.textContent = 'Dine svar er sendt sikkert og krypteret til din psykolog. Tak!'; return; }
   }
   // TRIN 2 — levering (deling el. robust download/kopiér-fallback; aldrig fastlås).
   const filename = `mentem-soevn-baseline-${new Date().toISOString().slice(0, 10)}.json`;
@@ -1624,6 +1701,7 @@ if (baselineId) {
   document.getElementById('share-btn').addEventListener('click', shareEncrypted);
   renderWelcome();
 }
+gatePrivacyTekst();   // #F: flip statiske privatlivs-discl. til "sendes direkte" når it= aktiv (no-op uden it=)
 
 // ════════════════════════════════════════════════════════════════════════
 //  A11Y — tekststørrelse-toggle + "Få læst op" (spec V15.61, delt chrome)
