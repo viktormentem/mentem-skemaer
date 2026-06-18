@@ -121,6 +121,9 @@ let chromium;
 try { ({ chromium } = await import(path.join(PW_DIR, 'playwright', 'index.mjs'))); }
 catch { ({ chromium } = (await import(path.join(PW_DIR, 'playwright', 'index.js'))).default); }
 
+const SHOT_DIR = process.env.SHOT_DIR || '';   // sat → gem See-it-screenshots af begge tilstande
+async function shot(page, name) { if (SHOT_DIR) { try { await page.screenshot({ path: path.join(SHOT_DIR, name), fullPage: true }); log('   shot ->', name); } catch {} } }
+
 const browser = await chromium.launch({ headless: true });
 log(`\nmentem auto-send synthetic E2E`);
 log(`site=${SITE}  worker=${WORKER_BASE}  pseudonym=${pseudonymID}\n`);
@@ -141,6 +144,7 @@ log(`site=${SITE}  worker=${WORKER_BASE}  pseudonym=${pseudonymID}\n`);
   }, { timeout: 8000 }).catch(() => {});
   const statusTxt = await page.$eval('#done-status', (e) => e.textContent || '');
   const hasDl = await page.$eval('#done-status', (e) => !!e.querySelector('a[download]'));
+  await shot(page, 'autosend-PROD-fallback-uden-it.png');
   check(posts === 0, 'PROD (uden it=): 0 POST affyret (prod-adfærd uændret)', `posts=${posts}`);
   check(hasDl, 'PROD: fil-fallback rendrer download-anker (download/del-sti)', statusTxt.slice(0, 60));
   check(!/sendt sikkert/i.test(statusTxt), 'PROD: status nævner IKKE auto-send', statusTxt.slice(0, 60));
@@ -163,6 +167,7 @@ let autoStatus = '';
     return s && /sendt sikkert og krypteret/i.test(s.textContent || '');
   }, { timeout: 10000 }).catch(() => {});
   autoStatus = await page.$eval('#done-status', (e) => e.textContent || '');
+  await shot(page, 'autosend-AUTO-sendt-sikkert-med-it.png');
   check(submitPosts >= 1, 'AUTO (med it=): POST /submit affyret', `submitPosts=${submitPosts}`);
   check(/sendt sikkert og krypteret/i.test(autoStatus), 'AUTO: status = "sendt sikkert og krypteret"', autoStatus.slice(0, 70));
   await ctx.close();
