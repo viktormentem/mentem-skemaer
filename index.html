@@ -342,12 +342,12 @@ const testDayOffset = (TEST_HOST && params.get('testday')) ? (parseInt(params.ge
 // krypterer til en SEPARAT ingest-X25519-HPKE-nøgle (INGEST_PUBKEY/INGEST_KEY_ID,
 // hash-pin) — IKKE journal-nøglen 8aa536a1 (download/del-stien). Konvolutten
 // dekrypteres modtager-side med ingest-privatnøglen, ikke journal-nøglen.
-// SYNTETISK pin nu (worker ej deployet) → ægte INGEST_PUBKEY sættes ved go-live
-// (rotation = redeploy web med ny pin, spec §4). it=-links møntes først ved
-// Viktor-GO + G3 grøn → ingen prod-adfærdsændring før da.
-const INGEST_API_BASE = 'https://ingest.mycel.dk';                   // contracted domæne (worker p.t. ikke deployet → POST fejler → fallback)
-const INGEST_PUBKEY   = '4NtWE2ZkITiNAkpXPVksNArWrnaTXaG0u0aJRhEHYRc'; // SYNTETISK hash-pin; ægte sættes ved go-live
-const INGEST_KEY_ID   = 'cce9b373';                                  // = første 8 hex af SHA-256(rå ingest-pubkey)
+// ÆGTE prod-pin nu (B4 go-live 2026-06-18: worker deployet, D1-EU). Rotation =
+// redeploy web med ny pin (spec §4). it=-links møntes først ved Viktor-GO + G3
+// grøn → ingen prod-adfærdsændring uden it= før da.
+const INGEST_API_BASE = 'https://ingest.mycel.dk';                   // contracted domæne (worker LIVE på D1-EU; POST kun ved gyldigt it=)
+const INGEST_PUBKEY   = 't6ZBVtH41pVBECxELB1eBH6WvEgdguw9HLEUOMdl_Ec'; // ÆGTE prod ingest-X25519-pubkey (B4)
+const INGEST_KEY_ID   = '2af28306';                                  // = første 8 hex af SHA-256(rå ingest-pubkey)
 const ingestToken = params.get('it');                                // v1.<pseudonym>.<udløb>.<scope>.<Ed25519-sig> (auth)
 // Manipuleret-nøgle-/endpoint-forsvar: pin er autoritativ; override KUN på TEST_HOST (som ?testday).
 const ingestPkOverride  = TEST_HOST ? params.get('ingestpk')  : null;
