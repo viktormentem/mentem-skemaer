@@ -476,20 +476,23 @@ export function buildPayloadBaseline(answers, meta = {}) {
 
 export const ANMOD_SCHEMA_TYPE = 'forloebs-anmodning';   // §1 AUTORITATIV wire-streng (ren ASCII, ø→oe)
 
-// §2 enums (wire-værdier — IKKE visningstekst)
+// §2 enums (wire-værdier — IKKE visningstekst). v2: forloebstype "individuel" (v1 var "individuelt");
+// holdDag += "fredag" (Westergaard-fast).
 export const ANMOD_GRUNDLAG      = ['vestegnsklinikken', 'westergaard', 'forsikring', 'egenbetaler'];
-export const ANMOD_FORLOEBSTYPE  = ['gruppe', 'individuelt'];
-export const ANMOD_HOLDDAG       = ['tirsdag', 'onsdag', 'torsdag'];          // KUN ved forloebstype=gruppe
-export const ANMOD_HOLDTID       = ['14:00', '15:30'];                        // KUN ved forloebstype=gruppe
+export const ANMOD_FORLOEBSTYPE  = ['gruppe', 'individuel'];
+export const ANMOD_HOLDDAG       = ['tirsdag', 'onsdag', 'torsdag', 'fredag']; // værdi grundlag-betinget (se buildAnmodKonvolut)
+export const ANMOD_HOLDTID       = ['14:00', '15:30'];                         // KUN ved vestegnsklinikken+gruppe
+// Grundlag der STILLER forløbstype-spørgsmålet i UI (ellers auto-"individuel").
+export const ANMOD_SPOERG_FORLOEBSTYPE = ['vestegnsklinikken', 'westergaard'];
 
 // §6 art.9-deny — disse keys må ALDRIG bære helbreds-/CPR-data; til stede => hård parse-fejl.
 export const ANMOD_ART9_DENY = ['cpr', 'helbred', 'diagnose', 'diagnosis', 'medicin', 'sygdom', 'symptom', 'health', 'journal'];
 
 // §2 visningsnavne (korrekt æøå — IKKE wire-værdier). Single source for web + app.
 export const ANMOD_DISPLAY = {
-  grundlag:     { vestegnsklinikken: 'Vestegnsklinikken (henvist)', westergaard: 'Westergaard Psykiatri (henvist)', forsikring: 'Via forsikring', egenbetaler: 'Egenbetaler' },
-  forloebstype: { gruppe: 'Gruppeforløb', individuelt: 'Individuelt forløb' },
-  holdDag:      { tirsdag: 'Tirsdag', onsdag: 'Onsdag', torsdag: 'Torsdag' },
+  grundlag:     { vestegnsklinikken: 'Vestegnsklinikken', westergaard: 'Westergaard Psykiatri', forsikring: 'Via forsikring', egenbetaler: 'Egenbetaler' },
+  forloebstype: { gruppe: 'Gruppeforløb', individuel: 'Individuelt forløb' },
+  holdDag:      { tirsdag: 'Tirsdag', onsdag: 'Onsdag', torsdag: 'Torsdag', fredag: 'Fredag' },
   holdTid:      { '14:00': 'kl. 14:00', '15:30': 'kl. 15:30' },
 };
 
@@ -527,25 +530,50 @@ export function buildAnmodKonvolut(input = {}) {
     if (ANMOD_ART9_DENY.includes(String(k).toLowerCase())) throw anmodFejl('art9Forbudt', k);
   }
 
+  // Rækkefølge 1:1 med Swift-parseren (ForloebsAnmodningKonvolut.parse): fornavn/efternavn →
+  // grundlag → atten → samtykke → forloebstype → hold-slot (samme fejl-præcedens).
   const data = { type: ANMOD_SCHEMA_TYPE };                 // informativ mirror (parseren keyer på konvolut-schemaType)
-  data.fornavn      = anmodText(input.fornavn, 'fornavn');
-  data.efternavn    = anmodText(input.efternavn, 'efternavn');
-  data.grundlag     = anmodEnum(input.grundlag, ANMOD_GRUNDLAG, 'grundlag');
-  data.forloebstype = anmodEnum(input.forloebstype, ANMOD_FORLOEBSTYPE, 'forloebstype');
+  data.fornavn   = anmodText(input.fornavn, 'fornavn');
+  data.efternavn = anmodText(input.efternavn, 'efternavn');
+  data.grundlag  = anmodEnum(input.grundlag, ANMOD_GRUNDLAG, 'grundlag');
 
-  if (data.forloebstype === 'gruppe') {
-    data.holdDag = anmodEnum(input.holdDag, ANMOD_HOLDDAG, 'holdDag');   // påkrævet HVIS gruppe
-    data.holdTid = anmodEnum(input.holdTid, ANMOD_HOLDTID, 'holdTid');
-  } else {
-    // individuelt: holdDag/holdTid er FORBUDT (slot er gruppe-eksklusiv, §2).
-    if (input.holdDag != null && input.holdDag !== '') throw anmodFejl('slot_forbudt_individuelt', 'holdDag');
-    if (input.holdTid != null && input.holdTid !== '') throw anmodFejl('slot_forbudt_individuelt', 'holdTid');
-  }
-
-  if (input.atten !== true)        throw anmodFejl('atten_paakraevet', 'atten');          // 18+ gate, MÅ være true
+  if (input.atten !== true)         throw anmodFejl('atten_paakraevet', 'atten');           // 18+ gate, MÅ være true
   data.atten = true;
   if (input.anmodSamtykke !== true) throw anmodFejl('samtykke_paakraevet', 'anmodSamtykke'); // art.9(2)(a), MÅ være true
   data.anmodSamtykke = true;
+
+  // v2 forløbstype — grundlag-betinget: REQUIRED ved vestegns/westergaard, ellers auto-"individuel".
+  const spørger = ANMOD_SPOERG_FORLOEBSTYPE.includes(data.grundlag);
+  if (spørger) {
+    data.forloebstype = anmodEnum(input.forloebstype, ANMOD_FORLOEBSTYPE, 'forloebstype');
+  } else {
+    if (input.forloebstype != null && input.forloebstype !== '' && input.forloebstype !== 'individuel') {
+      throw anmodFejl('forloebstype_ikke_tilladt', 'forloebstype');
+    }
+    data.forloebstype = 'individuel';
+  }
+
+  // v2 hold-slot — afhænger af BÅDE forloebstype og grundlag (kryds-felt, fail-loud).
+  const dag = (input.holdDag != null && input.holdDag !== '') ? input.holdDag : null;
+  const tid = (input.holdTid != null && input.holdTid !== '') ? input.holdTid : null;
+  if (data.forloebstype === 'gruppe') {
+    if (dag === null) throw anmodFejl('manglende_hold_ved_gruppe', 'holdDag');
+    if (!ANMOD_HOLDDAG.includes(dag)) throw anmodFejl('ugyldig_enum', 'holdDag');
+    if (data.grundlag === 'vestegnsklinikken') {
+      if (dag === 'fredag') throw anmodFejl('ugyldig_holddag_for_grundlag', 'holdDag');   // fredag = Westergaard-eksklusiv
+      if (tid === null) throw anmodFejl('paakraevet_mangler', 'holdTid');                 // holdTid REQUIRED her
+      if (!ANMOD_HOLDTID.includes(tid)) throw anmodFejl('ugyldig_enum', 'holdTid');
+      data.holdDag = dag; data.holdTid = tid;
+    } else { // westergaard
+      if (dag !== 'fredag') throw anmodFejl('ugyldig_holddag_for_grundlag', 'holdDag');   // fast fredag
+      if (tid !== null) throw anmodFejl('holdtid_forbudt', 'holdTid');                    // Westergaard har ingen tids-valg
+      data.holdDag = 'fredag';
+    }
+  } else {
+    // individuel: holdDag/holdTid FORBUDT (slot er gruppe-eksklusiv, §2).
+    if (dag !== null) throw anmodFejl('slot_forbudt_individuelt', 'holdDag');
+    if (tid !== null) throw anmodFejl('slot_forbudt_individuelt', 'holdTid');
+  }
 
   // Valgfri: tom/whitespace => behandles som fraværende (udeladt af payload).
   if (typeof input.kontakt === 'string' && input.kontakt.trim()) data.kontakt = input.kontakt.trim();
