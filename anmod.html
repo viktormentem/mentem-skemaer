@@ -269,7 +269,7 @@ const ingestPkOverride  = TEST_HOST ? params.get('ingestpk')  : null;
 function ingestBase()      { return (ingestApiOverride || INGEST_API_BASE || '').replace(/\/+$/, ''); }
 function ingestRecipient() { return ingestPkOverride || INGEST_PUBKEY; }
 
-const PRIVATLIV_URL = '#privatlivspolitik-todo';   // dp.dk-skabelon-link-TODO (interim-placeholder)
+const PRIVATLIV_URL = 'https://psykologviktornielsen.dk/privatlivspolitik.html';   // live v2-politik (publiceret 2026-06-19; §2 dækker anmod-stadiet)
 
 function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 // §2b samtykke-ordlyd PRÆCIST (wording-version v2-2026-06-19, em-dash-fri); [privatlivspolitikken] → link.
