@@ -107,6 +107,14 @@
   .diary-consent-label input { margin-top:3px; width:18px; height:18px; flex:none; cursor:pointer; }
   .diary-consent-status { margin:10px 0 0; font-size:13px; color:var(--muted); }
   .footer-credit { font-size:11px; color:var(--muted); margin-top:20px; line-height:1.5; text-align:center; }
+  /* Patientsikkerhed: diskret, ikke-alarmerende "Akut hjælp"-boks — altid findbar i bunden af hver skærm. */
+  .akut-hjaelp { background:var(--card); border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:8px; padding:13px 16px; margin-top:26px; text-align:left; font-size:13px; color:var(--ink); line-height:1.55; }
+  .akut-hjaelp-head { display:flex; align-items:center; gap:7px; font-weight:600; color:var(--accent); margin-bottom:6px; }
+  .akut-hjaelp ul { margin:0; padding-left:18px; }
+  .akut-hjaelp li { margin:3px 0; }
+  .akut-hjaelp a { color:var(--accent); }
+  .item9-nudge { margin-top:10px; padding:10px 13px; background:var(--accent-light); border-radius:8px; font-size:13px; color:var(--ink); line-height:1.5; }
+  .item9-nudge a { color:var(--accent); font-weight:600; cursor:pointer; }
 
   @keyframes fadeIn { from{opacity:0;transform:translateY(14px);} to{opacity:1;transform:translateY(0);} }
 
@@ -190,7 +198,7 @@
     <div class="schema-cards" id="schema-cards"></div>
     <button class="btn-primary" id="start-btn" disabled>Start</button>
     <p class="start-note">Til sidst får du én fil, som du nemt deler med din psykolog — vi viser dig hvordan.</p>
-    <div class="disclaimer"><span aria-hidden="true" style="display:inline-flex;width:1em;height:1em;vertical-align:-2px;margin-right:5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><span class="disc-body" data-autosend="<strong>Privatliv:</strong> Du udfylder alt i din egen browser. Når du er færdig, sendes svarene sikkert og krypteret direkte til din psykolog — kun din psykolog kan åbne dem."><strong>Privatliv:</strong> Du udfylder alt i din egen browser. Når du er færdig, samles svarene i én krypteret fil, som kun din psykolog kan åbne. Intet gemmes på en server, og du sender selv filen.</span></div>
+    <div class="disclaimer"><span aria-hidden="true" style="display:inline-flex;width:1em;height:1em;vertical-align:-2px;margin-right:5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><span class="disc-body" data-autosend="<strong>Privatliv:</strong> Du udfylder alt i din egen browser. Når du er færdig, sendes svarene sikkert og krypteret direkte til din psykolog — kun din psykolog kan åbne dem. Har du det akut svært, skal du ikke vente til samtalen — se Akut hjælp nederst."><strong>Privatliv:</strong> Du udfylder alt i din egen browser. Når du er færdig, samles svarene i én krypteret fil, som kun din psykolog kan åbne. Intet gemmes på en server, og du sender selv filen. Har du det akut svært, skal du ikke vente til samtalen — se Akut hjælp nederst.</span></div>
     <p class="footer-credit">Skemaerne bygger på anerkendte spørgeskemaer (GAD-7, PHQ-9, WHO-5, WSAS), som din psykolog bruger til at følge din udvikling.</p>
     <p class="footer-credit" id="key-fp"></p>
   </div>
@@ -223,7 +231,7 @@
     <p>Dine svar er nu samlet i én krypteret fil. Tryk nedenfor for at sende filen til din psykolog i den samme SMS-tråd, hvor du fik linket.</p>
     <button class="btn-primary" id="share-btn">Send filen til din psykolog</button>
     <div class="done-status" id="done-status"></div>
-    <div class="disclaimer" style="text-align:left;margin-top:28px">Filen indeholder kun dine svar og er krypteret, så kun din psykolog kan læse den. Du får ikke en score eller en vurdering her — det gennemgår I sammen til samtalen.</div>
+    <div class="disclaimer" style="text-align:left;margin-top:28px">Filen indeholder kun dine svar og er krypteret, så kun din psykolog kan læse den. Du får ikke en score eller en vurdering her — det gennemgår I sammen til samtalen. <strong>Har du det akut svært, skal du ikke vente til samtalen</strong> — se Akut hjælp nederst (eller ring 112 / Livslinien 70 201 201).</div>
   </div>
 </div>
 
@@ -273,7 +281,7 @@
     <p class="intro" id="baseline-intro"></p>
     <button class="btn-primary" id="baseline-start-btn">Start</button>
     <p class="start-note">Det tager et par minutter og udfyldes kun denne ene gang.</p>
-    <div class="disclaimer"><span aria-hidden="true" style="display:inline-flex;width:1em;height:1em;vertical-align:-2px;margin-right:5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><span class="disc-body" data-autosend="<strong>Privatliv:</strong> Du udfylder alt i din egen browser. Til sidst sendes svarene sikkert og krypteret direkte til din psykolog — kun din psykolog kan åbne dem."><strong>Privatliv:</strong> Du udfylder alt i din egen browser. Til sidst samles svarene i én krypteret fil, som kun din psykolog kan åbne, og du sender den selv. Intet gemmes på en server.</span></div>
+    <div class="disclaimer"><span aria-hidden="true" style="display:inline-flex;width:1em;height:1em;vertical-align:-2px;margin-right:5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><span class="disc-body" data-autosend="<strong>Privatliv:</strong> Du udfylder alt i din egen browser. Til sidst sendes svarene sikkert og krypteret direkte til din psykolog — kun din psykolog kan åbne dem. Har du det akut svært, skal du ikke vente til samtalen — se Akut hjælp nederst."><strong>Privatliv:</strong> Du udfylder alt i din egen browser. Til sidst samles svarene i én krypteret fil, som kun din psykolog kan åbne, og du sender den selv. Intet gemmes på en server. Har du det akut svært, skal du ikke vente til samtalen — se Akut hjælp nederst.</span></div>
     <p class="footer-credit" id="baseline-key-fp"></p>
   </div>
 </div>
@@ -421,6 +429,42 @@ const iconSVG = (key) => ICONS[key] || SVG('<circle cx="12" cy="12" r="8"/>');
 // Lille inline-ikon foran chip-tekst; aria-hidden så oplæsning kun læser navnet.
 const chipIcon = (key) => `<span aria-hidden="true" style="display:inline-flex;width:16px;height:16px;vertical-align:-3px;margin-right:6px">${iconSVG(key)}</span>`;
 
+// ── PATIENTSIKKERHED: "Akut hjælp"-boks (review §1/§7 P0) ────────────────────
+// Diskret, ikke-alarmerende, men ALTID findbar i bunden af hver skærm (alle skemaer).
+// Egne inline-streg-ikoner (aldrig emoji). Ressourcer verificeret-aktuelle 19/6.
+// Telefon-ikon i samme streg-stil som husets øvrige ikoner.
+const AKUT_TELEFON_SVG = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92Z"/></svg>';
+const AKUT_HJAELP_HTML = `
+  <div class="akut-hjaelp" role="complementary" aria-label="Akut hjælp">
+    <div class="akut-hjaelp-head"><span aria-hidden="true" style="display:inline-flex">${AKUT_TELEFON_SVG}</span>Akut hjælp</div>
+    <ul>
+      <li>Akut fare lige nu: ring <a href="tel:112">112</a></li>
+      <li>Livslinien: <a href="tel:70201201">70 201 201</a> (hver dag kl. 11&ndash;05, anonym og gratis &middot; <a href="https://livslinien.dk" target="_blank" rel="noopener">chat: livslinien.dk</a>)</li>
+      <li>Kontakt din psykolog, Viktor Nielsen, direkte</li>
+    </ul>
+  </div>`;
+// Indsæt boksen i bunden af HVER skærm-container (intro, formular og send — alle flows).
+function injectAkutHjaelp() {
+  document.querySelectorAll('.screen').forEach(s => {
+    if (!s.querySelector('.akut-hjaelp')) s.insertAdjacentHTML('beforeend', AKUT_HJAELP_HTML);
+  });
+}
+// PHQ-9 item-9-nudge: blid linje under item 9 der peger på boksen (≥1). Idempotent.
+function toggleItem9Nudge(block, show) {
+  let n = block.nextElementSibling;
+  const erNudge = n && n.classList && n.classList.contains('item9-nudge');
+  if (show && !erNudge) {
+    block.insertAdjacentHTML('afterend', '<div class="item9-nudge">Tak, fordi du svarer ærligt. Hvis det er svært lige nu, så se <a data-akut-scroll>Akut hjælp</a> nederst på siden &mdash; du behøver ikke vente til samtalen.</div>');
+    const link = block.nextElementSibling.querySelector('[data-akut-scroll]');
+    if (link) link.addEventListener('click', () => {
+      const box = block.closest('.screen')?.querySelector('.akut-hjaelp') || document.querySelector('.akut-hjaelp');
+      if (box) box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  } else if (!show && erNudge) {
+    n.remove();
+  }
+}
+
 // ── VELKOMST ─────────────────────────────────────────────────────────────
 // Kortene er en INFORMATIV liste over det batteri din psykolog har valgt —
 // ikke en valgbar checklist (ingen flueben/valg-affordance, R5/anti-priming).
@@ -501,6 +545,8 @@ function radioBlock(id, i, q, options) {
       lbl.classList.add('checked');
       block.classList.add('answered');
       updateProgress();
+      // Patientsikkerhed: PHQ-9 item 9 (selvmordstanker, index 8) ≥1 → vis blid nudge mod Akut hjælp-boksen.
+      if (id === 'phq9' && i === 8) toggleItem9Nudge(block, Number(opt.value) >= 1);
     });
     group.appendChild(lbl);
   });
@@ -1692,6 +1738,7 @@ async function shareBaselineEncrypted() {
 }
 
 // ── BOOTSTRAP: baseline-flow ELLER dagbog-flow ELLER spørgeskema-flow ──────
+injectAkutHjaelp();   // patientsikkerhed: Akut hjælp-boks i bunden af hver skærm (alle flows)
 if (baselineId) {
   runBaseline(baselineId);
 } else if (diaryId) {
