@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="Anmod om adgang til et forløb hos Psykolog Viktor Nielsen. Dine oplysninger krypteres lokalt i din browser og deles kun med psykologen.">
 <meta name="author" content="Psykolog Viktor Nielsen">
-<meta property="og:title" content="Psykolog Viktor Nielsen — Anmod om forløbsadgang">
+<meta property="og:title" content="Psykolog Viktor Nielsen · Anmod om forløbsadgang">
 <meta property="og:description" content="Send en anmodning om at komme i forløb. Dine oplysninger krypteres i din browser.">
 <meta property="og:type" content="website">
 <meta name="robots" content="noindex">
-<title>Anmod om forløbsadgang — Psykolog Viktor Nielsen</title>
+<title>Anmod om forløbsadgang · Psykolog Viktor Nielsen</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
   :root {
@@ -56,11 +56,11 @@
 
   .slot-grid { display:grid; gap:18px; }
   .slot-sub-label { font-size:13px; font-weight:500; color:var(--muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.05em; }
-  /* Fast-info (Westergaard fredag) — vist, ikke et valg */
+  /* Fast-info (Westergaard fredag), vist, ikke et valg */
   .fixed-info { display:flex; align-items:center; gap:12px; padding:14px 16px; border:1.5px solid var(--accent); border-radius:8px; background:var(--accent-light); font-size:15px; font-weight:500; }
   .fixed-info svg { width:20px; height:20px; flex-shrink:0; color:var(--accent); }
 
-  /* Samtykke-blok — to ADSKILTE afkryds-felter (atten + anmodSamtykke), hver sin handling. */
+  /* Samtykke-blok: to ADSKILTE afkryds-felter (atten + anmodSamtykke), hver sin handling. */
   .consent-section { margin:30px 0 8px; }
   .consent-row { display:flex; gap:14px; align-items:flex-start; background:var(--card); border:1.5px solid var(--border); border-radius:10px; padding:16px 18px; margin-bottom:14px; cursor:pointer; }
   .consent-row.checked { border-color:var(--accent); background:var(--accent-light); }
@@ -138,23 +138,22 @@
       <div class="field-block" data-field="henvisning_psykiater" id="block-henvisning" style="display:none">
         <div class="field-head">
           <span class="field-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v6a4 4 0 0 0 8 0V3"/><path d="M10 13v3a4 4 0 0 0 8 0v-2"/><circle cx="18" cy="13" r="2"/></svg></span>
-          <span class="field-label">Hvilken psykiater har henvist dig?<span class="field-optional">valgfrit</span></span>
+          <span class="field-label">Hvilken psykiater er din henvisning hos?<span class="field-optional">valgfrit</span></span>
         </div>
-        <p class="field-hint">Hvis du ved det. Ellers vælg "Ved ikke" — det er helt fint.</p>
         <div class="radio-group" id="grp-henvisning"></div>
       </div>
 
-      <!-- Q2: forloeb_tilbudt (KUN psykiater-grundlag; påkrævet) — semantik = TILBUDT -->
+      <!-- Q2: forloeb_tilbudt (KUN psykiater-grundlag; påkrævet); semantik = TILBUDT -->
       <div class="field-block" data-field="forloeb_tilbudt" id="block-tilbudt" style="display:none">
         <div class="field-head">
           <span class="field-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="9" r="2.4"/><circle cx="16" cy="9" r="2.4"/><path d="M3.5 18a4.5 4.5 0 0 1 9 0M11.5 18a4.5 4.5 0 0 1 9 0"/></svg></span>
           <span class="field-label">Er du tilbudt et bestemt forløb?</span>
         </div>
-        <p class="field-hint">Det, psykiateren har tilbudt dig — ikke nødvendigvis det, du selv ønsker. Er du i tvivl, så vælg "Ved ikke".</p>
+        <p class="field-hint">Vælg det forløb psykiateren har tilbudt dig.</p>
         <div class="radio-group" id="grp-tilbudt"></div>
       </div>
 
-      <!-- Q3: tid_praeference (KUN forloeb_tilbudt=gruppe) — multi-select tilgængelighed -->
+      <!-- Q3: tid_praeference (KUN forloeb_tilbudt=gruppe); multi-select tilgængelighed -->
       <div class="field-block" data-field="tid_praeference" id="block-tid" style="display:none">
         <div class="field-head">
           <span class="field-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 9h16M8 3v4M16 3v4"/><path d="M9 14l2 2 4-4"/></svg></span>
@@ -177,14 +176,24 @@
         </label>
       </div>
 
-      <!-- Kontakt (valgfri) -->
-      <div class="field-block" data-field="kontakt">
+      <!-- Telefon (PÅKRÆVET): adgangslinket sendes via SMS. -->
+      <div class="field-block" data-field="telefon">
+        <div class="field-head">
+          <span class="field-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 4h3l1.6 4-2 1.4a11 11 0 0 0 5 5l1.4-2 4 1.6v3a2 2 0 0 1-2.2 2A15 15 0 0 1 4.5 6.7 2 2 0 0 1 6.5 4z"/></svg></span>
+          <label class="field-label" for="in-telefon">Telefon</label>
+        </div>
+        <p class="field-hint">Dit mobilnummer. Jeg sender dig et adgangslink på SMS.</p>
+        <input type="tel" id="in-telefon" autocomplete="tel" placeholder="Fx 12 34 56 78">
+      </div>
+
+      <!-- E-mail (valgfri): anbefales for desktop. -->
+      <div class="field-block" data-field="email">
         <div class="field-head">
           <span class="field-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="6" width="16" height="12" rx="2"/><path d="M5 7l7 5 7-5"/></svg></span>
-          <span class="field-label">Telefon eller e-mail<span class="field-optional">valgfrit</span></span>
+          <label class="field-label" for="in-email">E-mail<span class="field-optional">valgfrit</span></label>
         </div>
-        <p class="field-hint">Så psykologen kan kontakte dig om din anmodning, hvis det er nødvendigt.</p>
-        <input type="text" id="in-kontakt" autocomplete="off" placeholder="Fx 12 34 56 78 eller dig@eksempel.dk">
+        <p class="field-hint">Valgfri. Anbefales hvis du vil åbne linket på en computer.</p>
+        <input type="email" id="in-email" autocomplete="email" placeholder="dig@eksempel.dk">
       </div>
 
       <!-- Note (valgfri) -->
@@ -193,11 +202,11 @@
           <span class="field-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h14v16l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M8 9h8M8 12.5h6"/></svg></span>
           <span class="field-label">Besked til psykologen<span class="field-optional">valgfrit</span></span>
         </div>
-        <p class="field-hint">Fx hvem der har henvist dig, eller noget psykologen bør vide. Skriv ikke helbredsoplysninger her — det taler I om, når I mødes.</p>
+        <p class="field-hint">Fx hvem der har henvist dig, eller noget psykologen bør vide. Skriv ikke helbredsoplysninger her. Det taler I om, når I mødes.</p>
         <textarea id="in-note" placeholder="Valgfri besked"></textarea>
       </div>
 
-      <!-- SAMTYKKE — to ADSKILTE afkryds-felter (§2b, ordlyd UÆNDRET) -->
+      <!-- SAMTYKKE: to ADSKILTE afkryds-felter (§2b, ordlyd-version v2-2026-06-19) -->
       <div class="consent-section">
         <label class="consent-row" id="row-atten">
           <input type="checkbox" id="in-atten">
@@ -214,7 +223,7 @@
       <div class="form-error" id="form-error" role="alert"></div>
     </form>
 
-    <div class="disclaimer"><span class="lockicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><strong>Privatliv:</strong> Du udfylder alt i din egen browser. Dine oplysninger krypteres lokalt og sendes direkte til Psykolog Viktor Nielsen — kun psykologen kan åbne dem. Vi indsamler hverken CPR eller helbredsoplysninger i denne formular.</div>
+    <div class="disclaimer"><span class="lockicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><strong>Privatliv:</strong> Du udfylder alt i din egen browser. Dine oplysninger krypteres lokalt og sendes direkte til Psykolog Viktor Nielsen, og kun psykologen kan åbne dem. Vi indsamler hverken CPR eller helbredsoplysninger i denne formular.</div>
     <p class="footer-credit" id="key-fp"></p>
   </div>
 </div>
@@ -240,7 +249,7 @@ import {
 } from './mentem-skema-core.js';
 
 // ── INGEST-endpoint + pin (SAMME som søvndagbog-auto-send, index.html) ─────
-// Web krypterer til den SEPARATE ingest-X25519-HPKE-nøgle (zero-knowledge — siden har KUN
+// Web krypterer til den SEPARATE ingest-X25519-HPKE-nøgle (zero-knowledge: siden har KUN
 // public-nøglen). Konvolutten dekrypteres modtager-side med ingest-privatnøglen.
 // keyId 2af28306 = TRANSPORT-/ingest-skema-nøglen (IKKE 8aa536a1 = dagbog-/journal-download-nøglen).
 const INGEST_API_BASE = 'https://ingest.mycel.dk';
@@ -263,7 +272,7 @@ function ingestRecipient() { return ingestPkOverride || INGEST_PUBKEY; }
 const PRIVATLIV_URL = '#privatlivspolitik-todo';   // dp.dk-skabelon-link-TODO (interim-placeholder)
 
 function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
-// §2b samtykke-ordlyd PRÆCIST (UÆNDRET fra v1-interim); [privatlivspolitikken] → link.
+// §2b samtykke-ordlyd PRÆCIST (wording-version v2-2026-06-19, em-dash-fri); [privatlivspolitikken] → link.
 (function renderConsent() {
   const linked = esc(ANMOD_CONSENT_WORDING).replace(
     '[privatlivspolitikken]',
@@ -376,7 +385,7 @@ for (const [rowId, boxId] of [['row-atten', 'in-atten'], ['row-samtykke', 'in-sa
   const box = document.getElementById(boxId);
   box.addEventListener('change', () => document.getElementById(rowId).classList.toggle('checked', box.checked));
 }
-['in-fornavn', 'in-efternavn', 'in-kontakt', 'in-note'].forEach(id => {
+['in-fornavn', 'in-efternavn', 'in-telefon', 'in-email', 'in-note'].forEach(id => {
   const el = document.getElementById(id);
   el.addEventListener('input', () => { if (el.value.trim()) markAnswered(el.closest('.field-block')); });
 });
@@ -394,7 +403,7 @@ const FELT_BLOCK = {
   fornavn:'fornavn', efternavn:'efternavn', grundlag:'grundlag',
   henvisning_psykiater:'henvisning_psykiater', forloeb_tilbudt:'forloeb_tilbudt',
   tid_praeference:'tid_praeference', tid_dage:'tid_praeference', tid_tider:'tid_praeference',
-  atten:'atten', anmodSamtykke:'samtykke', kontakt:'kontakt', note:'note',
+  atten:'atten', anmodSamtykke:'samtykke', telefon:'telefon', email:'email', note:'note',
 };
 function fejlBesked(e) {
   const f = e.felt;
@@ -402,6 +411,7 @@ function fejlBesked(e) {
     case 'paakraevet_mangler':
       if (f === 'forloeb_tilbudt') return 'Vælg venligst, hvilket forløb du er tilbudt.';
       return `Udfyld venligst ${f === 'fornavn' ? 'dit fornavn' : 'dit efternavn'}.`;
+    case 'telefonPaakraevet':            return 'Udfyld venligst dit telefonnummer. Jeg sender dig et adgangslink på SMS.';
     case 'ugyldig_enum':
       if (f === 'grundlag')             return 'Vælg venligst grundlaget for dit forløb.';
       if (f === 'henvisning_psykiater') return 'Vælg venligst en gyldig psykiater (eller "Ved ikke").';
@@ -409,7 +419,7 @@ function fejlBesked(e) {
       if (f === 'tid_dage')             return 'Vælg venligst gyldige dage.';
       if (f === 'tid_tider')            return 'Vælg venligst gyldige tidspunkter.';
       return 'Et af felterne har en ugyldig værdi.';
-    case 'ugyldig_tid_praeference':      return 'Vælg venligst dage/tidspunkter — eller "Ved ikke endnu".';
+    case 'ugyldig_tid_praeference':      return 'Vælg venligst dage/tidspunkter, eller "Ved ikke endnu".';
     case 'henvisning_ikke_tilladt':      return 'Psykiater-henvisning kan kun vælges, når du er henvist via egen læge.';
     case 'forloeb_tilbudt_ikke_tilladt': return 'Forløbstype kan kun vælges, når du er henvist via egen læge.';
     case 'forloeb_resolved_ikke_tilladt':return 'Forløbet afgøres af psykologen og kan ikke angives her.';
@@ -442,7 +452,8 @@ function laesInput() {
     grundlag,
     atten: document.getElementById('in-atten').checked,
     anmodSamtykke: document.getElementById('in-samtykke').checked,
-    kontakt: document.getElementById('in-kontakt').value,
+    telefon: document.getElementById('in-telefon').value,
+    email: document.getElementById('in-email').value,
     note: document.getElementById('in-note').value,
   };
   // v2.1 adaptiv: psykiater-grenen spørger henvisning (valgfri) + forloeb_tilbudt (req) + tid (kun gruppe).
@@ -494,10 +505,10 @@ form.addEventListener('submit', async (ev) => {
   try {
     const res = await sendTilIngest(konvolut);
     if (res.ok) { visKvittering(''); return; }
-    if (TEST_HOST) { visKvittering('Forhåndsvisning — serveren afviste afsendelsen (skema/host endnu ikke åbnet). Konvolutten blev bygget og krypteret korrekt.'); return; }
+    if (TEST_HOST) { visKvittering('Forhåndsvisning: serveren afviste afsendelsen (skema/host endnu ikke åbnet). Konvolutten blev bygget og krypteret korrekt.'); return; }
     document.getElementById('form-error').textContent = 'Din anmodning kunne ikke sendes lige nu. Prøv venligst igen senere.';
   } catch (e) {
-    if (TEST_HOST) { visKvittering('Forhåndsvisning — ingen server-forbindelse. Konvolutten blev bygget og krypteret korrekt.'); return; }
+    if (TEST_HOST) { visKvittering('Forhåndsvisning: ingen server-forbindelse. Konvolutten blev bygget og krypteret korrekt.'); return; }
     document.getElementById('form-error').textContent = 'Din anmodning kunne ikke sendes lige nu. Tjek din forbindelse og prøv igen.';
   } finally {
     sendBtn.disabled = false; sendBtn.textContent = 'Send anmodning';

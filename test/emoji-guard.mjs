@@ -26,6 +26,14 @@ const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 // anmod.html = forløbs-anmodnings-formular (ANMOD-V1, klient-facing prod-flade).
 export const GUARDED_FILES = ['index.html', 'mentem-skema-core.js', 'anmod.html'];
 
+// ── EM-DASH-SCOPE — kun de C4-navngivne filer (anmod-batch v2.1, 2026-06-19) ──
+// Em-dash-direktivet er globalt ("ALT vi skriver"), men C4-sweepen i denne batch
+// dækker EKSPLICIT kun anmod.html + mentem-skema-core.js. index.html (søvndagbog-
+// host) bærer p.t. ~26 em-dashes i shippet klient-copy → en SEPARAT sweep-opgave
+// (flagget til Viktor; må ikke balloone anmod-PR'en). Når index.html er ren,
+// udvid denne liste til GUARDED_FILES så em-dash-guarden dækker hele fladen.
+export const EMDASH_GUARDED_FILES = ['mentem-skema-core.js', 'anmod.html'];
+
 // ── DETEKTÉR — emoji/dingbat brugt SOM IKON ─────────────────────────────────
 //   1F000–1FAFF  emoji-pictographs (🔊 1F50A · 🔒 1F512 · 🌙 1F319 · 🔎 1F50E · 💊🍷☕ …)
 //   2600–27BF    Misc Symbols + Dingbats (⚠ 26A0 · ☐ 2610 · ✓ 2713 · ✅ 2705 · ✔ 2714 …)
@@ -38,6 +46,16 @@ export const GUARDED_FILES = ['index.html', 'mentem-skema-core.js', 'anmod.html'
 //   2000–206F    generel tegnsætning (– — • osv.).
 const ICON_EMOJI = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{203C}\u{2049}]/u;
 const ICON_EMOJI_G = new RegExp(ICON_EMOJI.source, 'gu');
+
+// ── EM-DASH "—" (U+2014) — forbudt-tegn (Viktor-direktiv 2026-06-19) ─────────
+// Em-dash er et tydeligt AI-tegn → forbudt i AL klient-facing copy (CLAUDE.md:
+// "ALDRIG '—' i NOGEN tekst vi skriver"). Brug komma/punktum/kolon/parentes/bindestreg.
+// Samme comment-strip + allowlist-mekanik som emoji-guard (kommentarer renderer ikke →
+// uden for reglen; bevidst-beholdt em-dash markeres med "emdash-guard:allow: <begrundelse>").
+// NB: midterprik "·", bindestreg "-" og box-streg "─" er IKKE em-dash → tilladt.
+const EMDASH = /—/;
+const EMDASH_G = /—/g;
+const EMDASH_ALLOW_MARKER = 'emdash-guard:allow';
 
 // ── ALLOWLIST — direktivet er "0 emoji SOM IKON", ikke "0 emoji i prosa" ─────
 // Bevidst-beholdt emoji i RENDERET tekst (beskrivende prosa, alert-body, fejrings-tekst,
@@ -121,22 +139,67 @@ export function runGuard(files = GUARDED_FILES) {
   return files.flatMap(scanFile);
 }
 
+// ── Em-dash-scanner (parallelt med scanText; renderet tekst, kommentar-strippet) ──
+export function scanEmDash(text, file = '<input>') {
+  const rawLines = text.split('\n');
+  const rendered = renderableLines(text);
+  const violations = [];
+  for (let i = 0; i < rendered.length; i++) {
+    const matches = rendered[i].match(EMDASH_G);
+    if (!matches) continue;
+    if ((rawLines[i] || '').includes(EMDASH_ALLOW_MARKER)) continue; // bevidst-beholdt em-dash
+    violations.push({
+      file,
+      line: i + 1,
+      glyphs: [describeGlyph('—')],
+      raw: (rawLines[i] || '').trim(),
+    });
+  }
+  return violations;
+}
+
+export function scanFileEmDash(relPath) {
+  const text = readFileSync(join(REPO_ROOT, relPath), 'utf8');
+  return scanEmDash(text, relPath);
+}
+
+export function runEmDashGuard(files = EMDASH_GUARDED_FILES) {
+  return files.flatMap(scanFileEmDash);
+}
+
 // ── Standalone CI-hook ───────────────────────────────────────────────────────
 function isMain() {
   return process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 }
 
 if (isMain()) {
-  const violations = runGuard();
-  if (violations.length === 0) {
-    console.log(`emoji-guard ✓ — 0 emoji-som-ikon i ${GUARDED_FILES.join(', ')}`);
-    process.exit(0);
+  const emojiViolations = runGuard();
+  const emdashViolations = runEmDashGuard();
+  let ok = true;
+
+  if (emojiViolations.length === 0) {
+    console.log(`emoji-guard ✓ - 0 emoji-som-ikon i ${GUARDED_FILES.join(', ')}`);
+  } else {
+    ok = false;
+    console.error(`emoji-guard ✗ - ${emojiViolations.length} emoji-som-ikon-regression(er):`);
+    for (const v of emojiViolations) {
+      console.error(`  ${v.file}:${v.line}  ${v.glyphs.join(' ')}\n      ${v.raw}`);
+    }
+    console.error(`FIX: erstat med eget house-style-SVG-ikon (aria-hidden="true"), ELLER`);
+    console.error(`hvis det er bevidst prosa/alert/Psykoedukation: tilføj "${ALLOW_MARKER}: <begrundelse>" på linjen.`);
   }
-  console.error(`emoji-guard ✗ — ${violations.length} emoji-som-ikon-regression(er):`);
-  for (const v of violations) {
-    console.error(`  ${v.file}:${v.line}  ${v.glyphs.join(' ')}\n      ${v.raw}`);
+
+  if (emdashViolations.length === 0) {
+    console.log(`emdash-guard ✓ - 0 em-dash "—" i ${EMDASH_GUARDED_FILES.join(', ')}`);
+  } else {
+    ok = false;
+    console.error(`emdash-guard ✗ - ${emdashViolations.length} em-dash-regression(er):`);
+    for (const v of emdashViolations) {
+      console.error(`  ${v.file}:${v.line}  ${v.glyphs.join(' ')}\n      ${v.raw}`);
+    }
+    console.error(`FIX: erstat em-dash med komma/punktum/kolon/parentes/bindestreg (betydning bevaret), ELLER`);
+    console.error(`hvis bevidst beholdt: tilføj "${EMDASH_ALLOW_MARKER}: <begrundelse>" på linjen.`);
   }
-  console.error(`\nFIX: erstat med eget house-style-SVG-ikon (aria-hidden="true"), ELLER —`);
-  console.error(`hvis det er bevidst prosa/alert/Psykoedukation — tilføj "${ALLOW_MARKER}: <begrundelse>" på linjen.`);
-  process.exit(1);
+
+  process.exit(ok ? 0 : 1);
 }

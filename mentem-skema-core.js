@@ -1,14 +1,14 @@
-// mentem-skema-core.js — MCT-skema-kadence kerne (P1a)
+// mentem-skema-core.js - MCT-skema-kadence kerne (P1a)
 //
 // Miljø-agnostisk ES-modul: kører identisk i browser (<script type="module">)
-// OG i Node 18+ (round-trip-harness + selftest). Ren WebCrypto — INGEN
+// OG i Node 18+ (round-trip-harness + selftest). Ren WebCrypto - INGEN
 // tredjeparts-krypto-lib, INGEN privat/prod-nøgle (KRYPTO-GUARD: static-site
 // har KUN modtagerens PUBLIC X25519-nøgle og KRYPTERER; kun Mentem dekrypterer).
 //
 // Krypto-kontrakt (SKAL matche Mentems E2EKryptering.swift PRÆCIST):
 //   Curve25519 (X25519) ECDH → HKDF-SHA256(salt, info="TherapyCopilot-E2E-Export-v1", 32B)
 //   → AES-256-GCM. Container = KrypteretEksportContainer (ciphertext + tag SEPARAT,
-//   ISO8601-datoer UDEN fraktioner — CryptoKit .iso8601 afviser millisekunder).
+//   ISO8601-datoer UDEN fraktioner - CryptoKit .iso8601 afviser millisekunder).
 //
 // Spec: noter/spec-mct-skema-kadence-2026-05-31.md v1.3 (§3, §4, §9, §12, R3, R5).
 
@@ -101,9 +101,9 @@ export const SKEMAER = {
       'Besvær med at falde i søvn, at sove igennem, eller omvendt at sove for meget',
       'Følelse af at være træt eller have meget lidt energi',
       'Dårlig appetit eller omvendt at spise for meget',
-      'Dårlig mening om dig selv — eller en følelse af at du er en fiasko eller har svigtet dig selv eller din familie',
+      'Dårlig mening om dig selv, eller en følelse af at du er en fiasko eller har svigtet dig selv eller din familie',
       'Besvær med at koncentrere dig om ting, f.eks. at læse avisen eller se fjernsyn',
-      'At bevæge eller tale så langsomt at andre kunne have bemærket det — eller omvendt at være så rastløs at du bevæger dig mere end normalt',
+      'At bevæge eller tale så langsomt at andre kunne have bemærket det, eller omvendt at være så rastløs at du bevæger dig mere end normalt',
       'Tanker om at du hellere ville være død, eller om at skade dig selv på en eller anden måde',
     ],
   },
@@ -131,7 +131,7 @@ export const SKEMAER = {
       'Husholdning og praktiske opgaver i hjemmet',
       'Sociale fritidsaktiviteter (sammen med andre)',
       'Private fritidsaktiviteter (alene)',
-      'Nære relationer — familie og parforhold',
+      'Nære relationer: familie og parforhold',
     ],
   },
   // ── Alliance (frit/public domain, alliance-checkpoints) ────────────────
@@ -157,7 +157,7 @@ export const SKEMAER = {
 };
 
 // ════════════════════════════════════════════════════════════════════════
-//  SØVNDAGBOG — udskifteligt indholds-modul (B5 swap-arkitektur)
+//  SØVNDAGBOG - udskifteligt indholds-modul (B5 swap-arkitektur)
 // ════════════════════════════════════════════════════════════════════════
 // DROP-IN-KONTRAKT: dette objekt er CSD-INDHOLDET (felt-listen) holdt ISOLERET
 // fra render-motoren (renderDiary i index.html) + krypto/akkumulering. En
@@ -167,18 +167,18 @@ export const SKEMAER = {
 // render-motoren kender → indholdet er frit udskifteligt.
 //
 // NU (Viktors egen praksis): ÆGTE Consensus Sleep Diary (Carney et al. 2012,
-// SLEEP 35(2):287-302 — "The Consensus Sleep Diary: Standardizing prospective
+// SLEEP 35(2):287-302 - "The Consensus Sleep Diary: Standardizing prospective
 // sleep self-monitoring"). Fri klinisk brug. Gengivet uændret med kildeangivelse.
 // Felterne følger CSD-M (morgen-versionen): udfyldes om morgenen for natten der gik.
 export const CSD_SOEVNDAGBOG = {
   id: 'soevndagbog', kind: 'diary', title: 'Søvndagbog', short: 'Søvndagbog', icon: 'maane',
   badge: 'én gang om morgenen',
   attribution: 'Consensus Sleep Diary (Carney et al., 2012, SLEEP). Gengivet uændret med kildeangivelse.',
-  instruction: 'Udfyld om morgenen for natten, der lige er gået. Svar så godt du kan — du behøver ikke kigge på uret om natten, et skøn er fint. Der er ingen rigtige eller forkerte svar.',
+  instruction: 'Udfyld om morgenen for natten, der lige er gået. Svar så godt du kan. Du behøver ikke kigge på uret om natten, et skøn er fint. Der er ingen rigtige eller forkerte svar.',
   fields: [
     { key: 'bedtime',         kind: 'time',   text: 'Hvad tid gik du i seng i aftes?' },
     { key: 'lightsOut',       kind: 'time',   text: 'Hvad tid forsøgte du at falde i søvn (slukkede lyset)?',
-      hint: 'Tit samme tid som du gik i seng — men hvis du lå og læste eller var på mobilen lidt først, så skriv hvornår du faktisk prøvede at sove. Samme tid er helt fint.' },
+      hint: 'Tit samme tid som du gik i seng, men hvis du lå og læste eller var på mobilen lidt først, så skriv hvornår du faktisk prøvede at sove. Samme tid er helt fint.' },
     { key: 'sleepLatencyMin', kind: 'number', text: 'Hvor lang tid tog det dig at falde i søvn?', unit: 'minutter', min: 0, max: 600 },
     { key: 'awakeningsCount', kind: 'number', text: 'Hvor mange gange vågnede du i løbet af natten (ud over den endelige opvågning)?', unit: 'gange', min: 0, max: 30 },
     { key: 'awakeningsMin',   kind: 'number', text: 'Hvor længe var du vågen i alt under disse opvågninger?', unit: 'minutter', min: 0, max: 600 },
@@ -186,7 +186,7 @@ export const CSD_SOEVNDAGBOG = {
     { key: 'outOfBed',        kind: 'time',   text: 'Hvad tid stod du op af sengen?' },
     { key: 'quality',         kind: 'scale',  text: 'Hvordan vil du vurdere kvaliteten af din søvn?',
       scale: ['Meget dårlig', 'Dårlig', 'Nogenlunde', 'God', 'Meget god'] },
-    // Ingen `default` — et felt må ALDRIG bære en committed default der tæller som
+    // Ingen `default` - et felt må ALDRIG bære en committed default der tæller som
     // svar (spec-ux-soevndagbog-udfyldning §1: fantom-defaults korrumperer kliniske
     // data). Tomt = ubesvaret. Det eneste der må forudfylde er "Samme som i går".
     { key: 'naps',            kind: 'text',   text: 'Tog du dig en lur eller blund i løbet af gårsdagen? (antal og samlet varighed, valgfrit)', optional: true },
@@ -194,17 +194,17 @@ export const CSD_SOEVNDAGBOG = {
   ],
 };
 
-// Registrér søvndagbogen i SKEMAER (men IKKE i SKEMA_ORDER — den er en
+// Registrér søvndagbogen i SKEMAER (men IKKE i SKEMA_ORDER - den er en
 // standalone monitorerings-dagbog, aldrig en del af det booking-koblede
 // spørgeskema-batteri).
 SKEMAER.soevndagbog = CSD_SOEVNDAGBOG;
 
 // ════════════════════════════════════════════════════════════════════════
-//  SØVN-BASELINE — engangs intake-skema (IKKE-akkumulerende)
+//  SØVN-BASELINE - engangs intake-skema (IKKE-akkumulerende)
 // ════════════════════════════════════════════════════════════════════════
 // Adskilt fra den daglige CSD: sendes ÉN gang ved forløbs-start, udfyldes én
 // gang, deles én gang. KUN deskriptive/kontekst-variable (data-minimering,
-// GDPR) — hver variabel ændrer en klinisk beslutning (spec-baseline-intake §1).
+// GDPR) - hver variabel ændrer en klinisk beslutning (spec-baseline-intake §1).
 // D3-SIKKERHEDSSCREEN (epilepsi/bipolar/OSA/suicidalitet/…) er BEVIDST IKKE her:
 // den hører i Viktors kliniske intake (B-Q1/Riemann "clinical interview"), ikke
 // et self-serve-link. Nul-score: ingen tolkning vises klienten.
@@ -229,7 +229,7 @@ export const SOEVN_BASELINE = {
 SKEMAER['soevn-baseline'] = SOEVN_BASELINE;
 
 // ════════════════════════════════════════════════════════════════════════
-//  SCORING (intern — bruges til opaque payload; klienten ser ALDRIG resultatet)
+//  SCORING (intern - bruges til opaque payload; klienten ser ALDRIG resultatet)
 // ════════════════════════════════════════════════════════════════════════
 function val(a) { return (a && typeof a === 'object') ? a.value : a; }
 function sumSkema(answers, id) {
@@ -266,18 +266,18 @@ export function computeScores(answers) {
 }
 
 // ════════════════════════════════════════════════════════════════════════
-//  INGEST-KONVOLUT (transport-form — matcher app IngestKonvolut)
+//  INGEST-KONVOLUT (transport-form - matcher app IngestKonvolut)
 // ════════════════════════════════════════════════════════════════════════
 // Producent-side envelope-wrap (PR-2): web emitterer den ÆGTE konvolut-form
 // {schemaVersion, schemaType, clientTimestamp, data, clientUA} i stedet for en
 // flad payload. Den hidtidige FLADE payload pakkes UÆNDRET i `data` (0 tab).
 // App-adapteren (IngestKonvolutAdapter.normalisér) ser dermed `.konvolutDirekte`
-// — ingen felt-syntese — mens gamle flade containere fortsat dekoder
+// - ingen felt-syntese - mens gamle flade containere fortsat dekoder
 // (.fladCSD/.fladBatteri). Felt-kontrakt: IngestEnvelopeDecryptor.swift /
 // IngestKonvolutRouter.swift. clientUA='web' = ærlig kanal-markør (kontrakt §6,
 // valgfrit) → føder app §8.4-adherence. respondentPseudonym sættes IKKE web-side
-// (kommer fra poll-/fil-laget — adapter-note, ikke payload).
-// NB: RØR ALDRIG skema-felt-definitionerne (CSD_SOEVNDAGBOG osv.) — kun
+// (kommer fra poll-/fil-laget - adapter-note, ikke payload).
+// NB: RØR ALDRIG skema-felt-definitionerne (CSD_SOEVNDAGBOG osv.) - kun
 // payload-BYGGERNE wrappes (transport-form, ikke skema-felter).
 function buildIngestKonvolut(data, { schemaType, schemaVersion, clientTimestamp } = {}) {
   return {
@@ -290,7 +290,7 @@ function buildIngestKonvolut(data, { schemaType, schemaVersion, clientTimestamp 
 }
 
 // ════════════════════════════════════════════════════════════════════════
-//  PAYLOAD (TerapiEksportPayload-shape — matcher E2EKryptering.swift)
+//  PAYLOAD (TerapiEksportPayload-shape - matcher E2EKryptering.swift)
 // ════════════════════════════════════════════════════════════════════════
 function isoNoFrac(d) { return d.toISOString().replace(/\.\d{3}Z$/, 'Z'); }
 
@@ -354,7 +354,7 @@ export function buildPayload(answers, meta = {}) {
 //  SØVNDAGBOG-PAYLOAD (akkumuleret periode → ÉN opaque eksport)
 // ════════════════════════════════════════════════════════════════════════
 // REN data-capture: payloaden bærer KUN de rå dagbogs-felter (ingen scoring,
-// ingen TST/SE) — nul-score-invarianten bevares, og den AUTORITATIVE
+// ingen TST/SE) - nul-score-invarianten bevares, og den AUTORITATIVE
 // TST/SE-beregning sker Mentem-side (Swift `Soevnberegning`), så formlen har
 // én sandhedskilde. `sleepDiary` er en NY gren ved siden af questionnaireScores
 // /casTrends/beliefRatings; Swift `TerapiEksportPayload` ignorerer ukendte
@@ -390,11 +390,11 @@ export function buildPayloadCSD(entries, meta = {}) {
     diaryType: 'consensus-sleep-diary',
     diaryStartedAt: startedAt,
     plannedDays: (meta.plannedDays != null) ? meta.plannedDays : null,
-    // Art.9-samtykke (server-opbevaring) — data-minimalt, INDE i ciphertext.
+    // Art.9-samtykke (server-opbevaring) - data-minimalt, INDE i ciphertext.
     // Additivt: ældre containere mangler feltet (=> null), ingen krypto-/format-
     // ændring, ingen migration. Localstorage-variant => null (intet samtykke krævet).
     consent: meta.consent || null,
-    // Versions-blok (§6) — klartekst INDE i ciphertext (serveren ser den aldrig).
+    // Versions-blok (§6) - klartekst INDE i ciphertext (serveren ser den aldrig).
     meta: {
       schemaVersion: SCHEMA_VERSION,
       contentVersion: (meta.contentVersion != null) ? meta.contentVersion : CONTENT_VERSION,
@@ -420,7 +420,7 @@ export function buildPayloadCSD(entries, meta = {}) {
 }
 
 // ════════════════════════════════════════════════════════════════════════
-//  DRAFT-MERGE (newest-wins pr. entry-dato) — readable-side reconcile
+//  DRAFT-MERGE (newest-wins pr. entry-dato) - readable-side reconcile
 // ════════════════════════════════════════════════════════════════════════
 // Bruges hvor BEGGE sider er læsbare plaintext-entries (fx Mentem-decrypt-side,
 // eller fremtidig klient-læsbar kladde). Server-draften er pinned-key-ciphertext
@@ -464,19 +464,19 @@ export function buildPayloadBaseline(answers, meta = {}) {
 }
 
 // ════════════════════════════════════════════════════════════════════════
-//  FORLØBS-ANMODNING (ANMOD-V1) — ingest-skema "forloebs-anmodning"
+//  FORLØBS-ANMODNING (ANMOD-V1) - ingest-skema "forloebs-anmodning"
 // ════════════════════════════════════════════════════════════════════════
 // FROSSET kontrakt: noter/contract-forloebs-anmodning-ingest-2026-06-19.md (§1–§3),
 // afledt 1:1 af PsykologInvitation/ForloebsAnmodningKonvolut.swift (parser = ground-truth).
 // Web-form OG app-submit-UI OG bakke-parser SKAL matche §1–§3 byte-for-byte (kontrakt-drift
 // = søvndagbog-ULÆSELIG-rod). Den FLADE §2-payload pakkes i `data` på SAMME envelope-wrap-måde
 // som søvndagbog (buildIngestKonvolut → {schemaVersion, schemaType, clientTimestamp, data, clientUA}).
-// Krypto er UÆNDRET (mentemEncrypt mod INGEST-X25519-pubkey, zero-knowledge — siden har KUN
+// Krypto er UÆNDRET (mentemEncrypt mod INGEST-X25519-pubkey, zero-knowledge - siden har KUN
 // public-key). RØR ALDRIG skema-felt-definitionerne; kun transport-formen tilføjes her.
 
 export const ANMOD_SCHEMA_TYPE = 'forloebs-anmodning';   // §1 AUTORITATIV wire-streng (ren ASCII, ø→oe)
 
-// §2 enums (wire-værdier — IKKE visningstekst). v2.1 (adaptiv-grundlags-betinget):
+// §2 enums (wire-værdier - IKKE visningstekst). v2.1 (adaptiv-grundlags-betinget):
 //   grundlag 4→3-vejs; FJERNET forloebstype/holdDag/holdTid; TILFØJET henvisning_psykiater/
 //   forloeb_tilbudt/tid_praeference. forloeb_resolved er SYSTEM-AFLEDT (aldrig på wire).
 export const ANMOD_GRUNDLAG             = ['psykiater', 'forsikring', 'egenbetaler'];
@@ -488,27 +488,28 @@ export const ANMOD_TID_VED_IKKE         = 'ved_ikke';                           
 // Grundlag der STILLER psykiater-grenens spørgsmål (henvisning + forloeb_tilbudt) i UI.
 export const ANMOD_SPOERG_PSYKIATER     = ['psykiater'];
 
-// §6 art.9-deny — disse keys må ALDRIG bære helbreds-/CPR-data; til stede => hård parse-fejl.
+// §6 art.9-deny - disse keys må ALDRIG bære helbreds-/CPR-data; til stede => hård parse-fejl.
 export const ANMOD_ART9_DENY = ['cpr', 'helbred', 'diagnose', 'diagnosis', 'medicin', 'sygdom', 'symptom', 'health', 'journal'];
 
-// §2 visningsnavne (korrekt æøå — IKKE wire-værdier). Single source for web + app.
+// §2 visningsnavne (korrekt æøå - IKKE wire-værdier). Single source for web + app.
 // Psykiater-klinik: personnavn (Hoff/Westergaard) er display-only (wire = klinik-id).
 export const ANMOD_DISPLAY = {
   grundlag:            { psykiater: 'Henvist via egen læge til psykiater', forsikring: 'Via forsikring', egenbetaler: 'Egenbetaler' },
   henvisning_psykiater:{ vestegnsklinikken: 'Vestegnsklinikken (Andreas Hoff)', westergaard: 'Westergaard Psykiatri (Casper Westergaard)', ved_ikke: 'Ved ikke' },
-  forloeb_tilbudt:     { gruppe: 'Gruppeforløb', individuelt: 'Individuelt forløb', ved_ikke: 'Ved ikke (psykiateren og jeg afgør det sammen)' },
+  forloeb_tilbudt:     { gruppe: 'Gruppeforløb', individuelt: 'Individuelt forløb', ved_ikke: 'Ved ikke' },
   tid_dage:            { tirsdag: 'Tirsdag', onsdag: 'Onsdag', torsdag: 'Torsdag', fredag: 'Fredag' },
   tid_tider:           { '14:00': 'kl. 14:00', '15:30': 'kl. 15:30' },
   tid_ved_ikke:        'Ved ikke endnu',
 };
 
-// §2b PINNET samtykke-ordlyd (wording-version v1-interim-2026-06-19) — renderes PRÆCIST på
+// §2b PINNET samtykke-ordlyd (wording-version v2-2026-06-19, em-dash-fri): renderes PRÆCIST på
 // BEGGE flader (web + app). `[privatlivspolitikken]` = dp.dk-skabelon-link-TODO (interim-placeholder).
-// Brand siger ALTID "Psykolog Viktor Nielsen" — ALDRIG "Mycel".
-export const ANMOD_CONSENT_WORDING_VERSION = 'v1-interim-2026-06-19';
+// Brand siger ALTID "Psykolog Viktor Nielsen", ALDRIG "Mycel". Betydning UÆNDRET fra v1-interim
+// (kun em-dash → komma; endelig jur. ordlyd stadig pending review).
+export const ANMOD_CONSENT_WORDING_VERSION = 'v2-2026-06-19';
 export const ANMOD_CONSENT_WORDING =
-  'Jeg samtykker til, at Psykolog Viktor Nielsen behandler de oplysninger, jeg giver i denne anmodning '
-  + '— herunder at oplysningerne kan afsløre, at jeg søger psykologbehandling — med det formål at behandle '
+  'Jeg samtykker til, at Psykolog Viktor Nielsen behandler de oplysninger, jeg giver i denne anmodning, '
+  + 'herunder at oplysningerne kan afsløre, at jeg søger psykologbehandling, med det formål at behandle '
   + 'og besvare min anmodning om forløbsadgang. Jeg kan til enhver tid trække anmodningen og mit samtykke '
   + 'tilbage. Læs hvordan dine oplysninger behandles i [privatlivspolitikken].';
 
@@ -601,15 +602,19 @@ export function buildAnmodKonvolut(input = {}) {
     }
   } else {
     // forsikring/egenbetaler: psykiater-grenens felter FORBUDT (fail-loud). forloeb_resolved afledes
-    // Swift-side ("individuelt — fast") — bygges ALDRIG ind i wire-payloaden her.
+    // Swift-side ("individuelt - fast") - bygges ALDRIG ind i wire-payloaden her.
     if (hRaw  !== null) throw anmodFejl('henvisning_ikke_tilladt', 'henvisning_psykiater');
     if (tRaw  !== null) throw anmodFejl('forloeb_tilbudt_ikke_tilladt', 'forloeb_tilbudt');
     if (tidIn !== null) throw anmodFejl('tid_praeference_ikke_tilladt', 'tid_praeference');
   }
 
+  // S1 (v2.1): telefon PÅKRÆVET (adgangslinket sendes via SMS) => fail-loud hvis tom/whitespace.
+  // email VALGFRI (anbefales for desktop). FJERNET det kombinerede `kontakt`-felt.
+  if (typeof input.telefon !== 'string' || !input.telefon.trim()) throw anmodFejl('telefonPaakraevet', 'telefon');
+  data.telefon = input.telefon.trim();
   // Valgfri: tom/whitespace => behandles som fraværende (udeladt af payload).
-  if (typeof input.kontakt === 'string' && input.kontakt.trim()) data.kontakt = input.kontakt.trim();
-  if (typeof input.note === 'string' && input.note.trim())       data.note = input.note.trim();
+  if (typeof input.email === 'string' && input.email.trim()) data.email = input.email.trim();
+  if (typeof input.note === 'string'  && input.note.trim())  data.note  = input.note.trim();
 
   return buildIngestKonvolut(data, {
     schemaType: ANMOD_SCHEMA_TYPE,
@@ -619,9 +624,9 @@ export function buildAnmodKonvolut(input = {}) {
 }
 
 // ════════════════════════════════════════════════════════════════════════
-//  KEY-PINNING (sikkerheds-hærdning, P1a) — trust anchor i siden
+//  KEY-PINNING (sikkerheds-hærdning, P1a) - trust anchor i siden
 // ════════════════════════════════════════════════════════════════════════
-// Mentems E2E X25519-public-key er PINNED i koden — IKKE taget fra ?pk=-URL-
+// Mentems E2E X25519-public-key er PINNED i koden - IKKE taget fra ?pk=-URL-
 // feltet. Det forhindrer en manipuleret URL i at få klienten til at kryptere
 // helbredsdata til en FREMMED nøgle (attacker-in-the-middle via link).
 // KRYPTO-GUARD: kun den OFFENTLIGE nøgle her. Rotation = redeploy med ny
@@ -650,7 +655,7 @@ export function resolveRecipientKey(pkParam) {
 }
 
 // ════════════════════════════════════════════════════════════════════════
-//  KRYPTO — public-key-only opaque output (R3)
+//  KRYPTO - public-key-only opaque output (R3)
 // ════════════════════════════════════════════════════════════════════════
 function b64ToBytes(b64) {
   // Accepter både standard-base64 OG base64url (?pk=-transport).

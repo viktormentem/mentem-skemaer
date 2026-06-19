@@ -96,7 +96,7 @@ try {
   check(!(await vis('#block-tid')),        'forsikring: tid skjult');
   await shot('anmod-v21-forsikring.png');
 
-  // Happy-path: psykiater + henvisning + gruppe + tid + samtykker → submit → kvittering.
+  // Udfyld alt UNDTAGEN telefon (S1: telefon er nu PÅKRÆVET).
   await page.fill('#in-fornavn', 'Syntetisk');
   await page.fill('#in-efternavn', 'Testperson');
   await pick('input[name="grundlag"][value="psykiater"]');
@@ -106,9 +106,20 @@ try {
   await pick('input[name="tid_tider"][value="14:00"]');
   await pick('#in-atten');
   await pick('#in-samtykke');
+
+  // S1 fail-loud: submit UDEN telefon → fejl-besked, kvittering vises IKKE.
+  await page.click('#send-btn');
+  await page.waitForFunction(() => document.getElementById('form-error').textContent.trim().length > 0, null, { timeout: 4000 });
+  check(!(await vis('#screen-done')), 'telefon mangler: kvittering vises IKKE (fail-loud)');
+  check(/telefon/i.test(await page.locator('#form-error').textContent()), 'telefon mangler: fejl-besked nævner telefon');
+  await shot('anmod-v21-telefon-paakraevet.png');
+
+  // Udfyld telefon (PÅKRÆVET) + email (valgfri) → submit → kvittering.
+  await page.fill('#in-telefon', '12 34 56 78');
+  await page.fill('#in-email', 'syntetisk@eksempel.invalid');
   await page.click('#send-btn');
   await page.waitForSelector('#screen-done.active', { timeout: 8000 });
-  check(true, 'submit bygger+krypterer konvolut → kvitteringsskærm aktiv');
+  check(true, 'submit m. telefon bygger+krypterer konvolut → kvitteringsskærm aktiv');
   await shot('anmod-v21-kvittering.png');
 
   check(pageErrors.length === 0, 'ingen JS-fejl gennem hele flowet', pageErrors.join(' | '));

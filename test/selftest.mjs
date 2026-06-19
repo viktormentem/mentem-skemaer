@@ -37,7 +37,7 @@ import {
   ANMOD_TID_DAGE,
   ANMOD_TID_TIDER,
 } from '../mentem-skema-core.js';
-import { scanText, runGuard, GUARDED_FILES } from './emoji-guard.mjs';
+import { scanText, runGuard, scanEmDash, runEmDashGuard, GUARDED_FILES, EMDASH_GUARDED_FILES } from './emoji-guard.mjs';
 
 let failures = 0;
 function check(name, cond, detail = '') {
@@ -290,7 +290,7 @@ const anmodGruppe = buildAnmodKonvolut({
   fornavn: 'Syntetisk', efternavn: 'Testperson', grundlag: 'psykiater',
   henvisning_psykiater: 'vestegnsklinikken', forloeb_tilbudt: 'gruppe',
   tid_praeference: { dage: ['tirsdag', 'torsdag'], tider: ['14:00'] },
-  atten: true, anmodSamtykke: true, kontakt: 'test@example.invalid', note: 'Henvist af egen læge',
+  atten: true, anmodSamtykke: true, telefon: '12 34 56 78', email: 'test@example.invalid', note: 'Henvist af egen læge',
 });
 // §3 konvolut-form
 check('anmod konvolut schemaVersion = 1 (Int)', anmodGruppe.schemaVersion === 1);
@@ -302,7 +302,7 @@ check('anmod konvolut bærer INGEN respondentPseudonym web-side', anmodGruppe.re
 // §2 data-payload — felt-keys EKSAKT (psykiater gruppe)
 const ag = anmodGruppe.data;
 eq('anmod data keys (psykiater gruppe)', Object.keys(ag).sort(),
-   ['anmodSamtykke','atten','efternavn','fornavn','forloeb_tilbudt','grundlag','henvisning_psykiater','kontakt','note','tid_praeference','type'].sort());
+   ['anmodSamtykke','atten','efternavn','email','fornavn','forloeb_tilbudt','grundlag','henvisning_psykiater','note','telefon','tid_praeference','type'].sort());
 check('anmod data.type mirror', ag.type === 'forloebs-anmodning');
 check('anmod data.fornavn/efternavn', ag.fornavn === 'Syntetisk' && ag.efternavn === 'Testperson');
 check('anmod data.grundlag = psykiater', ag.grundlag === 'psykiater');
@@ -312,31 +312,34 @@ eq('anmod data.tid_praeference objekt (dedup, rækkefølge bevaret)', ag.tid_pra
 check('anmod data INGEN forloeb_resolved på wire (system-afledt)', ag.forloeb_resolved === undefined);
 check('anmod data.atten === true (bool)', ag.atten === true);
 check('anmod data.anmodSamtykke === true (bool)', ag.anmodSamtykke === true);
-check('anmod data.kontakt/note bevaret', ag.kontakt === 'test@example.invalid' && ag.note === 'Henvist af egen læge');
+check('anmod data.telefon (PÅKRÆVET, trimmet)', ag.telefon === '12 34 56 78');
+check('anmod data.email (valgfri) + note bevaret', ag.email === 'test@example.invalid' && ag.note === 'Henvist af egen læge');
+check('anmod data INGEN kombineret kontakt-felt (FJERNET)', ag.kontakt === undefined);
 // psykiater-gruppe m. tid "ved_ikke"
-const anmodTidVedIkke = buildAnmodKonvolut({ fornavn:'A', efternavn:'B', grundlag:'psykiater', forloeb_tilbudt:'gruppe', tid_praeference:'ved_ikke', atten:true, anmodSamtykke:true }).data;
+const anmodTidVedIkke = buildAnmodKonvolut({ fornavn:'A', efternavn:'B', grundlag:'psykiater', forloeb_tilbudt:'gruppe', tid_praeference:'ved_ikke', atten:true, anmodSamtykke:true, telefon:'12345678' }).data;
 check('anmod tid="ved_ikke" bevaret', anmodTidVedIkke.tid_praeference === 'ved_ikke');
 // tom-tom multi-select → "ved_ikke" (kanonisk repræsentation)
-const anmodTidTom = buildAnmodKonvolut({ fornavn:'A', efternavn:'B', grundlag:'psykiater', forloeb_tilbudt:'gruppe', tid_praeference:{ dage:[], tider:[] }, atten:true, anmodSamtykke:true }).data;
+const anmodTidTom = buildAnmodKonvolut({ fornavn:'A', efternavn:'B', grundlag:'psykiater', forloeb_tilbudt:'gruppe', tid_praeference:{ dage:[], tider:[] }, atten:true, anmodSamtykke:true, telefon:'12345678' }).data;
 check('anmod tom-tom tid → "ved_ikke"', anmodTidTom.tid_praeference === 'ved_ikke');
 // psykiater-individuelt → ingen tid_praeference
-const anmodIndiv = buildAnmodKonvolut({ fornavn:'A', efternavn:'B', grundlag:'psykiater', forloeb_tilbudt:'individuelt', atten:true, anmodSamtykke:true }).data;
+const anmodIndiv = buildAnmodKonvolut({ fornavn:'A', efternavn:'B', grundlag:'psykiater', forloeb_tilbudt:'individuelt', atten:true, anmodSamtykke:true, telefon:'12345678' }).data;
 check('anmod psykiater-individuelt: forloeb_tilbudt=individuelt', anmodIndiv.forloeb_tilbudt === 'individuelt');
 check('anmod psykiater-individuelt: INGEN tid_praeference', anmodIndiv.tid_praeference === undefined);
 // psykiater henvisning valgfri (udeladt passerer)
-const anmodUdenHenv = buildAnmodKonvolut({ fornavn:'A', efternavn:'B', grundlag:'psykiater', forloeb_tilbudt:'ved_ikke', atten:true, anmodSamtykke:true }).data;
+const anmodUdenHenv = buildAnmodKonvolut({ fornavn:'A', efternavn:'B', grundlag:'psykiater', forloeb_tilbudt:'ved_ikke', atten:true, anmodSamtykke:true, telefon:'12345678' }).data;
 check('anmod psykiater henvisning udeladt (valgfri)', anmodUdenHenv.henvisning_psykiater === undefined);
 check('anmod psykiater forloeb_tilbudt=ved_ikke', anmodUdenHenv.forloeb_tilbudt === 'ved_ikke');
 // forsikring: trim + auto, INGEN psykiater-felter, INGEN forloeb_resolved på wire (afledt Swift-side)
-const anmodForsik = buildAnmodKonvolut({ fornavn:'  Anna  ', efternavn:' Sø ', grundlag:'forsikring', atten:true, anmodSamtykke:true, kontakt:'   ', note:'' }).data;
-eq('anmod forsikring data keys (kun basis)', Object.keys(anmodForsik).sort(),
-   ['anmodSamtykke','atten','efternavn','fornavn','grundlag','type'].sort());
+const anmodForsik = buildAnmodKonvolut({ fornavn:'  Anna  ', efternavn:' Sø ', grundlag:'forsikring', atten:true, anmodSamtykke:true, telefon:'  12 34 56 78  ', email:'   ', note:'' }).data;
+eq('anmod forsikring data keys (basis + telefon)', Object.keys(anmodForsik).sort(),
+   ['anmodSamtykke','atten','efternavn','fornavn','grundlag','telefon','type'].sort());
 check('anmod forsikring: INGEN henvisning/forloeb_tilbudt/tid/resolved på wire',
   anmodForsik.henvisning_psykiater === undefined && anmodForsik.forloeb_tilbudt === undefined && anmodForsik.tid_praeference === undefined && anmodForsik.forloeb_resolved === undefined);
 check('anmod trimmer fornavn/efternavn', anmodForsik.fornavn === 'Anna' && anmodForsik.efternavn === 'Sø');
-check('anmod dropper whitespace-kontakt + tom note', anmodForsik.kontakt === undefined && anmodForsik.note === undefined);
+check('anmod trimmer telefon (påkrævet)', anmodForsik.telefon === '12 34 56 78');
+check('anmod dropper whitespace-email + tom note', anmodForsik.email === undefined && anmodForsik.note === undefined);
 // egenbetaler
-const anmodEgen = buildAnmodKonvolut({ fornavn:'E', efternavn:'B', grundlag:'egenbetaler', atten:true, anmodSamtykke:true }).data;
+const anmodEgen = buildAnmodKonvolut({ fornavn:'E', efternavn:'B', grundlag:'egenbetaler', atten:true, anmodSamtykke:true, telefon:'12345678' }).data;
 check('anmod egenbetaler: kun basis-felter', anmodEgen.grundlag === 'egenbetaler' && anmodEgen.forloeb_tilbudt === undefined);
 // §2 v2.1 validerings-kast (fail-loud, adaptiv kryds-felt)
 const VG = { fornavn:'A', efternavn:'B', atten:true, anmodSamtykke:true };
@@ -354,7 +357,10 @@ throwsCode('anmod: ugyldig tid-dag afvist', () => buildAnmodKonvolut({ ...VG, gr
 throwsCode('anmod: ugyldig tid-tid afvist', () => buildAnmodKonvolut({ ...VG, grundlag:'psykiater', forloeb_tilbudt:'gruppe', tid_praeference:{ dage:['tirsdag'], tider:['09:00'] } }), 'ugyldig_enum');
 throwsCode('anmod: atten=false afvist', () => buildAnmodKonvolut({ ...VG, grundlag:'egenbetaler', atten:false }), 'atten_paakraevet');
 throwsCode('anmod: anmodSamtykke=false afvist (ikke send-tjek)', () => buildAnmodKonvolut({ fornavn:'A', efternavn:'B', grundlag:'egenbetaler', atten:true, anmodSamtykke:false }), 'samtykke_paakraevet');
-throwsCode('anmod: manglende fornavn afvist', () => buildAnmodKonvolut({ efternavn:'B', grundlag:'egenbetaler', atten:true, anmodSamtykke:true }), 'paakraevet_mangler');
+throwsCode('anmod: manglende fornavn afvist', () => buildAnmodKonvolut({ efternavn:'B', grundlag:'egenbetaler', atten:true, anmodSamtykke:true, telefon:'12345678' }), 'paakraevet_mangler');
+// S1 v2.1: telefon PÅKRÆVET (adgangslink via SMS) — manglende/tom => fail-loud telefonPaakraevet
+throwsCode('anmod: manglende telefon afvist (PÅKRÆVET)', () => buildAnmodKonvolut({ fornavn:'A', efternavn:'B', grundlag:'egenbetaler', atten:true, anmodSamtykke:true }), 'telefonPaakraevet');
+throwsCode('anmod: tom/whitespace telefon afvist', () => buildAnmodKonvolut({ fornavn:'A', efternavn:'B', grundlag:'egenbetaler', atten:true, anmodSamtykke:true, telefon:'   ' }), 'telefonPaakraevet');
 throwsCode('anmod: ugyldig grundlag afvist', () => buildAnmodKonvolut({ ...VG, grundlag:'noget-andet' }), 'ugyldig_enum');
 throwsCode('anmod: v2-grundlag "vestegnsklinikken" afvist (nu henvisning, ikke grundlag)', () => buildAnmodKonvolut({ ...VG, grundlag:'vestegnsklinikken' }), 'ugyldig_enum');
 // §6 art.9-deny (HÅRD) — forbudt helbreds-/CPR-key til stede => hård fejl
@@ -369,12 +375,15 @@ check('anmod v2.1 forloeb_tilbudt enum', ANMOD_FORLOEB_TILBUDT.join(',') === 'gr
 check('anmod v2.1 tid dage/tider enums', ANMOD_TID_DAGE.join(',') === 'tirsdag,onsdag,torsdag,fredag' && ANMOD_TID_TIDER.join(',') === '14:00,15:30');
 check('anmod v2.1 grundlag-label psykiater = henvist-formulering', /henvist via egen læge/i.test(ANMOD_DISPLAY.grundlag.psykiater));
 check('anmod v2.1 henvisning-labels m. personnavn (display-only)', /Andreas Hoff/.test(ANMOD_DISPLAY.henvisning_psykiater.vestegnsklinikken) && /Casper Westergaard/.test(ANMOD_DISPLAY.henvisning_psykiater.westergaard));
-// §2b samtykke-ordlyd (PINNET v1-interim, UÆNDRET) — brand + version + placeholder
-check('anmod consent version = v1-interim-2026-06-19', ANMOD_CONSENT_WORDING_VERSION === 'v1-interim-2026-06-19');
+// C3 v2.1: forloeb_tilbudt ved_ikke display = "Ved ikke" (forkortet; wire-værdi ved_ikke uændret)
+check('anmod C3: forloeb_tilbudt.ved_ikke display = "Ved ikke"', ANMOD_DISPLAY.forloeb_tilbudt.ved_ikke === 'Ved ikke');
+// §2b samtykke-ordlyd (wording-version v2-2026-06-19, em-dash-fri) — brand + version + placeholder
+check('anmod consent version = v2-2026-06-19', ANMOD_CONSENT_WORDING_VERSION === 'v2-2026-06-19');
 check('anmod consent brand = Psykolog Viktor Nielsen', ANMOD_CONSENT_WORDING.includes('Psykolog Viktor Nielsen'));
 check('anmod consent siger ALDRIG Mycel', !/Mycel/i.test(ANMOD_CONSENT_WORDING));
 check('anmod consent har [privatlivspolitikken]-placeholder', ANMOD_CONSENT_WORDING.includes('[privatlivspolitikken]'));
 check('anmod consent nævner tilbagetrækning (art.9(2)(a)-rettighed)', /trække .* tilbage/.test(ANMOD_CONSENT_WORDING));
+check('anmod consent em-dash-fri (C4/§2b v2)', !ANMOD_CONSENT_WORDING.includes('—'));
 // round-trip: anmod-konvolut krypteres + dekrypteres → data intakt (zero-knowledge)
 const anmodRT = await nodeDecrypt(await mentemEncrypt(recipientPubB64, anmodGruppe), recipient.privateKey);
 check('anmod round-trip schemaType', anmodRT.schemaType === 'forloebs-anmodning');
@@ -404,6 +413,22 @@ check('guard fanger stadig UDEN markør', G('<p>Tillykke 🎉</p>') === 1);
 const liveViolations = runGuard();
 check(`guard GRØN mod live ${GUARDED_FILES.join('+')} (0 regressioner)`, liveViolations.length === 0,
   liveViolations.map(v => `${v.file}:${v.line} ${v.glyphs.join(' ')}`).join(' | '));
+
+// ── VERA-guard: em-dash-detektor (Viktor-direktiv 2026-06-19, analog til emoji-guard) ──
+console.log('emdash-guard (forbudt-tegn "—"):');
+const D = (t) => scanEmDash(t, 't').length;
+check('emdash-guard fanger "—" i HTML-tekst', D('<p>Tekst — mere</p>') === 1);
+check('emdash-guard fanger "—" i JS-strengliteral', D("el.textContent = 'A — B';") === 1);
+check('emdash-guard tillader bindestreg "-"', D('<p>14:00-15:30</p>') === 0);
+check('emdash-guard tillader midterprik "·"', D('<p>A · B</p>') === 0);
+check('emdash-guard tillader box-streg "─"', D('<p>──────</p>') === 0);
+check('emdash-guard ignorerer "—" i // linje-kommentar', D('const x = 1; // note — her') === 0);
+check('emdash-guard ignorerer "—" i /* blok */-kommentar', D('a;/* tag — her */b;') === 0);
+check('emdash-guard ignorerer "—" i <!-- HTML-kommentar -->', D('x<!-- — -->y') === 0);
+check('emdash-guard respekterer emdash-guard:allow-markør', D('<p>A — B</p> <!-- emdash-guard:allow: bevidst -->') === 0);
+const liveEmDash = runEmDashGuard();
+check(`emdash-guard GRØN mod live ${EMDASH_GUARDED_FILES.join('+')} (0 em-dash i renderet copy)`, liveEmDash.length === 0,
+  liveEmDash.map(v => `${v.file}:${v.line}`).join(' | '));
 
 console.log('');
 if (failures > 0) { console.error(`SELFTEST FAILED: ${failures} fejl`); process.exit(1); }
