@@ -23,7 +23,8 @@ const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 // (felt-labels/options injiceres i DOM → klient-facing). Bevidst UDE:
 //   soevn-forloeb-preview.html / soevn-hub-mock.html = preview/mock (ikke prod-klient-UI;
 //   må gerne bære illustrative emoji). soevn-medicin-seed.json = data, ikke UI-streng.
-export const GUARDED_FILES = ['index.html', 'mentem-skema-core.js'];
+// anmod.html = forløbs-anmodnings-formular (ANMOD-V1, klient-facing prod-flade).
+export const GUARDED_FILES = ['index.html', 'mentem-skema-core.js', 'anmod.html'];
 
 // ── DETEKTÉR — emoji/dingbat brugt SOM IKON ─────────────────────────────────
 //   1F000–1FAFF  emoji-pictographs (🔊 1F50A · 🔒 1F512 · 🌙 1F319 · 🔎 1F50E · 💊🍷☕ …)

@@ -464,6 +464,129 @@ export function buildPayloadBaseline(answers, meta = {}) {
 }
 
 // ════════════════════════════════════════════════════════════════════════
+//  FORLØBS-ANMODNING (ANMOD-V1) — ingest-skema "forloebs-anmodning"
+// ════════════════════════════════════════════════════════════════════════
+// FROSSET kontrakt: noter/contract-forloebs-anmodning-ingest-2026-06-19.md (§1–§3),
+// afledt 1:1 af PsykologInvitation/ForloebsAnmodningKonvolut.swift (parser = ground-truth).
+// Web-form OG app-submit-UI OG bakke-parser SKAL matche §1–§3 byte-for-byte (kontrakt-drift
+// = søvndagbog-ULÆSELIG-rod). Den FLADE §2-payload pakkes i `data` på SAMME envelope-wrap-måde
+// som søvndagbog (buildIngestKonvolut → {schemaVersion, schemaType, clientTimestamp, data, clientUA}).
+// Krypto er UÆNDRET (mentemEncrypt mod INGEST-X25519-pubkey, zero-knowledge — siden har KUN
+// public-key). RØR ALDRIG skema-felt-definitionerne; kun transport-formen tilføjes her.
+
+export const ANMOD_SCHEMA_TYPE = 'forloebs-anmodning';   // §1 AUTORITATIV wire-streng (ren ASCII, ø→oe)
+
+// §2 enums (wire-værdier — IKKE visningstekst). v2: forloebstype "individuel" (v1 var "individuelt");
+// holdDag += "fredag" (Westergaard-fast).
+export const ANMOD_GRUNDLAG      = ['vestegnsklinikken', 'westergaard', 'forsikring', 'egenbetaler'];
+export const ANMOD_FORLOEBSTYPE  = ['gruppe', 'individuel'];
+export const ANMOD_HOLDDAG       = ['tirsdag', 'onsdag', 'torsdag', 'fredag']; // værdi grundlag-betinget (se buildAnmodKonvolut)
+export const ANMOD_HOLDTID       = ['14:00', '15:30'];                         // KUN ved vestegnsklinikken+gruppe
+// Grundlag der STILLER forløbstype-spørgsmålet i UI (ellers auto-"individuel").
+export const ANMOD_SPOERG_FORLOEBSTYPE = ['vestegnsklinikken', 'westergaard'];
+
+// §6 art.9-deny — disse keys må ALDRIG bære helbreds-/CPR-data; til stede => hård parse-fejl.
+export const ANMOD_ART9_DENY = ['cpr', 'helbred', 'diagnose', 'diagnosis', 'medicin', 'sygdom', 'symptom', 'health', 'journal'];
+
+// §2 visningsnavne (korrekt æøå — IKKE wire-værdier). Single source for web + app.
+export const ANMOD_DISPLAY = {
+  grundlag:     { vestegnsklinikken: 'Vestegnsklinikken', westergaard: 'Westergaard Psykiatri', forsikring: 'Via forsikring', egenbetaler: 'Egenbetaler' },
+  forloebstype: { gruppe: 'Gruppeforløb', individuel: 'Individuelt forløb' },
+  holdDag:      { tirsdag: 'Tirsdag', onsdag: 'Onsdag', torsdag: 'Torsdag', fredag: 'Fredag' },
+  holdTid:      { '14:00': 'kl. 14:00', '15:30': 'kl. 15:30' },
+};
+
+// §2b PINNET samtykke-ordlyd (wording-version v1-interim-2026-06-19) — renderes PRÆCIST på
+// BEGGE flader (web + app). `[privatlivspolitikken]` = dp.dk-skabelon-link-TODO (interim-placeholder).
+// Brand siger ALTID "Psykolog Viktor Nielsen" — ALDRIG "Mycel".
+export const ANMOD_CONSENT_WORDING_VERSION = 'v1-interim-2026-06-19';
+export const ANMOD_CONSENT_WORDING =
+  'Jeg samtykker til, at Psykolog Viktor Nielsen behandler de oplysninger, jeg giver i denne anmodning '
+  + '— herunder at oplysningerne kan afsløre, at jeg søger psykologbehandling — med det formål at behandle '
+  + 'og besvare min anmodning om forløbsadgang. Jeg kan til enhver tid trække anmodningen og mit samtykke '
+  + 'tilbage. Læs hvordan dine oplysninger behandles i [privatlivspolitikken].';
+
+function anmodFejl(code, felt) {
+  const e = new Error(felt ? `${code}:${felt}` : code);
+  e.code = code; if (felt) e.felt = felt;
+  return e;
+}
+function anmodText(v, felt) {
+  if (typeof v !== 'string' || !v.trim()) throw anmodFejl('paakraevet_mangler', felt);
+  return v.trim();
+}
+function anmodEnum(v, allow, felt) {
+  if (!allow.includes(v)) throw anmodFejl('ugyldig_enum', felt);
+  return v;
+}
+
+/// Byg den FROSNE forløbs-anmodnings-konvolut fra rå form-input (fail-loud).
+/// Validerer §2 (påkrævede felter + enums + gruppe-eksklusiv slot + atten/samtykke=true +
+/// art.9-deny) og wrapper i IngestKonvolut (§3). Kaster Error med `.code`/`.felt` ved afvigelse
+/// (kalderen mapper til en dansk fejlbesked). Returnerer konvolut-objektet (klar til mentemEncrypt).
+export function buildAnmodKonvolut(input = {}) {
+  // §6 art.9-deny FØRST: en lækket flade må aldrig kunne importere art.9-data tavst.
+  for (const k of Object.keys(input)) {
+    if (ANMOD_ART9_DENY.includes(String(k).toLowerCase())) throw anmodFejl('art9Forbudt', k);
+  }
+
+  // Rækkefølge 1:1 med Swift-parseren (ForloebsAnmodningKonvolut.parse): fornavn/efternavn →
+  // grundlag → atten → samtykke → forloebstype → hold-slot (samme fejl-præcedens).
+  const data = { type: ANMOD_SCHEMA_TYPE };                 // informativ mirror (parseren keyer på konvolut-schemaType)
+  data.fornavn   = anmodText(input.fornavn, 'fornavn');
+  data.efternavn = anmodText(input.efternavn, 'efternavn');
+  data.grundlag  = anmodEnum(input.grundlag, ANMOD_GRUNDLAG, 'grundlag');
+
+  if (input.atten !== true)         throw anmodFejl('atten_paakraevet', 'atten');           // 18+ gate, MÅ være true
+  data.atten = true;
+  if (input.anmodSamtykke !== true) throw anmodFejl('samtykke_paakraevet', 'anmodSamtykke'); // art.9(2)(a), MÅ være true
+  data.anmodSamtykke = true;
+
+  // v2 forløbstype — grundlag-betinget: REQUIRED ved vestegns/westergaard, ellers auto-"individuel".
+  const spørger = ANMOD_SPOERG_FORLOEBSTYPE.includes(data.grundlag);
+  if (spørger) {
+    data.forloebstype = anmodEnum(input.forloebstype, ANMOD_FORLOEBSTYPE, 'forloebstype');
+  } else {
+    if (input.forloebstype != null && input.forloebstype !== '' && input.forloebstype !== 'individuel') {
+      throw anmodFejl('forloebstype_ikke_tilladt', 'forloebstype');
+    }
+    data.forloebstype = 'individuel';
+  }
+
+  // v2 hold-slot — afhænger af BÅDE forloebstype og grundlag (kryds-felt, fail-loud).
+  const dag = (input.holdDag != null && input.holdDag !== '') ? input.holdDag : null;
+  const tid = (input.holdTid != null && input.holdTid !== '') ? input.holdTid : null;
+  if (data.forloebstype === 'gruppe') {
+    if (dag === null) throw anmodFejl('manglende_hold_ved_gruppe', 'holdDag');
+    if (!ANMOD_HOLDDAG.includes(dag)) throw anmodFejl('ugyldig_enum', 'holdDag');
+    if (data.grundlag === 'vestegnsklinikken') {
+      if (dag === 'fredag') throw anmodFejl('ugyldig_holddag_for_grundlag', 'holdDag');   // fredag = Westergaard-eksklusiv
+      if (tid === null) throw anmodFejl('paakraevet_mangler', 'holdTid');                 // holdTid REQUIRED her
+      if (!ANMOD_HOLDTID.includes(tid)) throw anmodFejl('ugyldig_enum', 'holdTid');
+      data.holdDag = dag; data.holdTid = tid;
+    } else { // westergaard
+      if (dag !== 'fredag') throw anmodFejl('ugyldig_holddag_for_grundlag', 'holdDag');   // fast fredag
+      if (tid !== null) throw anmodFejl('holdtid_forbudt', 'holdTid');                    // Westergaard har ingen tids-valg
+      data.holdDag = 'fredag';
+    }
+  } else {
+    // individuel: holdDag/holdTid FORBUDT (slot er gruppe-eksklusiv, §2).
+    if (dag !== null) throw anmodFejl('slot_forbudt_individuelt', 'holdDag');
+    if (tid !== null) throw anmodFejl('slot_forbudt_individuelt', 'holdTid');
+  }
+
+  // Valgfri: tom/whitespace => behandles som fraværende (udeladt af payload).
+  if (typeof input.kontakt === 'string' && input.kontakt.trim()) data.kontakt = input.kontakt.trim();
+  if (typeof input.note === 'string' && input.note.trim())       data.note = input.note.trim();
+
+  return buildIngestKonvolut(data, {
+    schemaType: ANMOD_SCHEMA_TYPE,
+    schemaVersion: 1,
+    clientTimestamp: isoNoFrac(new Date()),
+  });
+}
+
+// ════════════════════════════════════════════════════════════════════════
 //  KEY-PINNING (sikkerheds-hærdning, P1a) — trust anchor i siden
 // ════════════════════════════════════════════════════════════════════════
 // Mentems E2E X25519-public-key er PINNED i koden — IKKE taget fra ?pk=-URL-

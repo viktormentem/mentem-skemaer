@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Anmod om adgang til et forløb hos Psykolog Viktor Nielsen. Dine oplysninger krypteres lokalt i din browser og deles kun med psykologen.">
+<meta name="author" content="Psykolog Viktor Nielsen">
+<meta property="og:title" content="Psykolog Viktor Nielsen — Anmod om forløbsadgang">
+<meta property="og:description" content="Send en anmodning om at komme i forløb. Dine oplysninger krypteres i din browser.">
+<meta property="og:type" content="website">
+<meta name="robots" content="noindex">
+<title>Anmod om forløbsadgang — Psykolog Viktor Nielsen</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
+  :root {
+    --ink:#1a1a2e; --paper:#f8f6f1; --muted:#62626d; --accent:#2d6a4f;
+    --accent-light:#e8f5e1; --border:#e0ddd6; --card:#ffffff; --danger:#9b2226;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:'DM Sans',sans-serif; background:var(--paper); color:var(--ink); min-height:100vh; }
+
+  .header { background:var(--ink); color:white; padding:24px 28px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+  .header-logo { font-family:'DM Serif Display',serif; font-size:24px; letter-spacing:-0.5px; }
+  .header-sub { font-size:13px; opacity:0.55; margin-top:2px; }
+  .header-secure { font-size:12px; opacity:0.6; max-width:240px; text-align:right; }
+
+  .screen { display:none; }
+  .screen.active { display:block; animation:fadeIn 0.3s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(14px);} to{opacity:1;transform:translateY(0);} }
+
+  .wrap { max-width:680px; margin:48px auto; padding:0 24px 80px; }
+  h1 { font-family:'DM Serif Display',serif; font-size:38px; line-height:1.1; margin-bottom:16px; }
+  h1 em { font-style:italic; color:var(--accent); }
+  .intro { font-size:17px; color:var(--muted); line-height:1.6; margin-bottom:36px; }
+
+  .field-block { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:22px; margin-bottom:14px; transition:border-color 0.15s; }
+  .field-block.answered { border-color:var(--accent); }
+  .field-head { display:flex; align-items:center; gap:14px; margin-bottom:14px; }
+  .field-icon { width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; background:var(--accent-light); color:var(--accent); }
+  .field-icon svg { width:20px; height:20px; display:block; }
+  .field-label { font-size:15px; font-weight:600; line-height:1.35; }
+  .field-optional { font-size:12px; color:var(--muted); font-weight:400; font-style:italic; margin-left:6px; }
+  .field-hint { font-size:13px; color:var(--muted); line-height:1.45; margin:-6px 0 14px; }
+
+  input[type=text], input[type=tel], input[type=email], textarea {
+    width:100%; padding:12px 16px; border:1.5px solid var(--border); border-radius:8px;
+    font-family:'DM Sans',sans-serif; font-size:16px; background:white; outline:none; min-height:44px; }
+  textarea { min-height:84px; resize:vertical; line-height:1.5; }
+  input:focus, textarea:focus { border-color:var(--accent); }
+
+  .radio-group { display:grid; gap:8px; }
+  .radio-option { display:flex; align-items:center; gap:12px; padding:12px 14px; border:1.5px solid var(--border); border-radius:8px; cursor:pointer; transition:all 0.12s; background:white; font-size:15px; min-height:44px; }
+  .radio-option:hover { border-color:var(--accent); background:#f0faf5; }
+  .radio-option input[type=radio] { width:18px; height:18px; accent-color:var(--accent); flex-shrink:0; }
+  .radio-option.checked { border-color:var(--accent); background:var(--accent-light); font-weight:500; }
+
+  .slot-grid { display:grid; gap:18px; }
+  .slot-sub-label { font-size:13px; font-weight:500; color:var(--muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.05em; }
+  /* Fast-info (Westergaard fredag) — vist, ikke et valg */
+  .fixed-info { display:flex; align-items:center; gap:12px; padding:14px 16px; border:1.5px solid var(--accent); border-radius:8px; background:var(--accent-light); font-size:15px; font-weight:500; }
+  .fixed-info svg { width:20px; height:20px; flex-shrink:0; color:var(--accent); }
+
+  /* Samtykke-blok — to ADSKILTE afkryds-felter (atten + anmodSamtykke), hver sin handling. */
+  .consent-section { margin:30px 0 8px; }
+  .consent-row { display:flex; gap:14px; align-items:flex-start; background:var(--card); border:1.5px solid var(--border); border-radius:10px; padding:16px 18px; margin-bottom:14px; cursor:pointer; }
+  .consent-row.checked { border-color:var(--accent); background:var(--accent-light); }
+  .consent-row input[type=checkbox] { margin-top:2px; width:20px; height:20px; min-width:20px; accent-color:var(--accent); cursor:pointer; }
+  .consent-text { font-size:14px; line-height:1.55; }
+  .consent-text strong { font-weight:600; }
+  .consent-text a { color:var(--accent); text-decoration:underline; }
+  .consent-note { font-size:12px; color:var(--muted); font-style:italic; margin-top:4px; }
+
+  .btn-primary { background:var(--accent); color:white; border:none; padding:16px 32px; border-radius:10px; font-family:'DM Sans',sans-serif; font-size:16px; font-weight:600; cursor:pointer; transition:all 0.15s; width:100%; min-height:44px; margin-top:18px; }
+  .btn-primary:hover { background:#1e4d38; }
+  .btn-primary:disabled { background:var(--muted); cursor:not-allowed; }
+
+  .form-error { color:var(--danger); font-size:14px; margin-top:14px; min-height:20px; line-height:1.5; }
+  .field-block.field-invalid { border-color:var(--danger); }
+
+  .disclaimer { background:var(--border); border-radius:8px; padding:12px 16px; font-size:12px; color:var(--muted); margin-top:24px; line-height:1.5; }
+  .disclaimer .lockicon { display:inline-flex; width:1em; height:1em; vertical-align:-2px; margin-right:5px; }
+  .footer-credit { font-size:11px; color:var(--muted); margin-top:20px; line-height:1.5; text-align:center; }
+  .preview-banner { background:#fff4d6; border:1px solid #e6c200; border-radius:8px; padding:10px 14px; font-size:13px; color:#5c4a00; margin-bottom:24px; line-height:1.5; }
+
+  .done-wrap { max-width:560px; margin:80px auto; padding:0 24px; text-align:center; }
+  .done-mark { display:inline-flex; width:56px; height:56px; color:#34c759; margin-bottom:16px; }
+  .done-wrap h2 { font-family:'DM Serif Display',serif; font-size:32px; margin-bottom:12px; }
+  .done-wrap p { color:var(--muted); font-size:16px; line-height:1.6; margin-bottom:10px; }
+
+  :focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="header-logo">Psykolog Viktor Nielsen</div>
+    <div class="header-sub">Autoriseret psykolog · forløbsanmodning</div>
+  </div>
+  <div class="header-secure"><span class="lockicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span>Dine oplysninger krypteres i din browser</div>
+</div>
+
+<!-- 1: ANMOD-FORMULAR -->
+<div id="screen-form" class="screen active">
+  <div class="wrap">
+    <h1>Anmod om <em>forløbsadgang</em></h1>
+    <p class="intro">Udfyld kort, hvem du er, og hvilket forløb du ønsker adgang til. Din anmodning sendes sikkert og krypteret til Psykolog Viktor Nielsen, som besvarer den. Der er ingen rigtige eller forkerte svar.</p>
+
+    <div id="preview-banner" class="preview-banner" style="display:none"></div>
+
+    <form id="anmod-form" novalidate>
+      <!-- Navn -->
+      <div class="field-block" data-field="fornavn">
+        <div class="field-head">
+          <span class="field-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"/><path d="M5.5 19a6.5 6.5 0 0 1 13 0"/></svg></span>
+          <label class="field-label" for="in-fornavn">Fornavn</label>
+        </div>
+        <input type="text" id="in-fornavn" autocomplete="given-name" placeholder="Dit fornavn">
+      </div>
+      <div class="field-block" data-field="efternavn">
+        <div class="field-head">
+          <span class="field-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"/><path d="M5.5 19a6.5 6.5 0 0 1 13 0"/></svg></span>
+          <label class="field-label" for="in-efternavn">Efternavn</label>
+        </div>
+        <input type="text" id="in-efternavn" autocomplete="family-name" placeholder="Dit efternavn">
+      </div>
+
+      <!-- Grundlag -->
+      <div class="field-block" data-field="grundlag">
+        <div class="field-head">
+          <span class="field-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h9l3 3v13H6z"/><path d="M15 4v3h3"/><path d="M9 12h6M9 15.5h4"/></svg></span>
+          <span class="field-label">Hvad er grundlaget for dit forløb?</span>
+        </div>
+        <div class="radio-group" id="grp-grundlag"></div>
+      </div>
+
+      <!-- Forløbstype (KUN ved vestegns/westergaard) -->
+      <div class="field-block" data-field="forloebstype" id="block-forloebstype" style="display:none">
+        <div class="field-head">
+          <span class="field-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="9" r="2.4"/><circle cx="16" cy="9" r="2.4"/><path d="M3.5 18a4.5 4.5 0 0 1 9 0M11.5 18a4.5 4.5 0 0 1 9 0"/></svg></span>
+          <span class="field-label">Hvilken slags forløb ønsker du?</span>
+        </div>
+        <div class="radio-group" id="grp-forloebstype"></div>
+      </div>
+
+      <!-- Hold (KUN ved gruppeforløb; indhold afhænger af grundlag) -->
+      <div class="field-block" data-field="hold" id="block-hold" style="display:none">
+        <div class="field-head">
+          <span class="field-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 9h16M8 3v4M16 3v4"/></svg></span>
+          <span class="field-label">Dit hold</span>
+        </div>
+        <!-- Vestegnsklinikken: vælg dag + tid -->
+        <div id="hold-vestegns" style="display:none">
+          <p class="field-hint">Vælg den ugedag og det tidspunkt, du gerne vil gå på.</p>
+          <div class="slot-grid">
+            <div>
+              <div class="slot-sub-label">Ugedag</div>
+              <div class="radio-group" id="grp-holdDag"></div>
+            </div>
+            <div>
+              <div class="slot-sub-label">Tidspunkt</div>
+              <div class="radio-group" id="grp-holdTid"></div>
+            </div>
+          </div>
+        </div>
+        <!-- Westergaard: fast fredag, intet valg -->
+        <div id="hold-westergaard" style="display:none">
+          <div class="fixed-info"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 9h16M8 3v4M16 3v4"/><path d="M9 14l2 2 4-4"/></svg><span>Holdet ligger fast om <strong>fredagen</strong>.</span></div>
+        </div>
+      </div>
+
+      <!-- Kontakt (valgfri) -->
+      <div class="field-block" data-field="kontakt">
+        <div class="field-head">
+          <span class="field-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="6" width="16" height="12" rx="2"/><path d="M5 7l7 5 7-5"/></svg></span>
+          <span class="field-label">Telefon eller e-mail<span class="field-optional">valgfrit</span></span>
+        </div>
+        <p class="field-hint">Så psykologen kan kontakte dig om din anmodning, hvis det er nødvendigt.</p>
+        <input type="text" id="in-kontakt" autocomplete="off" placeholder="Fx 12 34 56 78 eller dig@eksempel.dk">
+      </div>
+
+      <!-- Note (valgfri) -->
+      <div class="field-block" data-field="note">
+        <div class="field-head">
+          <span class="field-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h14v16l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M8 9h8M8 12.5h6"/></svg></span>
+          <span class="field-label">Besked til psykologen<span class="field-optional">valgfrit</span></span>
+        </div>
+        <p class="field-hint">Fx hvem der har henvist dig, eller noget psykologen bør vide. Skriv ikke helbredsoplysninger her — det taler I om, når I mødes.</p>
+        <textarea id="in-note" placeholder="Valgfri besked"></textarea>
+      </div>
+
+      <!-- SAMTYKKE — to ADSKILTE afkryds-felter (§2b, ordlyd UÆNDRET) -->
+      <div class="consent-section">
+        <label class="consent-row" id="row-atten">
+          <input type="checkbox" id="in-atten">
+          <span class="consent-text">Jeg bekræfter, at jeg er fyldt <strong>18 år</strong>.</span>
+        </label>
+        <label class="consent-row" id="row-samtykke">
+          <input type="checkbox" id="in-samtykke">
+          <span class="consent-text" id="consent-wording"></span>
+        </label>
+        <p class="consent-note">Du skal sætte begge flueben for at kunne sende. De to bekræftelser er adskilte og frivillige.</p>
+      </div>
+
+      <button type="submit" class="btn-primary" id="send-btn">Send anmodning</button>
+      <div class="form-error" id="form-error" role="alert"></div>
+    </form>
+
+    <div class="disclaimer"><span class="lockicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><strong>Privatliv:</strong> Du udfylder alt i din egen browser. Dine oplysninger krypteres lokalt og sendes direkte til Psykolog Viktor Nielsen — kun psykologen kan åbne dem. Vi indsamler hverken CPR eller helbredsoplysninger i denne formular.</div>
+    <p class="footer-credit" id="key-fp"></p>
+  </div>
+</div>
+
+<!-- 2: KVITTERING -->
+<div id="screen-done" class="screen">
+  <div class="done-wrap">
+    <span class="done-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.3l2.7 2.7L16 9"/></svg></span>
+    <h2>Din anmodning er sendt</h2>
+    <p>Tak. Du bekræftes, når I mødes.</p>
+    <p id="done-detail" style="font-size:14px"></p>
+    <div class="disclaimer" style="text-align:left;margin-top:28px">Din anmodning blev krypteret i din browser og sendt sikkert til psykologen. Du kan til enhver tid trække din anmodning og dit samtykke tilbage ved at kontakte Psykolog Viktor Nielsen.</div>
+  </div>
+</div>
+
+<script type="module">
+import {
+  mentemEncrypt,
+  buildAnmodKonvolut,
+  ANMOD_SCHEMA_TYPE, ANMOD_GRUNDLAG, ANMOD_FORLOEBSTYPE, ANMOD_HOLDDAG, ANMOD_HOLDTID,
+  ANMOD_SPOERG_FORLOEBSTYPE, ANMOD_DISPLAY, ANMOD_CONSENT_WORDING,
+} from './mentem-skema-core.js';
+
+// ── INGEST-endpoint + pin (SAMME som søvndagbog-auto-send, index.html) ─────
+// Web krypterer til den SEPARATE ingest-X25519-HPKE-nøgle (zero-knowledge — siden har KUN
+// public-nøglen). Konvolutten dekrypteres modtager-side med ingest-privatnøglen.
+// keyId 2af28306 = TRANSPORT-/ingest-skema-nøglen (IKKE 8aa536a1 = dagbog-/journal-download-nøglen).
+const INGEST_API_BASE = 'https://ingest.mycel.dk';
+const INGEST_PUBKEY   = 't6ZBVtH41pVBECxELB1eBH6WvEgdguw9HLEUOMdl_Ec';
+const INGEST_KEY_ID   = '2af28306';
+
+const params = new URLSearchParams(location.search);
+const TEST_HOST = /mentem-skemaer-preview|localhost|127\.0\.0\.1|\.loca\.lt|\.trycloudflare\.com|\.pages\.dev/
+  .test(location.host + location.pathname);
+// #3 DELT ANON-ANMOD-TOKEN (Ed25519, NON-SECRET, ROTERBAR): flyder gennem worker'ens EKSISTERENDE
+// verify-sti (scope.s='forloebs-anmodning' → least-privilege: KUN /submit af DETTE skema). Prod-token
+// indlejres ved deploy (mintet m. prod-signeringsnøgle); ?it= override til preview/test. Rotation =
+// udskift den indlejrede værdi (ikke en kode-ændring) → ingen auth-grænse, kun anti-flood + routing.
+const ANMOD_INGEST_TOKEN = params.get('it') || '';
+const ingestApiOverride = TEST_HOST ? params.get('ingestapi') : null;
+const ingestPkOverride  = TEST_HOST ? params.get('ingestpk')  : null;
+function ingestBase()      { return (ingestApiOverride || INGEST_API_BASE || '').replace(/\/+$/, ''); }
+function ingestRecipient() { return ingestPkOverride || INGEST_PUBKEY; }
+
+const PRIVATLIV_URL = '#privatlivspolitik-todo';   // dp.dk-skabelon-link-TODO (interim-placeholder)
+
+function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+// §2b samtykke-ordlyd PRÆCIST (UÆNDRET fra v1-interim); [privatlivspolitikken] → link.
+(function renderConsent() {
+  const linked = esc(ANMOD_CONSENT_WORDING).replace(
+    '[privatlivspolitikken]',
+    `<a href="${PRIVATLIV_URL}" target="_blank" rel="noopener">privatlivspolitikken</a>`);
+  document.getElementById('consent-wording').innerHTML = linked;
+})();
+
+function markAnswered(block) { if (block) block.classList.add('answered'); }
+function checkedVal(name) { const el = document.querySelector(`input[name="${name}"]:checked`); return el ? el.value : null; }
+function clearGroup(name) {
+  document.querySelectorAll(`input[name="${name}"]`).forEach(r => { r.checked = false; });
+  const first = document.querySelector(`input[name="${name}"]`);
+  if (first) first.closest('.radio-group').querySelectorAll('.radio-option').forEach(o => o.classList.remove('checked'));
+}
+
+// ── Render radio-grupper fra core-enums + visningsnavne ────────────────────
+function renderRadios(containerId, name, values, displayMap, onChange) {
+  const c = document.getElementById(containerId);
+  c.innerHTML = '';
+  for (const v of values) {
+    const lbl = document.createElement('label');
+    lbl.className = 'radio-option';
+    const inp = document.createElement('input');
+    inp.type = 'radio'; inp.name = name; inp.value = v;
+    const span = document.createElement('span');
+    span.textContent = displayMap[v];
+    lbl.appendChild(inp); lbl.appendChild(span);
+    inp.addEventListener('change', () => {
+      [...c.querySelectorAll('.radio-option')].forEach(o => o.classList.remove('checked'));
+      lbl.classList.add('checked');
+      markAnswered(inp.closest('.field-block'));
+      if (onChange) onChange(v);
+    });
+    c.appendChild(lbl);
+  }
+}
+
+const blockForloebstype = document.getElementById('block-forloebstype');
+const blockHold = document.getElementById('block-hold');
+const holdVestegns = document.getElementById('hold-vestegns');
+const holdWestergaard = document.getElementById('hold-westergaard');
+
+let valgtGrundlag = null;
+
+renderRadios('grp-grundlag', 'grundlag', ANMOD_GRUNDLAG, ANMOD_DISPLAY.grundlag, onGrundlag);
+renderRadios('grp-forloebstype', 'forloebstype', ANMOD_FORLOEBSTYPE, ANMOD_DISPLAY.forloebstype, onForloebstype);
+// Vestegns-dage: KUN tirsdag/onsdag/torsdag (fredag er Westergaard-eksklusiv).
+const VESTEGNS_DAGE = ANMOD_HOLDDAG.filter(d => d !== 'fredag');
+renderRadios('grp-holdDag', 'holdDag', VESTEGNS_DAGE, ANMOD_DISPLAY.holdDag, () => {});
+renderRadios('grp-holdTid', 'holdTid', ANMOD_HOLDTID, ANMOD_DISPLAY.holdTid, () => {});
+
+// v2 forgrening: grundlag valgt → vis forløbstype KUN ved vestegns/westergaard; ellers skjul alt nedstrøms.
+function onGrundlag(v) {
+  valgtGrundlag = v;
+  clearGroup('forloebstype'); clearGroup('holdDag'); clearGroup('holdTid');
+  blockHold.style.display = 'none';
+  if (ANMOD_SPOERG_FORLOEBSTYPE.includes(v)) {
+    blockForloebstype.style.display = '';
+  } else {
+    blockForloebstype.style.display = 'none';   // forsikring/egenbetaler → auto-individuel, intet valg
+  }
+}
+
+// v2 forgrening: gruppe → vis hold (vestegns: dag+tid · westergaard: fast fredag); individuel → skjul.
+function onForloebstype(v) {
+  if (v === 'gruppe') {
+    blockHold.style.display = '';
+    holdVestegns.style.display    = (valgtGrundlag === 'vestegnsklinikken') ? '' : 'none';
+    holdWestergaard.style.display = (valgtGrundlag === 'westergaard') ? '' : 'none';
+  } else {
+    blockHold.style.display = 'none';
+    clearGroup('holdDag'); clearGroup('holdTid');
+  }
+}
+
+// Samtykke-rækker (to ADSKILTE handlinger).
+for (const [rowId, boxId] of [['row-atten', 'in-atten'], ['row-samtykke', 'in-samtykke']]) {
+  const box = document.getElementById(boxId);
+  box.addEventListener('change', () => document.getElementById(rowId).classList.toggle('checked', box.checked));
+}
+['in-fornavn', 'in-efternavn', 'in-kontakt', 'in-note'].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener('input', () => { if (el.value.trim()) markAnswered(el.closest('.field-block')); });
+});
+
+document.getElementById('key-fp').textContent = `Krypteret til nøgle-ID ${INGEST_KEY_ID} · skema ${ANMOD_SCHEMA_TYPE}`;
+
+if (TEST_HOST) {
+  const b = document.getElementById('preview-banner');
+  b.style.display = '';
+  b.textContent = 'Forhåndsvisning: dette er en test-visning af anmod-formularen. Indsend bygger og krypterer en ÆGTE konvolut, men afsendelse til serveren aktiveres først, når ingest-worker er åbnet for skemaet.';
+}
+
+// ── Fejl-mapping (core-validerings-koder → dansk besked, peg på feltet) ────
+const FELT_BLOCK = { fornavn:'fornavn', efternavn:'efternavn', grundlag:'grundlag', forloebstype:'forloebstype', holdDag:'hold', holdTid:'hold', atten:'atten', anmodSamtykke:'samtykke', kontakt:'kontakt', note:'note' };
+function fejlBesked(e) {
+  const f = e.felt;
+  switch (e.code) {
+    case 'paakraevet_mangler':
+      if (f === 'holdTid') return 'Vælg venligst et tidspunkt for dit hold.';
+      return `Udfyld venligst ${f === 'fornavn' ? 'dit fornavn' : 'dit efternavn'}.`;
+    case 'ugyldig_enum':
+      if (f === 'grundlag')     return 'Vælg venligst grundlaget for dit forløb.';
+      if (f === 'forloebstype') return 'Vælg venligst, om du ønsker gruppe- eller individuelt forløb.';
+      if (f === 'holdDag')      return 'Vælg venligst en ugedag for dit hold.';
+      if (f === 'holdTid')      return 'Vælg venligst et tidspunkt for dit hold.';
+      return 'Et af felterne har en ugyldig værdi.';
+    case 'manglende_hold_ved_gruppe':  return 'Vælg venligst en ugedag for dit hold.';
+    case 'ugyldig_holddag_for_grundlag': return 'Den valgte ugedag passer ikke til dit grundlag.';
+    case 'holdtid_forbudt':            return 'Dette hold har ikke et tidspunkt at vælge.';
+    case 'forloebstype_ikke_tilladt':  return 'Forløbstype kan ikke vælges for dette grundlag.';
+    case 'slot_forbudt_individuelt':   return 'Hold (ugedag/tidspunkt) gælder kun gruppeforløb.';
+    case 'atten_paakraevet':           return 'Sæt venligst flueben i, at du er fyldt 18 år.';
+    case 'samtykke_paakraevet':        return 'Sæt venligst flueben i samtykket for at kunne sende din anmodning.';
+    case 'art9Forbudt':                return 'Anmodningen må ikke indeholde helbreds- eller CPR-oplysninger.';
+    default:                           return 'Noget gik galt. Tjek venligst felterne og prøv igen.';
+  }
+}
+function visFejl(e) {
+  document.querySelectorAll('.field-invalid').forEach(b => b.classList.remove('field-invalid'));
+  document.getElementById('form-error').textContent = fejlBesked(e);
+  const blockName = FELT_BLOCK[e.felt];
+  const block = blockName
+    ? (document.querySelector(`.field-block[data-field="${blockName}"]`) || document.getElementById(`row-${blockName === 'samtykke' ? 'samtykke' : 'atten'}`))
+    : null;
+  if (block) { block.classList.add('field-invalid'); block.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+}
+
+// ── Indsend ────────────────────────────────────────────────────────────────
+const form = document.getElementById('anmod-form');
+const sendBtn = document.getElementById('send-btn');
+
+function laesInput() {
+  const grundlag = checkedVal('grundlag');
+  const input = {
+    fornavn: document.getElementById('in-fornavn').value,
+    efternavn: document.getElementById('in-efternavn').value,
+    grundlag,
+    atten: document.getElementById('in-atten').checked,
+    anmodSamtykke: document.getElementById('in-samtykke').checked,
+    kontakt: document.getElementById('in-kontakt').value,
+    note: document.getElementById('in-note').value,
+  };
+  // v2 forgrening: forloebstype kun spurgt ved vestegns/westergaard (ellers core auto-sætter "individuel").
+  if (ANMOD_SPOERG_FORLOEBSTYPE.includes(grundlag)) {
+    const ft = checkedVal('forloebstype');
+    if (ft) input.forloebstype = ft;
+    if (ft === 'gruppe') {
+      if (grundlag === 'vestegnsklinikken') { input.holdDag = checkedVal('holdDag'); input.holdTid = checkedVal('holdTid'); }
+      else if (grundlag === 'westergaard')  { input.holdDag = 'fredag'; }   // fast (auto-sat, ikke et valg)
+    }
+  }
+  return input;
+}
+
+async function sendTilIngest(konvolut) {
+  const container = await mentemEncrypt(ingestRecipient(), konvolut, INGEST_KEY_ID);  // HPKE zero-knowledge
+  const body = JSON.stringify({
+    token: ANMOD_INGEST_TOKEN, envelopeVersion: 1,
+    submissionUUID: (crypto.randomUUID && crypto.randomUUID()) || (String(Date.now()) + Math.random()),
+    schemaType: konvolut.schemaType, size: 0, ciphertext: JSON.stringify(container),
+  });
+  const r = await fetch(ingestBase() + '/submit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+  const j = await r.json().catch(() => ({}));
+  return { ok: r.ok && (j.status === 'received' || j.duplicate), status: r.status, err: j.err };
+}
+
+function visKvittering(detail) {
+  document.getElementById('screen-form').classList.remove('active');
+  document.getElementById('screen-done').classList.add('active');
+  if (detail) document.getElementById('done-detail').textContent = detail;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+form.addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  document.getElementById('form-error').textContent = '';
+  let konvolut;
+  try {
+    konvolut = buildAnmodKonvolut(laesInput());     // FROSSET kontrakt v2 (fail-loud validering)
+  } catch (e) { visFejl(e); return; }
+
+  sendBtn.disabled = true; sendBtn.textContent = 'Sender…';
+  try {
+    const res = await sendTilIngest(konvolut);
+    if (res.ok) { visKvittering(''); return; }
+    if (TEST_HOST) { visKvittering('Forhåndsvisning — serveren afviste afsendelsen (skema/host endnu ikke åbnet). Konvolutten blev bygget og krypteret korrekt.'); return; }
+    document.getElementById('form-error').textContent = 'Din anmodning kunne ikke sendes lige nu. Prøv venligst igen senere.';
+  } catch (e) {
+    if (TEST_HOST) { visKvittering('Forhåndsvisning — ingen server-forbindelse. Konvolutten blev bygget og krypteret korrekt.'); return; }
+    document.getElementById('form-error').textContent = 'Din anmodning kunne ikke sendes lige nu. Tjek din forbindelse og prøv igen.';
+  } finally {
+    sendBtn.disabled = false; sendBtn.textContent = 'Send anmodning';
+  }
+});
+</script>
+</body>
+</html>
