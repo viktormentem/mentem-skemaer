@@ -51,7 +51,7 @@
   .radio-group { display:grid; gap:8px; }
   .radio-option { display:flex; align-items:center; gap:12px; padding:12px 14px; border:1.5px solid var(--border); border-radius:8px; cursor:pointer; transition:all 0.12s; background:white; font-size:15px; min-height:44px; }
   .radio-option:hover { border-color:var(--accent); background:#f0faf5; }
-  .radio-option input[type=radio] { width:18px; height:18px; accent-color:var(--accent); flex-shrink:0; }
+  .radio-option input[type=radio], .radio-option input[type=checkbox] { width:18px; height:18px; accent-color:var(--accent); flex-shrink:0; }
   .radio-option.checked { border-color:var(--accent); background:var(--accent-light); font-weight:500; }
 
   .slot-grid { display:grid; gap:18px; }
@@ -134,39 +134,47 @@
         <div class="radio-group" id="grp-grundlag"></div>
       </div>
 
-      <!-- Forløbstype (KUN ved vestegns/westergaard) -->
-      <div class="field-block" data-field="forloebstype" id="block-forloebstype" style="display:none">
+      <!-- Q1b: Henvisende psykiater (KUN psykiater-grundlag; valgfri) -->
+      <div class="field-block" data-field="henvisning_psykiater" id="block-henvisning" style="display:none">
         <div class="field-head">
-          <span class="field-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="9" r="2.4"/><circle cx="16" cy="9" r="2.4"/><path d="M3.5 18a4.5 4.5 0 0 1 9 0M11.5 18a4.5 4.5 0 0 1 9 0"/></svg></span>
-          <span class="field-label">Hvilken slags forløb ønsker du?</span>
+          <span class="field-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v6a4 4 0 0 0 8 0V3"/><path d="M10 13v3a4 4 0 0 0 8 0v-2"/><circle cx="18" cy="13" r="2"/></svg></span>
+          <span class="field-label">Hvilken psykiater har henvist dig?<span class="field-optional">valgfrit</span></span>
         </div>
-        <div class="radio-group" id="grp-forloebstype"></div>
+        <p class="field-hint">Hvis du ved det. Ellers vælg "Ved ikke" — det er helt fint.</p>
+        <div class="radio-group" id="grp-henvisning"></div>
       </div>
 
-      <!-- Hold (KUN ved gruppeforløb; indhold afhænger af grundlag) -->
-      <div class="field-block" data-field="hold" id="block-hold" style="display:none">
+      <!-- Q2: forloeb_tilbudt (KUN psykiater-grundlag; påkrævet) — semantik = TILBUDT -->
+      <div class="field-block" data-field="forloeb_tilbudt" id="block-tilbudt" style="display:none">
         <div class="field-head">
-          <span class="field-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 9h16M8 3v4M16 3v4"/></svg></span>
-          <span class="field-label">Dit hold</span>
+          <span class="field-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="9" r="2.4"/><circle cx="16" cy="9" r="2.4"/><path d="M3.5 18a4.5 4.5 0 0 1 9 0M11.5 18a4.5 4.5 0 0 1 9 0"/></svg></span>
+          <span class="field-label">Er du tilbudt et bestemt forløb?</span>
         </div>
-        <!-- Vestegnsklinikken: vælg dag + tid -->
-        <div id="hold-vestegns" style="display:none">
-          <p class="field-hint">Vælg den ugedag og det tidspunkt, du gerne vil gå på.</p>
-          <div class="slot-grid">
-            <div>
-              <div class="slot-sub-label">Ugedag</div>
-              <div class="radio-group" id="grp-holdDag"></div>
-            </div>
-            <div>
-              <div class="slot-sub-label">Tidspunkt</div>
-              <div class="radio-group" id="grp-holdTid"></div>
-            </div>
+        <p class="field-hint">Det, psykiateren har tilbudt dig — ikke nødvendigvis det, du selv ønsker. Er du i tvivl, så vælg "Ved ikke".</p>
+        <div class="radio-group" id="grp-tilbudt"></div>
+      </div>
+
+      <!-- Q3: tid_praeference (KUN forloeb_tilbudt=gruppe) — multi-select tilgængelighed -->
+      <div class="field-block" data-field="tid_praeference" id="block-tid" style="display:none">
+        <div class="field-head">
+          <span class="field-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 9h16M8 3v4M16 3v4"/><path d="M9 14l2 2 4-4"/></svg></span>
+          <span class="field-label">Hvilke dage og tidspunkter kan du?</span>
+        </div>
+        <p class="field-hint">Sæt flueben ved alt, der kan passe. Kan du ikke svare nu, så vælg "Ved ikke endnu".</p>
+        <div class="slot-grid">
+          <div>
+            <div class="slot-sub-label">Dage</div>
+            <div class="radio-group" id="grp-tid-dage"></div>
+          </div>
+          <div>
+            <div class="slot-sub-label">Tidspunkter</div>
+            <div class="radio-group" id="grp-tid-tider"></div>
           </div>
         </div>
-        <!-- Westergaard: fast fredag, intet valg -->
-        <div id="hold-westergaard" style="display:none">
-          <div class="fixed-info"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 9h16M8 3v4M16 3v4"/><path d="M9 14l2 2 4-4"/></svg><span>Holdet ligger fast om <strong>fredagen</strong>.</span></div>
-        </div>
+        <label class="radio-option" id="tid-vedikke-row" style="margin-top:14px">
+          <input type="checkbox" id="in-tid-vedikke">
+          <span>Ved ikke endnu</span>
+        </label>
       </div>
 
       <!-- Kontakt (valgfri) -->
@@ -226,8 +234,9 @@
 import {
   mentemEncrypt,
   buildAnmodKonvolut,
-  ANMOD_SCHEMA_TYPE, ANMOD_GRUNDLAG, ANMOD_FORLOEBSTYPE, ANMOD_HOLDDAG, ANMOD_HOLDTID,
-  ANMOD_SPOERG_FORLOEBSTYPE, ANMOD_DISPLAY, ANMOD_CONSENT_WORDING,
+  ANMOD_SCHEMA_TYPE, ANMOD_GRUNDLAG, ANMOD_HENVISNING_PSYKIATER, ANMOD_FORLOEB_TILBUDT,
+  ANMOD_TID_DAGE, ANMOD_TID_TIDER, ANMOD_TID_VED_IKKE,
+  ANMOD_SPOERG_PSYKIATER, ANMOD_DISPLAY, ANMOD_CONSENT_WORDING,
 } from './mentem-skema-core.js';
 
 // ── INGEST-endpoint + pin (SAMME som søvndagbog-auto-send, index.html) ─────
@@ -292,42 +301,74 @@ function renderRadios(containerId, name, values, displayMap, onChange) {
   }
 }
 
-const blockForloebstype = document.getElementById('block-forloebstype');
-const blockHold = document.getElementById('block-hold');
-const holdVestegns = document.getElementById('hold-vestegns');
-const holdWestergaard = document.getElementById('hold-westergaard');
+// Render multi-select checkbox-grupper (tid_praeference dage/tider).
+function renderChecks(containerId, name, values, displayMap) {
+  const c = document.getElementById(containerId);
+  c.innerHTML = '';
+  for (const v of values) {
+    const lbl = document.createElement('label');
+    lbl.className = 'radio-option';
+    const inp = document.createElement('input');
+    inp.type = 'checkbox'; inp.name = name; inp.value = v;
+    const span = document.createElement('span');
+    span.textContent = displayMap[v];
+    lbl.appendChild(inp); lbl.appendChild(span);
+    inp.addEventListener('change', () => {
+      lbl.classList.toggle('checked', inp.checked);
+      markAnswered(inp.closest('.field-block'));
+    });
+    c.appendChild(lbl);
+  }
+}
+function checkedVals(name) { return [...document.querySelectorAll(`input[name="${name}"]:checked`)].map(el => el.value); }
+function clearChecks(name) {
+  document.querySelectorAll(`input[name="${name}"]`).forEach(cb => {
+    cb.checked = false; const o = cb.closest('.radio-option'); if (o) o.classList.remove('checked');
+  });
+}
+
+const blockHenvisning = document.getElementById('block-henvisning');
+const blockTilbudt = document.getElementById('block-tilbudt');
+const blockTid = document.getElementById('block-tid');
 
 let valgtGrundlag = null;
 
 renderRadios('grp-grundlag', 'grundlag', ANMOD_GRUNDLAG, ANMOD_DISPLAY.grundlag, onGrundlag);
-renderRadios('grp-forloebstype', 'forloebstype', ANMOD_FORLOEBSTYPE, ANMOD_DISPLAY.forloebstype, onForloebstype);
-// Vestegns-dage: KUN tirsdag/onsdag/torsdag (fredag er Westergaard-eksklusiv).
-const VESTEGNS_DAGE = ANMOD_HOLDDAG.filter(d => d !== 'fredag');
-renderRadios('grp-holdDag', 'holdDag', VESTEGNS_DAGE, ANMOD_DISPLAY.holdDag, () => {});
-renderRadios('grp-holdTid', 'holdTid', ANMOD_HOLDTID, ANMOD_DISPLAY.holdTid, () => {});
+renderRadios('grp-henvisning', 'henvisning_psykiater', ANMOD_HENVISNING_PSYKIATER, ANMOD_DISPLAY.henvisning_psykiater, () => {});
+renderRadios('grp-tilbudt', 'forloeb_tilbudt', ANMOD_FORLOEB_TILBUDT, ANMOD_DISPLAY.forloeb_tilbudt, onTilbudt);
+renderChecks('grp-tid-dage', 'tid_dage', ANMOD_TID_DAGE, ANMOD_DISPLAY.tid_dage);
+renderChecks('grp-tid-tider', 'tid_tider', ANMOD_TID_TIDER, ANMOD_DISPLAY.tid_tider);
 
-// v2 forgrening: grundlag valgt → vis forløbstype KUN ved vestegns/westergaard; ellers skjul alt nedstrøms.
-function onGrundlag(v) {
-  valgtGrundlag = v;
-  clearGroup('forloebstype'); clearGroup('holdDag'); clearGroup('holdTid');
-  blockHold.style.display = 'none';
-  if (ANMOD_SPOERG_FORLOEBSTYPE.includes(v)) {
-    blockForloebstype.style.display = '';
-  } else {
-    blockForloebstype.style.display = 'none';   // forsikring/egenbetaler → auto-individuel, intet valg
-  }
+const tidVedIkke = document.getElementById('in-tid-vedikke');
+// "Ved ikke endnu" og konkrete dag/tid-valg er gensidigt udelukkende (UX-klarhed).
+tidVedIkke.addEventListener('change', () => {
+  if (tidVedIkke.checked) { clearChecks('tid_dage'); clearChecks('tid_tider'); }
+  markAnswered(tidVedIkke.closest('.field-block'));
+});
+for (const name of ['tid_dage', 'tid_tider']) {
+  document.querySelectorAll(`input[name="${name}"]`).forEach(cb =>
+    cb.addEventListener('change', () => { if (cb.checked) tidVedIkke.checked = false; }));
 }
 
-// v2 forgrening: gruppe → vis hold (vestegns: dag+tid · westergaard: fast fredag); individuel → skjul.
-function onForloebstype(v) {
-  if (v === 'gruppe') {
-    blockHold.style.display = '';
-    holdVestegns.style.display    = (valgtGrundlag === 'vestegnsklinikken') ? '' : 'none';
-    holdWestergaard.style.display = (valgtGrundlag === 'westergaard') ? '' : 'none';
-  } else {
-    blockHold.style.display = 'none';
-    clearGroup('holdDag'); clearGroup('holdTid');
-  }
+// v2.1 adaptiv forgrening: grundlag=psykiater → vis henvisning + forloeb_tilbudt; ellers skjul psykiater-grenen.
+function onGrundlag(v) {
+  valgtGrundlag = v;
+  clearGroup('henvisning_psykiater'); clearGroup('forloeb_tilbudt');
+  skjulTid();
+  const erPsyk = ANMOD_SPOERG_PSYKIATER.includes(v);
+  blockHenvisning.style.display = erPsyk ? '' : 'none';
+  blockTilbudt.style.display    = erPsyk ? '' : 'none';
+}
+
+// forloeb_tilbudt=gruppe → vis tid_praeference (multi-select); individuelt/ved_ikke → skjul + ryd.
+function onTilbudt(v) {
+  if (v === 'gruppe') blockTid.style.display = '';
+  else skjulTid();
+}
+function skjulTid() {
+  blockTid.style.display = 'none';
+  clearChecks('tid_dage'); clearChecks('tid_tider');
+  if (tidVedIkke) tidVedIkke.checked = false;
 }
 
 // Samtykke-rækker (to ADSKILTE handlinger).
@@ -349,28 +390,34 @@ if (TEST_HOST) {
 }
 
 // ── Fejl-mapping (core-validerings-koder → dansk besked, peg på feltet) ────
-const FELT_BLOCK = { fornavn:'fornavn', efternavn:'efternavn', grundlag:'grundlag', forloebstype:'forloebstype', holdDag:'hold', holdTid:'hold', atten:'atten', anmodSamtykke:'samtykke', kontakt:'kontakt', note:'note' };
+const FELT_BLOCK = {
+  fornavn:'fornavn', efternavn:'efternavn', grundlag:'grundlag',
+  henvisning_psykiater:'henvisning_psykiater', forloeb_tilbudt:'forloeb_tilbudt',
+  tid_praeference:'tid_praeference', tid_dage:'tid_praeference', tid_tider:'tid_praeference',
+  atten:'atten', anmodSamtykke:'samtykke', kontakt:'kontakt', note:'note',
+};
 function fejlBesked(e) {
   const f = e.felt;
   switch (e.code) {
     case 'paakraevet_mangler':
-      if (f === 'holdTid') return 'Vælg venligst et tidspunkt for dit hold.';
+      if (f === 'forloeb_tilbudt') return 'Vælg venligst, hvilket forløb du er tilbudt.';
       return `Udfyld venligst ${f === 'fornavn' ? 'dit fornavn' : 'dit efternavn'}.`;
     case 'ugyldig_enum':
-      if (f === 'grundlag')     return 'Vælg venligst grundlaget for dit forløb.';
-      if (f === 'forloebstype') return 'Vælg venligst, om du ønsker gruppe- eller individuelt forløb.';
-      if (f === 'holdDag')      return 'Vælg venligst en ugedag for dit hold.';
-      if (f === 'holdTid')      return 'Vælg venligst et tidspunkt for dit hold.';
+      if (f === 'grundlag')             return 'Vælg venligst grundlaget for dit forløb.';
+      if (f === 'henvisning_psykiater') return 'Vælg venligst en gyldig psykiater (eller "Ved ikke").';
+      if (f === 'forloeb_tilbudt')      return 'Vælg venligst, hvilket forløb du er tilbudt.';
+      if (f === 'tid_dage')             return 'Vælg venligst gyldige dage.';
+      if (f === 'tid_tider')            return 'Vælg venligst gyldige tidspunkter.';
       return 'Et af felterne har en ugyldig værdi.';
-    case 'manglende_hold_ved_gruppe':  return 'Vælg venligst en ugedag for dit hold.';
-    case 'ugyldig_holddag_for_grundlag': return 'Den valgte ugedag passer ikke til dit grundlag.';
-    case 'holdtid_forbudt':            return 'Dette hold har ikke et tidspunkt at vælge.';
-    case 'forloebstype_ikke_tilladt':  return 'Forløbstype kan ikke vælges for dette grundlag.';
-    case 'slot_forbudt_individuelt':   return 'Hold (ugedag/tidspunkt) gælder kun gruppeforløb.';
-    case 'atten_paakraevet':           return 'Sæt venligst flueben i, at du er fyldt 18 år.';
-    case 'samtykke_paakraevet':        return 'Sæt venligst flueben i samtykket for at kunne sende din anmodning.';
-    case 'art9Forbudt':                return 'Anmodningen må ikke indeholde helbreds- eller CPR-oplysninger.';
-    default:                           return 'Noget gik galt. Tjek venligst felterne og prøv igen.';
+    case 'ugyldig_tid_praeference':      return 'Vælg venligst dage/tidspunkter — eller "Ved ikke endnu".';
+    case 'henvisning_ikke_tilladt':      return 'Psykiater-henvisning kan kun vælges, når du er henvist via egen læge.';
+    case 'forloeb_tilbudt_ikke_tilladt': return 'Forløbstype kan kun vælges, når du er henvist via egen læge.';
+    case 'forloeb_resolved_ikke_tilladt':return 'Forløbet afgøres af psykologen og kan ikke angives her.';
+    case 'tid_praeference_ikke_tilladt': return 'Dage/tidspunkter gælder kun et tilbudt gruppeforløb.';
+    case 'atten_paakraevet':             return 'Sæt venligst flueben i, at du er fyldt 18 år.';
+    case 'samtykke_paakraevet':          return 'Sæt venligst flueben i samtykket for at kunne sende din anmodning.';
+    case 'art9Forbudt':                  return 'Anmodningen må ikke indeholde helbreds- eller CPR-oplysninger.';
+    default:                             return 'Noget gik galt. Tjek venligst felterne og prøv igen.';
   }
 }
 function visFejl(e) {
@@ -398,13 +445,19 @@ function laesInput() {
     kontakt: document.getElementById('in-kontakt').value,
     note: document.getElementById('in-note').value,
   };
-  // v2 forgrening: forloebstype kun spurgt ved vestegns/westergaard (ellers core auto-sætter "individuel").
-  if (ANMOD_SPOERG_FORLOEBSTYPE.includes(grundlag)) {
-    const ft = checkedVal('forloebstype');
-    if (ft) input.forloebstype = ft;
-    if (ft === 'gruppe') {
-      if (grundlag === 'vestegnsklinikken') { input.holdDag = checkedVal('holdDag'); input.holdTid = checkedVal('holdTid'); }
-      else if (grundlag === 'westergaard')  { input.holdDag = 'fredag'; }   // fast (auto-sat, ikke et valg)
+  // v2.1 adaptiv: psykiater-grenen spørger henvisning (valgfri) + forloeb_tilbudt (req) + tid (kun gruppe).
+  if (ANMOD_SPOERG_PSYKIATER.includes(grundlag)) {
+    const henv = checkedVal('henvisning_psykiater');
+    if (henv) input.henvisning_psykiater = henv;
+    const tilbudt = checkedVal('forloeb_tilbudt');
+    if (tilbudt) input.forloeb_tilbudt = tilbudt;
+    if (tilbudt === 'gruppe') {
+      if (tidVedIkke.checked) {
+        input.tid_praeference = ANMOD_TID_VED_IKKE;
+      } else {
+        const dage = checkedVals('tid_dage'), tider = checkedVals('tid_tider');
+        if (dage.length || tider.length) input.tid_praeference = { dage, tider };
+      }
     }
   }
   return input;
@@ -434,7 +487,7 @@ form.addEventListener('submit', async (ev) => {
   document.getElementById('form-error').textContent = '';
   let konvolut;
   try {
-    konvolut = buildAnmodKonvolut(laesInput());     // FROSSET kontrakt v2 (fail-loud validering)
+    konvolut = buildAnmodKonvolut(laesInput());     // kontrakt v2.1 (adaptiv, fail-loud validering)
   } catch (e) { visFejl(e); return; }
 
   sendBtn.disabled = true; sendBtn.textContent = 'Sender…';

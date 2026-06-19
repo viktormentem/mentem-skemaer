@@ -31,8 +31,11 @@ import {
   ANMOD_CONSENT_WORDING_VERSION,
   ANMOD_ART9_DENY,
   ANMOD_DISPLAY,
-  ANMOD_FORLOEBSTYPE,
-  ANMOD_HOLDDAG,
+  ANMOD_GRUNDLAG,
+  ANMOD_HENVISNING_PSYKIATER,
+  ANMOD_FORLOEB_TILBUDT,
+  ANMOD_TID_DAGE,
+  ANMOD_TID_TIDER,
 } from '../mentem-skema-core.js';
 import { scanText, runGuard, GUARDED_FILES } from './emoji-guard.mjs';
 
@@ -275,17 +278,18 @@ check('bl INGEN scoring (nul-score)', bl.questionnaireScores === undefined && bl
 const blRT = await nodeDecrypt(await mentemEncrypt(recipientPubB64, bl), recipient.privateKey);
 check('bl round-trip baseline bevaret', blRT.baseline.alder === 67 && blRT.baseline.koen === 'Kvinde');
 
-// ── Forløbs-anmodning (ANMOD-V1) — FROSSET kontrakt §1–§3 ──────────────────
-// Maskinel drift-vagt på web-fladen (analog til Swift ForloebsAnmodningKonvolutTests).
-console.log('forloebs-anmodning (ANMOD-V1):');
+// ── Forløbs-anmodning (ANMOD v2.1, adaptiv-grundlags-betinget) — kontrakt §1–§3 ───────────
+// Maskinel drift-vagt på web-fladen (1:1 m. Swift ForloebsAnmodningKonvolutTests).
+console.log('forloebs-anmodning (ANMOD v2.1):');
 function throwsCode(name, fn, wantCode) {
   try { fn(); check(name, false, '(forventede kast, fik retur)'); }
   catch (e) { check(name, e.code === wantCode, `(code ${e.code}, want ${wantCode})`); }
 }
-// §4 eksempel-payload v2 (syntetisk Vestegns-gruppeforløb — egenbetaler+gruppe er nu ugyldig)
+// Gyldig psykiater-gruppe m. henvisning + tid-objekt (multi-select tilgængelighed)
 const anmodGruppe = buildAnmodKonvolut({
-  fornavn: 'Syntetisk', efternavn: 'Testperson', grundlag: 'vestegnsklinikken',
-  forloebstype: 'gruppe', holdDag: 'tirsdag', holdTid: '14:00',
+  fornavn: 'Syntetisk', efternavn: 'Testperson', grundlag: 'psykiater',
+  henvisning_psykiater: 'vestegnsklinikken', forloeb_tilbudt: 'gruppe',
+  tid_praeference: { dage: ['tirsdag', 'torsdag'], tider: ['14:00'] },
   atten: true, anmodSamtykke: true, kontakt: 'test@example.invalid', note: 'Henvist af egen læge',
 });
 // §3 konvolut-form
@@ -295,58 +299,77 @@ check('anmod konvolut schemaType ren ASCII', /^[\x00-\x7F]+$/.test(anmodGruppe.s
 check('anmod konvolut clientUA = web', anmodGruppe.clientUA === 'web');
 check('anmod konvolut clientTimestamp ISO uden fraktion', ISO_NOFRAC.test(anmodGruppe.clientTimestamp), `(${anmodGruppe.clientTimestamp})`);
 check('anmod konvolut bærer INGEN respondentPseudonym web-side', anmodGruppe.respondentPseudonym === undefined);
-// §2 data-payload — felt-keys EKSAKT
+// §2 data-payload — felt-keys EKSAKT (psykiater gruppe)
 const ag = anmodGruppe.data;
-eq('anmod data keys (gruppe)', Object.keys(ag).sort(),
-   ['anmodSamtykke','atten','efternavn','fornavn','forloebstype','grundlag','holdDag','holdTid','kontakt','note','type'].sort());
+eq('anmod data keys (psykiater gruppe)', Object.keys(ag).sort(),
+   ['anmodSamtykke','atten','efternavn','fornavn','forloeb_tilbudt','grundlag','henvisning_psykiater','kontakt','note','tid_praeference','type'].sort());
 check('anmod data.type mirror', ag.type === 'forloebs-anmodning');
 check('anmod data.fornavn/efternavn', ag.fornavn === 'Syntetisk' && ag.efternavn === 'Testperson');
-check('anmod data.grundlag enum', ag.grundlag === 'vestegnsklinikken');
-check('anmod data.forloebstype = gruppe', ag.forloebstype === 'gruppe');
-check('anmod data.holdDag/holdTid wire-værdier (vestegns gruppe)', ag.holdDag === 'tirsdag' && ag.holdTid === '14:00');
+check('anmod data.grundlag = psykiater', ag.grundlag === 'psykiater');
+check('anmod data.henvisning_psykiater wire', ag.henvisning_psykiater === 'vestegnsklinikken');
+check('anmod data.forloeb_tilbudt = gruppe (TILBUDT)', ag.forloeb_tilbudt === 'gruppe');
+eq('anmod data.tid_praeference objekt (dedup, rækkefølge bevaret)', ag.tid_praeference, { dage:['tirsdag','torsdag'], tider:['14:00'] });
+check('anmod data INGEN forloeb_resolved på wire (system-afledt)', ag.forloeb_resolved === undefined);
 check('anmod data.atten === true (bool)', ag.atten === true);
 check('anmod data.anmodSamtykke === true (bool)', ag.anmodSamtykke === true);
 check('anmod data.kontakt/note bevaret', ag.kontakt === 'test@example.invalid' && ag.note === 'Henvist af egen læge');
-// trim + drop af tom valgfri
-// v2 Westergaard-gruppe: holdDag=fredag FAST, INGEN holdTid i data
-const anmodWg = buildAnmodKonvolut({ fornavn:'W', efternavn:'G', grundlag:'westergaard', forloebstype:'gruppe', holdDag:'fredag', atten:true, anmodSamtykke:true }).data;
-check('anmod westergaard-gruppe: holdDag=fredag', anmodWg.holdDag === 'fredag');
-check('anmod westergaard-gruppe: INGEN holdTid i data', anmodWg.holdTid === undefined);
-// v2 forsikring uden forloebstype → auto "individuel", intet hold
+// psykiater-gruppe m. tid "ved_ikke"
+const anmodTidVedIkke = buildAnmodKonvolut({ fornavn:'A', efternavn:'B', grundlag:'psykiater', forloeb_tilbudt:'gruppe', tid_praeference:'ved_ikke', atten:true, anmodSamtykke:true }).data;
+check('anmod tid="ved_ikke" bevaret', anmodTidVedIkke.tid_praeference === 'ved_ikke');
+// tom-tom multi-select → "ved_ikke" (kanonisk repræsentation)
+const anmodTidTom = buildAnmodKonvolut({ fornavn:'A', efternavn:'B', grundlag:'psykiater', forloeb_tilbudt:'gruppe', tid_praeference:{ dage:[], tider:[] }, atten:true, anmodSamtykke:true }).data;
+check('anmod tom-tom tid → "ved_ikke"', anmodTidTom.tid_praeference === 'ved_ikke');
+// psykiater-individuelt → ingen tid_praeference
+const anmodIndiv = buildAnmodKonvolut({ fornavn:'A', efternavn:'B', grundlag:'psykiater', forloeb_tilbudt:'individuelt', atten:true, anmodSamtykke:true }).data;
+check('anmod psykiater-individuelt: forloeb_tilbudt=individuelt', anmodIndiv.forloeb_tilbudt === 'individuelt');
+check('anmod psykiater-individuelt: INGEN tid_praeference', anmodIndiv.tid_praeference === undefined);
+// psykiater henvisning valgfri (udeladt passerer)
+const anmodUdenHenv = buildAnmodKonvolut({ fornavn:'A', efternavn:'B', grundlag:'psykiater', forloeb_tilbudt:'ved_ikke', atten:true, anmodSamtykke:true }).data;
+check('anmod psykiater henvisning udeladt (valgfri)', anmodUdenHenv.henvisning_psykiater === undefined);
+check('anmod psykiater forloeb_tilbudt=ved_ikke', anmodUdenHenv.forloeb_tilbudt === 'ved_ikke');
+// forsikring: trim + auto, INGEN psykiater-felter, INGEN forloeb_resolved på wire (afledt Swift-side)
 const anmodForsik = buildAnmodKonvolut({ fornavn:'  Anna  ', efternavn:' Sø ', grundlag:'forsikring', atten:true, anmodSamtykke:true, kontakt:'   ', note:'' }).data;
-check('anmod forsikring: auto forloebstype=individuel (ikke patient-valgt)', anmodForsik.forloebstype === 'individuel');
-check('anmod forsikring: INGEN holdDag/holdTid', anmodForsik.holdDag === undefined && anmodForsik.holdTid === undefined);
+eq('anmod forsikring data keys (kun basis)', Object.keys(anmodForsik).sort(),
+   ['anmodSamtykke','atten','efternavn','fornavn','grundlag','type'].sort());
+check('anmod forsikring: INGEN henvisning/forloeb_tilbudt/tid/resolved på wire',
+  anmodForsik.henvisning_psykiater === undefined && anmodForsik.forloeb_tilbudt === undefined && anmodForsik.tid_praeference === undefined && anmodForsik.forloeb_resolved === undefined);
 check('anmod trimmer fornavn/efternavn', anmodForsik.fornavn === 'Anna' && anmodForsik.efternavn === 'Sø');
 check('anmod dropper whitespace-kontakt + tom note', anmodForsik.kontakt === undefined && anmodForsik.note === undefined);
-// v2 vestegns individuel → intet hold
-const anmodVind = buildAnmodKonvolut({ fornavn:'V', efternavn:'I', grundlag:'vestegnsklinikken', forloebstype:'individuel', atten:true, anmodSamtykke:true }).data;
-check('anmod vestegns-individuel: intet hold', anmodVind.holdDag === undefined && anmodVind.holdTid === undefined);
-// §2 v2 validerings-kast (fail-loud, kryds-felt)
+// egenbetaler
+const anmodEgen = buildAnmodKonvolut({ fornavn:'E', efternavn:'B', grundlag:'egenbetaler', atten:true, anmodSamtykke:true }).data;
+check('anmod egenbetaler: kun basis-felter', anmodEgen.grundlag === 'egenbetaler' && anmodEgen.forloeb_tilbudt === undefined);
+// §2 v2.1 validerings-kast (fail-loud, adaptiv kryds-felt)
 const VG = { fornavn:'A', efternavn:'B', atten:true, anmodSamtykke:true };
-throwsCode('anmod: vestegns-gruppe UDEN holdDag', () => buildAnmodKonvolut({ ...VG, grundlag:'vestegnsklinikken', forloebstype:'gruppe', holdTid:'14:00' }), 'manglende_hold_ved_gruppe');
-throwsCode('anmod: vestegns-gruppe UDEN holdTid', () => buildAnmodKonvolut({ ...VG, grundlag:'vestegnsklinikken', forloebstype:'gruppe', holdDag:'onsdag' }), 'paakraevet_mangler');
-throwsCode('anmod: vestegns-gruppe fredag afvist', () => buildAnmodKonvolut({ ...VG, grundlag:'vestegnsklinikken', forloebstype:'gruppe', holdDag:'fredag', holdTid:'14:00' }), 'ugyldig_holddag_for_grundlag');
-throwsCode('anmod: westergaard-gruppe ikke-fredag afvist', () => buildAnmodKonvolut({ ...VG, grundlag:'westergaard', forloebstype:'gruppe', holdDag:'tirsdag' }), 'ugyldig_holddag_for_grundlag');
-throwsCode('anmod: westergaard-gruppe MED holdTid afvist', () => buildAnmodKonvolut({ ...VG, grundlag:'westergaard', forloebstype:'gruppe', holdDag:'fredag', holdTid:'14:00' }), 'holdtid_forbudt');
-throwsCode('anmod: individuel MED hold afvist', () => buildAnmodKonvolut({ ...VG, grundlag:'vestegnsklinikken', forloebstype:'individuel', holdDag:'tirsdag' }), 'slot_forbudt_individuelt');
-throwsCode('anmod: forsikring+gruppe afvist (ikke patient-valg)', () => buildAnmodKonvolut({ ...VG, grundlag:'forsikring', forloebstype:'gruppe' }), 'forloebstype_ikke_tilladt');
-throwsCode('anmod: vestegns UDEN forloebstype', () => buildAnmodKonvolut({ ...VG, grundlag:'vestegnsklinikken' }), 'ugyldig_enum');
-throwsCode('anmod: v1-værdi "individuelt" afvist (v2 = individuel)', () => buildAnmodKonvolut({ ...VG, grundlag:'vestegnsklinikken', forloebstype:'individuelt' }), 'ugyldig_enum');
+throwsCode('anmod: psykiater UDEN forloeb_tilbudt', () => buildAnmodKonvolut({ ...VG, grundlag:'psykiater' }), 'paakraevet_mangler');
+throwsCode('anmod: ugyldig forloeb_tilbudt', () => buildAnmodKonvolut({ ...VG, grundlag:'psykiater', forloeb_tilbudt:'par' }), 'ugyldig_enum');
+throwsCode('anmod: v2-værdi "individuel" afvist (v2.1 = individuelt)', () => buildAnmodKonvolut({ ...VG, grundlag:'psykiater', forloeb_tilbudt:'individuel' }), 'ugyldig_enum');
+throwsCode('anmod: ugyldig henvisning', () => buildAnmodKonvolut({ ...VG, grundlag:'psykiater', henvisning_psykiater:'ukendt', forloeb_tilbudt:'individuelt' }), 'ugyldig_enum');
+throwsCode('anmod: forsikring MED henvisning afvist', () => buildAnmodKonvolut({ ...VG, grundlag:'forsikring', henvisning_psykiater:'vestegnsklinikken' }), 'henvisning_ikke_tilladt');
+throwsCode('anmod: forsikring MED forloeb_tilbudt afvist', () => buildAnmodKonvolut({ ...VG, grundlag:'egenbetaler', forloeb_tilbudt:'gruppe' }), 'forloeb_tilbudt_ikke_tilladt');
+throwsCode('anmod: forloeb_resolved på wire afvist (system-afledt)', () => buildAnmodKonvolut({ ...VG, grundlag:'forsikring', forloeb_resolved:'individuelt' }), 'forloeb_resolved_ikke_tilladt');
+throwsCode('anmod: tid uden gruppe afvist', () => buildAnmodKonvolut({ ...VG, grundlag:'psykiater', forloeb_tilbudt:'individuelt', tid_praeference:'ved_ikke' }), 'tid_praeference_ikke_tilladt');
+throwsCode('anmod: tid på forsikring afvist', () => buildAnmodKonvolut({ ...VG, grundlag:'forsikring', tid_praeference:{ dage:['tirsdag'], tider:['14:00'] } }), 'tid_praeference_ikke_tilladt');
+throwsCode('anmod: ugyldig tid-streng afvist', () => buildAnmodKonvolut({ ...VG, grundlag:'psykiater', forloeb_tilbudt:'gruppe', tid_praeference:'snart' }), 'ugyldig_tid_praeference');
+throwsCode('anmod: ugyldig tid-dag afvist', () => buildAnmodKonvolut({ ...VG, grundlag:'psykiater', forloeb_tilbudt:'gruppe', tid_praeference:{ dage:['mandag'], tider:['14:00'] } }), 'ugyldig_enum');
+throwsCode('anmod: ugyldig tid-tid afvist', () => buildAnmodKonvolut({ ...VG, grundlag:'psykiater', forloeb_tilbudt:'gruppe', tid_praeference:{ dage:['tirsdag'], tider:['09:00'] } }), 'ugyldig_enum');
 throwsCode('anmod: atten=false afvist', () => buildAnmodKonvolut({ ...VG, grundlag:'egenbetaler', atten:false }), 'atten_paakraevet');
 throwsCode('anmod: anmodSamtykke=false afvist (ikke send-tjek)', () => buildAnmodKonvolut({ fornavn:'A', efternavn:'B', grundlag:'egenbetaler', atten:true, anmodSamtykke:false }), 'samtykke_paakraevet');
 throwsCode('anmod: manglende fornavn afvist', () => buildAnmodKonvolut({ efternavn:'B', grundlag:'egenbetaler', atten:true, anmodSamtykke:true }), 'paakraevet_mangler');
 throwsCode('anmod: ugyldig grundlag afvist', () => buildAnmodKonvolut({ ...VG, grundlag:'noget-andet' }), 'ugyldig_enum');
+throwsCode('anmod: v2-grundlag "vestegnsklinikken" afvist (nu henvisning, ikke grundlag)', () => buildAnmodKonvolut({ ...VG, grundlag:'vestegnsklinikken' }), 'ugyldig_enum');
 // §6 art.9-deny (HÅRD) — forbudt helbreds-/CPR-key til stede => hård fejl
 for (const denyKey of ['cpr', 'helbred', 'diagnose', 'medicin', 'sygdom', 'symptom', 'health', 'journal']) {
   throwsCode(`anmod: art.9-deny afviser '${denyKey}'`, () => buildAnmodKonvolut({ fornavn:'A', efternavn:'B', grundlag:'egenbetaler', atten:true, anmodSamtykke:true, [denyKey]:'x' }), 'art9Forbudt');
 }
 check('anmod ART9_DENY dækker kontraktens 9 keys', ANMOD_ART9_DENY.length === 9 && ANMOD_ART9_DENY.includes('diagnosis'));
-// v2 enums + visningslabels
-check('anmod v2 forloebstype enum = [gruppe,individuel]', ANMOD_FORLOEBSTYPE.join(',') === 'gruppe,individuel');
-check('anmod v2 holdDag enum += fredag', ANMOD_HOLDDAG.join(',') === 'tirsdag,onsdag,torsdag,fredag');
-check('anmod v2 grundlag-labels UDEN (henvist)', ANMOD_DISPLAY.grundlag.vestegnsklinikken === 'Vestegnsklinikken' && ANMOD_DISPLAY.grundlag.westergaard === 'Westergaard Psykiatri' && !/henvist/i.test(JSON.stringify(ANMOD_DISPLAY.grundlag)));
-check('anmod v2 holdDag-label fredag = Fredag', ANMOD_DISPLAY.holdDag.fredag === 'Fredag');
-// §2b samtykke-ordlyd (PINNET v1-interim) — brand + version + placeholder
+// v2.1 enums + visningslabels (1:1 m. Swift)
+check('anmod v2.1 grundlag enum = [psykiater,forsikring,egenbetaler]', ANMOD_GRUNDLAG.join(',') === 'psykiater,forsikring,egenbetaler');
+check('anmod v2.1 henvisning enum', ANMOD_HENVISNING_PSYKIATER.join(',') === 'vestegnsklinikken,westergaard,ved_ikke');
+check('anmod v2.1 forloeb_tilbudt enum', ANMOD_FORLOEB_TILBUDT.join(',') === 'gruppe,individuelt,ved_ikke');
+check('anmod v2.1 tid dage/tider enums', ANMOD_TID_DAGE.join(',') === 'tirsdag,onsdag,torsdag,fredag' && ANMOD_TID_TIDER.join(',') === '14:00,15:30');
+check('anmod v2.1 grundlag-label psykiater = henvist-formulering', /henvist via egen læge/i.test(ANMOD_DISPLAY.grundlag.psykiater));
+check('anmod v2.1 henvisning-labels m. personnavn (display-only)', /Andreas Hoff/.test(ANMOD_DISPLAY.henvisning_psykiater.vestegnsklinikken) && /Casper Westergaard/.test(ANMOD_DISPLAY.henvisning_psykiater.westergaard));
+// §2b samtykke-ordlyd (PINNET v1-interim, UÆNDRET) — brand + version + placeholder
 check('anmod consent version = v1-interim-2026-06-19', ANMOD_CONSENT_WORDING_VERSION === 'v1-interim-2026-06-19');
 check('anmod consent brand = Psykolog Viktor Nielsen', ANMOD_CONSENT_WORDING.includes('Psykolog Viktor Nielsen'));
 check('anmod consent siger ALDRIG Mycel', !/Mycel/i.test(ANMOD_CONSENT_WORDING));
@@ -356,7 +379,7 @@ check('anmod consent nævner tilbagetrækning (art.9(2)(a)-rettighed)', /trække
 const anmodRT = await nodeDecrypt(await mentemEncrypt(recipientPubB64, anmodGruppe), recipient.privateKey);
 check('anmod round-trip schemaType', anmodRT.schemaType === 'forloebs-anmodning');
 check('anmod round-trip clientUA = web', anmodRT.clientUA === 'web');
-check('anmod round-trip data.fornavn + slot', anmodRT.data.fornavn === 'Syntetisk' && anmodRT.data.holdDag === 'tirsdag');
+eq('anmod round-trip data.tid_praeference', anmodRT.data.tid_praeference, { dage:['tirsdag','torsdag'], tider:['14:00'] });
 
 // ── VERA-guard #1: emoji/glyf-detektor (regressions-lås) ───────────────────
 // Unit-tests af scanText() (deterministisk — uafhængig af repo-tilstand) + en

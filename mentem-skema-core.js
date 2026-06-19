@@ -476,24 +476,30 @@ export function buildPayloadBaseline(answers, meta = {}) {
 
 export const ANMOD_SCHEMA_TYPE = 'forloebs-anmodning';   // §1 AUTORITATIV wire-streng (ren ASCII, ø→oe)
 
-// §2 enums (wire-værdier — IKKE visningstekst). v2: forloebstype "individuel" (v1 var "individuelt");
-// holdDag += "fredag" (Westergaard-fast).
-export const ANMOD_GRUNDLAG      = ['vestegnsklinikken', 'westergaard', 'forsikring', 'egenbetaler'];
-export const ANMOD_FORLOEBSTYPE  = ['gruppe', 'individuel'];
-export const ANMOD_HOLDDAG       = ['tirsdag', 'onsdag', 'torsdag', 'fredag']; // værdi grundlag-betinget (se buildAnmodKonvolut)
-export const ANMOD_HOLDTID       = ['14:00', '15:30'];                         // KUN ved vestegnsklinikken+gruppe
-// Grundlag der STILLER forløbstype-spørgsmålet i UI (ellers auto-"individuel").
-export const ANMOD_SPOERG_FORLOEBSTYPE = ['vestegnsklinikken', 'westergaard'];
+// §2 enums (wire-værdier — IKKE visningstekst). v2.1 (adaptiv-grundlags-betinget):
+//   grundlag 4→3-vejs; FJERNET forloebstype/holdDag/holdTid; TILFØJET henvisning_psykiater/
+//   forloeb_tilbudt/tid_praeference. forloeb_resolved er SYSTEM-AFLEDT (aldrig på wire).
+export const ANMOD_GRUNDLAG             = ['psykiater', 'forsikring', 'egenbetaler'];
+export const ANMOD_HENVISNING_PSYKIATER = ['vestegnsklinikken', 'westergaard', 'ved_ikke']; // KUN psykiater (valgfri)
+export const ANMOD_FORLOEB_TILBUDT      = ['gruppe', 'individuelt', 'ved_ikke'];             // KUN psykiater (REQ); = TILBUDT
+export const ANMOD_TID_DAGE             = ['tirsdag', 'onsdag', 'torsdag', 'fredag'];        // KUN forloeb_tilbudt=gruppe
+export const ANMOD_TID_TIDER            = ['14:00', '15:30'];                                // KUN forloeb_tilbudt=gruppe
+export const ANMOD_TID_VED_IKKE         = 'ved_ikke';                                        // "Ved ikke endnu" → wire-token
+// Grundlag der STILLER psykiater-grenens spørgsmål (henvisning + forloeb_tilbudt) i UI.
+export const ANMOD_SPOERG_PSYKIATER     = ['psykiater'];
 
 // §6 art.9-deny — disse keys må ALDRIG bære helbreds-/CPR-data; til stede => hård parse-fejl.
 export const ANMOD_ART9_DENY = ['cpr', 'helbred', 'diagnose', 'diagnosis', 'medicin', 'sygdom', 'symptom', 'health', 'journal'];
 
 // §2 visningsnavne (korrekt æøå — IKKE wire-værdier). Single source for web + app.
+// Psykiater-klinik: personnavn (Hoff/Westergaard) er display-only (wire = klinik-id).
 export const ANMOD_DISPLAY = {
-  grundlag:     { vestegnsklinikken: 'Vestegnsklinikken', westergaard: 'Westergaard Psykiatri', forsikring: 'Via forsikring', egenbetaler: 'Egenbetaler' },
-  forloebstype: { gruppe: 'Gruppeforløb', individuel: 'Individuelt forløb' },
-  holdDag:      { tirsdag: 'Tirsdag', onsdag: 'Onsdag', torsdag: 'Torsdag', fredag: 'Fredag' },
-  holdTid:      { '14:00': 'kl. 14:00', '15:30': 'kl. 15:30' },
+  grundlag:            { psykiater: 'Henvist via egen læge til psykiater', forsikring: 'Via forsikring', egenbetaler: 'Egenbetaler' },
+  henvisning_psykiater:{ vestegnsklinikken: 'Vestegnsklinikken (Andreas Hoff)', westergaard: 'Westergaard Psykiatri (Casper Westergaard)', ved_ikke: 'Ved ikke' },
+  forloeb_tilbudt:     { gruppe: 'Gruppeforløb', individuelt: 'Individuelt forløb', ved_ikke: 'Ved ikke (psykiateren og jeg afgør det sammen)' },
+  tid_dage:            { tirsdag: 'Tirsdag', onsdag: 'Onsdag', torsdag: 'Torsdag', fredag: 'Fredag' },
+  tid_tider:           { '14:00': 'kl. 14:00', '15:30': 'kl. 15:30' },
+  tid_ved_ikke:        'Ved ikke endnu',
 };
 
 // §2b PINNET samtykke-ordlyd (wording-version v1-interim-2026-06-19) — renderes PRÆCIST på
@@ -520,6 +526,31 @@ function anmodEnum(v, allow, felt) {
   return v;
 }
 
+// tid_praeference (KUN forloeb_tilbudt=gruppe): null (udeladt) | 'ved_ikke' | {dage:[...],tider:[...]}
+// (enum-valideret, dedup'et; tom-tom → 'ved_ikke'). 1:1 m. Swift parseTidPraeference.
+function byggTidListe(arr, allow, felt) {
+  if (arr === null || arr === undefined) return [];
+  if (!Array.isArray(arr)) throw anmodFejl('ugyldig_tid_praeference', felt);
+  const out = [];
+  for (const el of arr) {
+    if (!allow.includes(el)) throw anmodFejl('ugyldig_enum', felt);
+    if (!out.includes(el)) out.push(el);
+  }
+  return out;
+}
+function byggTidPraeference(v) {
+  if (v === null || v === undefined) return null;
+  if (typeof v === 'string') {
+    if (v === ANMOD_TID_VED_IKKE) return ANMOD_TID_VED_IKKE;
+    throw anmodFejl('ugyldig_tid_praeference', 'tid_praeference');
+  }
+  if (typeof v !== 'object' || Array.isArray(v)) throw anmodFejl('ugyldig_tid_praeference', 'tid_praeference');
+  const dage  = byggTidListe(v.dage,  ANMOD_TID_DAGE,  'tid_dage');
+  const tider = byggTidListe(v.tider, ANMOD_TID_TIDER, 'tid_tider');
+  if (dage.length === 0 && tider.length === 0) return ANMOD_TID_VED_IKKE;
+  return { dage, tider };
+}
+
 /// Byg den FROSNE forløbs-anmodnings-konvolut fra rå form-input (fail-loud).
 /// Validerer §2 (påkrævede felter + enums + gruppe-eksklusiv slot + atten/samtykke=true +
 /// art.9-deny) og wrapper i IngestKonvolut (§3). Kaster Error med `.code`/`.felt` ved afvigelse
@@ -542,37 +573,38 @@ export function buildAnmodKonvolut(input = {}) {
   if (input.anmodSamtykke !== true) throw anmodFejl('samtykke_paakraevet', 'anmodSamtykke'); // art.9(2)(a), MÅ være true
   data.anmodSamtykke = true;
 
-  // v2 forløbstype — grundlag-betinget: REQUIRED ved vestegns/westergaard, ellers auto-"individuel".
-  const spørger = ANMOD_SPOERG_FORLOEBSTYPE.includes(data.grundlag);
-  if (spørger) {
-    data.forloebstype = anmodEnum(input.forloebstype, ANMOD_FORLOEBSTYPE, 'forloebstype');
-  } else {
-    if (input.forloebstype != null && input.forloebstype !== '' && input.forloebstype !== 'individuel') {
-      throw anmodFejl('forloebstype_ikke_tilladt', 'forloebstype');
-    }
-    data.forloebstype = 'individuel';
+  // forloeb_resolved er SYSTEM-AFLEDT (Swift-side: grundlag∈{forsikring,egenbetaler} → "individuelt").
+  // Det er ALDRIG et wire-felt → en flade må ikke smugle det ind (defense-in-depth; 1:1 m. parseren,
+  // der afviser forloeb_resolved på wire). Bygges derfor ALDRIG ind i `data`.
+  if (input.forloeb_resolved != null && input.forloeb_resolved !== '') {
+    throw anmodFejl('forloeb_resolved_ikke_tilladt', 'forloeb_resolved');
   }
 
-  // v2 hold-slot — afhænger af BÅDE forloebstype og grundlag (kryds-felt, fail-loud).
-  const dag = (input.holdDag != null && input.holdDag !== '') ? input.holdDag : null;
-  const tid = (input.holdTid != null && input.holdTid !== '') ? input.holdTid : null;
-  if (data.forloebstype === 'gruppe') {
-    if (dag === null) throw anmodFejl('manglende_hold_ved_gruppe', 'holdDag');
-    if (!ANMOD_HOLDDAG.includes(dag)) throw anmodFejl('ugyldig_enum', 'holdDag');
-    if (data.grundlag === 'vestegnsklinikken') {
-      if (dag === 'fredag') throw anmodFejl('ugyldig_holddag_for_grundlag', 'holdDag');   // fredag = Westergaard-eksklusiv
-      if (tid === null) throw anmodFejl('paakraevet_mangler', 'holdTid');                 // holdTid REQUIRED her
-      if (!ANMOD_HOLDTID.includes(tid)) throw anmodFejl('ugyldig_enum', 'holdTid');
-      data.holdDag = dag; data.holdTid = tid;
-    } else { // westergaard
-      if (dag !== 'fredag') throw anmodFejl('ugyldig_holddag_for_grundlag', 'holdDag');   // fast fredag
-      if (tid !== null) throw anmodFejl('holdtid_forbudt', 'holdTid');                    // Westergaard har ingen tids-valg
-      data.holdDag = 'fredag';
+  // v2.1 adaptiv forgrening (grundlag styrer; fail-loud kryds-felt-validering, 1:1 m. Swift-parseren).
+  const erPsykiater = ANMOD_SPOERG_PSYKIATER.includes(data.grundlag);
+  const hRaw  = (input.henvisning_psykiater != null && input.henvisning_psykiater !== '') ? input.henvisning_psykiater : null;
+  const tRaw  = (input.forloeb_tilbudt      != null && input.forloeb_tilbudt      !== '') ? input.forloeb_tilbudt      : null;
+  const tidIn = (input.tid_praeference      != null && input.tid_praeference      !== '') ? input.tid_praeference      : null;
+
+  if (erPsykiater) {
+    // henvisning_psykiater: VALGFRI (udeladt/ved_ikke ok); enum-valideret hvis angivet.
+    if (hRaw !== null) data.henvisning_psykiater = anmodEnum(hRaw, ANMOD_HENVISNING_PSYKIATER, 'henvisning_psykiater');
+    // forloeb_tilbudt: REQUIRED (semantik = hvad psykiateren har TILBUDT, ikke ønsket).
+    if (tRaw === null) throw anmodFejl('paakraevet_mangler', 'forloeb_tilbudt');
+    data.forloeb_tilbudt = anmodEnum(tRaw, ANMOD_FORLOEB_TILBUDT, 'forloeb_tilbudt');
+    // tid_praeference: tilladt KUN iff forloeb_tilbudt=gruppe (FORBUDT ellers).
+    if (data.forloeb_tilbudt === 'gruppe') {
+      const tp = byggTidPraeference(tidIn);          // null (udeladt) | 'ved_ikke' | {dage,tider}
+      if (tp !== null) data.tid_praeference = tp;
+    } else if (tidIn !== null) {
+      throw anmodFejl('tid_praeference_ikke_tilladt', 'tid_praeference');
     }
   } else {
-    // individuel: holdDag/holdTid FORBUDT (slot er gruppe-eksklusiv, §2).
-    if (dag !== null) throw anmodFejl('slot_forbudt_individuelt', 'holdDag');
-    if (tid !== null) throw anmodFejl('slot_forbudt_individuelt', 'holdTid');
+    // forsikring/egenbetaler: psykiater-grenens felter FORBUDT (fail-loud). forloeb_resolved afledes
+    // Swift-side ("individuelt — fast") — bygges ALDRIG ind i wire-payloaden her.
+    if (hRaw  !== null) throw anmodFejl('henvisning_ikke_tilladt', 'henvisning_psykiater');
+    if (tRaw  !== null) throw anmodFejl('forloeb_tilbudt_ikke_tilladt', 'forloeb_tilbudt');
+    if (tidIn !== null) throw anmodFejl('tid_praeference_ikke_tilladt', 'tid_praeference');
   }
 
   // Valgfri: tom/whitespace => behandles som fraværende (udeladt af payload).
