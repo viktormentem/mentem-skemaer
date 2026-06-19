@@ -25,6 +25,11 @@ import {
   PINNED_PUBKEY,
   PINNED_KEY_ID,
   resolveRecipientKey,
+  buildAnmodKonvolut,
+  ANMOD_SCHEMA_TYPE,
+  ANMOD_CONSENT_WORDING,
+  ANMOD_CONSENT_WORDING_VERSION,
+  ANMOD_ART9_DENY,
 } from '../mentem-skema-core.js';
 import { scanText, runGuard, GUARDED_FILES } from './emoji-guard.mjs';
 
@@ -266,6 +271,72 @@ check('bl substans natFlag bevaret', bl.baseline.substans.natFlag === false);
 check('bl INGEN scoring (nul-score)', bl.questionnaireScores === undefined && bl.baseline.score === undefined);
 const blRT = await nodeDecrypt(await mentemEncrypt(recipientPubB64, bl), recipient.privateKey);
 check('bl round-trip baseline bevaret', blRT.baseline.alder === 67 && blRT.baseline.koen === 'Kvinde');
+
+// ── Forløbs-anmodning (ANMOD-V1) — FROSSET kontrakt §1–§3 ──────────────────
+// Maskinel drift-vagt på web-fladen (analog til Swift ForloebsAnmodningKonvolutTests).
+console.log('forloebs-anmodning (ANMOD-V1):');
+function throwsCode(name, fn, wantCode) {
+  try { fn(); check(name, false, '(forventede kast, fik retur)'); }
+  catch (e) { check(name, e.code === wantCode, `(code ${e.code}, want ${wantCode})`); }
+}
+// §4 eksempel-payload (syntetisk gruppeforløb)
+const anmodGruppe = buildAnmodKonvolut({
+  fornavn: 'Syntetisk', efternavn: 'Testperson', grundlag: 'egenbetaler',
+  forloebstype: 'gruppe', holdDag: 'tirsdag', holdTid: '14:00',
+  atten: true, anmodSamtykke: true, kontakt: 'test@example.invalid', note: 'Henvist af egen læge',
+});
+// §3 konvolut-form
+check('anmod konvolut schemaVersion = 1 (Int)', anmodGruppe.schemaVersion === 1);
+check('anmod konvolut schemaType = forloebs-anmodning', anmodGruppe.schemaType === 'forloebs-anmodning' && anmodGruppe.schemaType === ANMOD_SCHEMA_TYPE);
+check('anmod konvolut schemaType ren ASCII', /^[\x00-\x7F]+$/.test(anmodGruppe.schemaType));
+check('anmod konvolut clientUA = web', anmodGruppe.clientUA === 'web');
+check('anmod konvolut clientTimestamp ISO uden fraktion', ISO_NOFRAC.test(anmodGruppe.clientTimestamp), `(${anmodGruppe.clientTimestamp})`);
+check('anmod konvolut bærer INGEN respondentPseudonym web-side', anmodGruppe.respondentPseudonym === undefined);
+// §2 data-payload — felt-keys EKSAKT
+const ag = anmodGruppe.data;
+eq('anmod data keys (gruppe)', Object.keys(ag).sort(),
+   ['anmodSamtykke','atten','efternavn','fornavn','forloebstype','grundlag','holdDag','holdTid','kontakt','note','type'].sort());
+check('anmod data.type mirror', ag.type === 'forloebs-anmodning');
+check('anmod data.fornavn/efternavn', ag.fornavn === 'Syntetisk' && ag.efternavn === 'Testperson');
+check('anmod data.grundlag enum', ag.grundlag === 'egenbetaler');
+check('anmod data.forloebstype = gruppe', ag.forloebstype === 'gruppe');
+check('anmod data.holdDag/holdTid wire-værdier (gruppe)', ag.holdDag === 'tirsdag' && ag.holdTid === '14:00');
+check('anmod data.atten === true (bool)', ag.atten === true);
+check('anmod data.anmodSamtykke === true (bool)', ag.anmodSamtykke === true);
+check('anmod data.kontakt/note bevaret', ag.kontakt === 'test@example.invalid' && ag.note === 'Henvist af egen læge');
+// trim + drop af tom valgfri
+const anmodTrim = buildAnmodKonvolut({ fornavn: '  Anna  ', efternavn: ' Sø ', grundlag: 'forsikring', forloebstype: 'individuelt', atten: true, anmodSamtykke: true, kontakt: '   ', note: '' }).data;
+check('anmod trimmer fornavn/efternavn', anmodTrim.fornavn === 'Anna' && anmodTrim.efternavn === 'Sø');
+check('anmod dropper whitespace-kontakt (valgfri fraværende)', anmodTrim.kontakt === undefined);
+check('anmod dropper tom note', anmodTrim.note === undefined);
+// individuelt: holdDag/holdTid FRAVÆR (slot er gruppe-eksklusiv)
+check('anmod individuelt: INGEN holdDag/holdTid i data', anmodTrim.holdDag === undefined && anmodTrim.holdTid === undefined);
+check('anmod individuelt: forloebstype bevaret', anmodTrim.forloebstype === 'individuelt');
+// §2 validerings-kast (fail-loud)
+throwsCode('anmod: holdDag FORBUDT ved individuelt', () => buildAnmodKonvolut({ fornavn:'A', efternavn:'B', grundlag:'egenbetaler', forloebstype:'individuelt', holdDag:'tirsdag', atten:true, anmodSamtykke:true }), 'slot_forbudt_individuelt');
+throwsCode('anmod: holdTid FORBUDT ved individuelt', () => buildAnmodKonvolut({ fornavn:'A', efternavn:'B', grundlag:'egenbetaler', forloebstype:'individuelt', holdTid:'15:30', atten:true, anmodSamtykke:true }), 'slot_forbudt_individuelt');
+throwsCode('anmod: holdDag PÅKRÆVET ved gruppe', () => buildAnmodKonvolut({ fornavn:'A', efternavn:'B', grundlag:'egenbetaler', forloebstype:'gruppe', holdTid:'14:00', atten:true, anmodSamtykke:true }), 'ugyldig_enum');
+throwsCode('anmod: atten=false afvist', () => buildAnmodKonvolut({ fornavn:'A', efternavn:'B', grundlag:'egenbetaler', forloebstype:'individuelt', atten:false, anmodSamtykke:true }), 'atten_paakraevet');
+throwsCode('anmod: anmodSamtykke=false afvist (ikke send-tjek)', () => buildAnmodKonvolut({ fornavn:'A', efternavn:'B', grundlag:'egenbetaler', forloebstype:'individuelt', atten:true, anmodSamtykke:false }), 'samtykke_paakraevet');
+throwsCode('anmod: manglende fornavn afvist', () => buildAnmodKonvolut({ efternavn:'B', grundlag:'egenbetaler', forloebstype:'individuelt', atten:true, anmodSamtykke:true }), 'paakraevet_mangler');
+throwsCode('anmod: ugyldig grundlag afvist', () => buildAnmodKonvolut({ fornavn:'A', efternavn:'B', grundlag:'noget-andet', forloebstype:'individuelt', atten:true, anmodSamtykke:true }), 'ugyldig_enum');
+throwsCode('anmod: ugyldig forloebstype afvist', () => buildAnmodKonvolut({ fornavn:'A', efternavn:'B', grundlag:'egenbetaler', forloebstype:'individuel', atten:true, anmodSamtykke:true }), 'ugyldig_enum');
+// §6 art.9-deny (HÅRD) — forbudt helbreds-/CPR-key til stede => hård fejl
+for (const denyKey of ['cpr', 'helbred', 'diagnose', 'medicin', 'sygdom', 'symptom', 'health', 'journal']) {
+  throwsCode(`anmod: art.9-deny afviser '${denyKey}'`, () => buildAnmodKonvolut({ fornavn:'A', efternavn:'B', grundlag:'egenbetaler', forloebstype:'individuelt', atten:true, anmodSamtykke:true, [denyKey]:'x' }), 'art9Forbudt');
+}
+check('anmod ART9_DENY dækker kontraktens 9 keys', ANMOD_ART9_DENY.length === 9 && ANMOD_ART9_DENY.includes('diagnosis'));
+// §2b samtykke-ordlyd (PINNET v1-interim) — brand + version + placeholder
+check('anmod consent version = v1-interim-2026-06-19', ANMOD_CONSENT_WORDING_VERSION === 'v1-interim-2026-06-19');
+check('anmod consent brand = Psykolog Viktor Nielsen', ANMOD_CONSENT_WORDING.includes('Psykolog Viktor Nielsen'));
+check('anmod consent siger ALDRIG Mycel', !/Mycel/i.test(ANMOD_CONSENT_WORDING));
+check('anmod consent har [privatlivspolitikken]-placeholder', ANMOD_CONSENT_WORDING.includes('[privatlivspolitikken]'));
+check('anmod consent nævner tilbagetrækning (art.9(2)(a)-rettighed)', /trække .* tilbage/.test(ANMOD_CONSENT_WORDING));
+// round-trip: anmod-konvolut krypteres + dekrypteres → data intakt (zero-knowledge)
+const anmodRT = await nodeDecrypt(await mentemEncrypt(recipientPubB64, anmodGruppe), recipient.privateKey);
+check('anmod round-trip schemaType', anmodRT.schemaType === 'forloebs-anmodning');
+check('anmod round-trip clientUA = web', anmodRT.clientUA === 'web');
+check('anmod round-trip data.fornavn + slot', anmodRT.data.fornavn === 'Syntetisk' && anmodRT.data.holdDag === 'tirsdag');
 
 // ── VERA-guard #1: emoji/glyf-detektor (regressions-lås) ───────────────────
 // Unit-tests af scanText() (deterministisk — uafhængig af repo-tilstand) + en
