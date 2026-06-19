@@ -56,6 +56,12 @@ const ICON_EMOJI_G = new RegExp(ICON_EMOJI.source, 'gu');
 const EMDASH = /—/;
 const EMDASH_G = /—/g;
 const EMDASH_ALLOW_MARKER = 'emdash-guard:allow';
+// Region-undtagelse: validerede/reproducerede kliniske instrumenter (GAD-7/PHQ-9/WHO-5/WSAS-items)
+// gengives VERBATIM fra kilden → em-dash-reglen gælder IKKE inden for et instrument-region (CLAUDE.md-
+// undtagelse, Viktor 2026-06-19). Markeres med sentinel-kommentarer i kildefilen. Emoji-reglen er
+// UPÅVIRKET (instrumenter må fortsat ikke bære emoji). En fremtidig index.html-sweep bruger samme markør.
+const EMDASH_INSTRUMENT_START = 'emdash-guard:instrument-start';
+const EMDASH_INSTRUMENT_END = 'emdash-guard:instrument-end';
 
 // ── ALLOWLIST — direktivet er "0 emoji SOM IKON", ikke "0 emoji i prosa" ─────
 // Bevidst-beholdt emoji i RENDERET tekst (beskrivende prosa, alert-body, fejrings-tekst,
@@ -144,15 +150,21 @@ export function scanEmDash(text, file = '<input>') {
   const rawLines = text.split('\n');
   const rendered = renderableLines(text);
   const violations = [];
+  let inInstrument = false;
   for (let i = 0; i < rendered.length; i++) {
+    const raw = rawLines[i] || '';
+    // Instrument-region toggle (sentinel-kommentarer): verbatim-instrumenter er undtaget em-dash-reglen.
+    if (raw.includes(EMDASH_INSTRUMENT_START)) { inInstrument = true; continue; }
+    if (raw.includes(EMDASH_INSTRUMENT_END))   { inInstrument = false; continue; }
+    if (inInstrument) continue;
     const matches = rendered[i].match(EMDASH_G);
     if (!matches) continue;
-    if ((rawLines[i] || '').includes(EMDASH_ALLOW_MARKER)) continue; // bevidst-beholdt em-dash
+    if (raw.includes(EMDASH_ALLOW_MARKER)) continue; // bevidst-beholdt em-dash
     violations.push({
       file,
       line: i + 1,
       glyphs: [describeGlyph('—')],
-      raw: (rawLines[i] || '').trim(),
+      raw: raw.trim(),
     });
   }
   return violations;

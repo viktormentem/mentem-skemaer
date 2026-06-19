@@ -77,6 +77,9 @@ export const SKEMAER = {
     vasMin: 'Helt uenig', vasMax: 'Helt enig',
   },
   // ── Symptom (frit/public domain) ───────────────────────────────────────
+  // emdash-guard:instrument-start (validerede instrumenter GAD-7/PHQ-9/WHO-5/WSAS): gengivet
+  // VERBATIM fra kilden; em-dash-reglen gælder IKKE reproducerede instrumenter (CLAUDE.md-undtagelse,
+  // Viktor 2026-06-19). Vores EGEN copy (CAS/MCB ovenfor, anmod, §2b) forbliver em-dash-fri + guardet.
   gad7: {
     id: 'gad7', kind: 'radio', title: 'GAD-7', short: 'Bekymring og uro', icon: 'sky', badge: '7 spørgsmål',
     instruction: 'Hvor tit har du været generet af følgende problemer i løbet af de seneste 2 uger?',
@@ -101,9 +104,9 @@ export const SKEMAER = {
       'Besvær med at falde i søvn, at sove igennem, eller omvendt at sove for meget',
       'Følelse af at være træt eller have meget lidt energi',
       'Dårlig appetit eller omvendt at spise for meget',
-      'Dårlig mening om dig selv, eller en følelse af at du er en fiasko eller har svigtet dig selv eller din familie',
+      'Dårlig mening om dig selv — eller en følelse af at du er en fiasko eller har svigtet dig selv eller din familie',
       'Besvær med at koncentrere dig om ting, f.eks. at læse avisen eller se fjernsyn',
-      'At bevæge eller tale så langsomt at andre kunne have bemærket det, eller omvendt at være så rastløs at du bevæger dig mere end normalt',
+      'At bevæge eller tale så langsomt at andre kunne have bemærket det — eller omvendt at være så rastløs at du bevæger dig mere end normalt',
       'Tanker om at du hellere ville være død, eller om at skade dig selv på en eller anden måde',
     ],
   },
@@ -131,9 +134,10 @@ export const SKEMAER = {
       'Husholdning og praktiske opgaver i hjemmet',
       'Sociale fritidsaktiviteter (sammen med andre)',
       'Private fritidsaktiviteter (alene)',
-      'Nære relationer: familie og parforhold',
+      'Nære relationer — familie og parforhold',
     ],
   },
+  // emdash-guard:instrument-end
   // ── Alliance (frit/public domain, alliance-checkpoints) ────────────────
   waisr: {
     id: 'waisr', kind: 'radio', title: 'WAI-SR', short: 'Samarbejde', icon: 'samarbejde', badge: '12 spørgsmål',

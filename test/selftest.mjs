@@ -426,6 +426,11 @@ check('emdash-guard ignorerer "—" i // linje-kommentar', D('const x = 1; // no
 check('emdash-guard ignorerer "—" i /* blok */-kommentar', D('a;/* tag — her */b;') === 0);
 check('emdash-guard ignorerer "—" i <!-- HTML-kommentar -->', D('x<!-- — -->y') === 0);
 check('emdash-guard respekterer emdash-guard:allow-markør', D('<p>A — B</p> <!-- emdash-guard:allow: bevidst -->') === 0);
+// Instrument-region: verbatim-instrumenter (GAD-7/PHQ-9/WHO-5/WSAS) undtaget; vores egen copy stadig guardet.
+check('emdash-guard ekskluderer instrument-region (verbatim instrument)',
+  D('a — b\n// emdash-guard:instrument-start\nx — y\n// emdash-guard:instrument-end\nc — d') === 2);
+check('emdash-guard guardet IGEN efter instrument-region-end',
+  D('// emdash-guard:instrument-start\nx — y\n// emdash-guard:instrument-end\negen — copy') === 1);
 const liveEmDash = runEmDashGuard();
 check(`emdash-guard GRØN mod live ${EMDASH_GUARDED_FILES.join('+')} (0 em-dash i renderet copy)`, liveEmDash.length === 0,
   liveEmDash.map(v => `${v.file}:${v.line}`).join(' | '));
