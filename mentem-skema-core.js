@@ -266,6 +266,30 @@ export function computeScores(answers) {
 }
 
 // ════════════════════════════════════════════════════════════════════════
+//  INGEST-KONVOLUT (transport-form — matcher app IngestKonvolut)
+// ════════════════════════════════════════════════════════════════════════
+// Producent-side envelope-wrap (PR-2): web emitterer den ÆGTE konvolut-form
+// {schemaVersion, schemaType, clientTimestamp, data, clientUA} i stedet for en
+// flad payload. Den hidtidige FLADE payload pakkes UÆNDRET i `data` (0 tab).
+// App-adapteren (IngestKonvolutAdapter.normalisér) ser dermed `.konvolutDirekte`
+// — ingen felt-syntese — mens gamle flade containere fortsat dekoder
+// (.fladCSD/.fladBatteri). Felt-kontrakt: IngestEnvelopeDecryptor.swift /
+// IngestKonvolutRouter.swift. clientUA='web' = ærlig kanal-markør (kontrakt §6,
+// valgfrit) → føder app §8.4-adherence. respondentPseudonym sættes IKKE web-side
+// (kommer fra poll-/fil-laget — adapter-note, ikke payload).
+// NB: RØR ALDRIG skema-felt-definitionerne (CSD_SOEVNDAGBOG osv.) — kun
+// payload-BYGGERNE wrappes (transport-form, ikke skema-felter).
+function buildIngestKonvolut(data, { schemaType, schemaVersion, clientTimestamp } = {}) {
+  return {
+    schemaVersion,
+    schemaType,
+    clientTimestamp,
+    data,
+    clientUA: 'web',
+  };
+}
+
+// ════════════════════════════════════════════════════════════════════════
 //  PAYLOAD (TerapiEksportPayload-shape — matcher E2EKryptering.swift)
 // ════════════════════════════════════════════════════════════════════════
 function isoNoFrac(d) { return d.toISOString().replace(/\.\d{3}Z$/, 'Z'); }
@@ -316,7 +340,14 @@ export function buildPayload(answers, meta = {}) {
       rating: r.rating,
     }));
   }
-  return payload;
+  // Envelope-wrap (PR-2): flad payload UÆNDRET i `data`; konvolut-felter afledt af
+  // payloadens egne værdier (categories[0]→schemaType, version→schemaVersion,
+  // exportedAt→clientTimestamp). Fallback-schemaType matcher app-adapterens flad-batteri-gren.
+  return buildIngestKonvolut(payload, {
+    schemaType: payload.categories[0] || 'questionnaire-batteri',
+    schemaVersion: payload.version,
+    clientTimestamp: payload.exportedAt,
+  });
 }
 
 // ════════════════════════════════════════════════════════════════════════
@@ -350,7 +381,7 @@ export function buildPayloadCSD(entries, meta = {}) {
 
   const startedAt = meta.startedAt || (sleepDiary[0] && sleepDiary[0].date) || now;
 
-  return {
+  const data = {
     version: 1,
     exportedAt: now,
     clientName: meta.name || '',
@@ -378,6 +409,14 @@ export function buildPayloadCSD(entries, meta = {}) {
     },
     sleepDiary,
   };
+
+  // Envelope-wrap (PR-2): flad CSD-payload UÆNDRET i `data`; konvolut-felter afledt
+  // (categories[0]→schemaType, meta.schemaVersion→schemaVersion, exportedAt→clientTimestamp).
+  return buildIngestKonvolut(data, {
+    schemaType: data.categories[0],
+    schemaVersion: data.meta.schemaVersion,
+    clientTimestamp: data.exportedAt,
+  });
 }
 
 // ════════════════════════════════════════════════════════════════════════

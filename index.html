@@ -357,6 +357,10 @@ function ingestBase() { return (ingestApiOverride || INGEST_API_BASE || '').repl
 function autoSendEnabled() {
   return !!(ingestToken && /^v1\.[^.]+\.\d+\.[^.]+\.[^.]+$/.test(ingestToken) && ingestBase());
 }
+// Footer-fingeraftryk: i auto-send-tilstand seal'es data til INGEST-nøglen
+// (INGEST_KEY_ID), ikke den pinnede journal-nøgle. Vis derfor den nøgle dataen
+// FAKTISK krypteres til, så footer-ID ikke er misvisende (footer-ID-fix, PR-2).
+function aktivKeyId() { return autoSendEnabled() ? INGEST_KEY_ID : PINNED_KEY_ID; }
 // Returnerer 'sendt' | null (null → kalderen falder til leverKrypteretFil download/del).
 async function sendTilIngest(payload, schemaType) {
   try {
@@ -461,7 +465,7 @@ function renderWelcome() {
   startBtn.addEventListener('click', startForm);
 
   const fp = document.getElementById('key-fp');
-  if (fp) fp.textContent = 'Krypteret til din psykologs nøgle · ID ' + PINNED_KEY_ID;
+  if (fp) fp.textContent = 'Krypteret til din psykologs nøgle · ID ' + aktivKeyId();
 }
 
 // ── FORMULAR ───────────────────────────────────────────────────────────────
@@ -872,7 +876,7 @@ function renderDiaryWelcome() {
 
   document.getElementById('diary-attribution').textContent = diarySkema.attribution || '';
   const fp = document.getElementById('diary-key-fp');
-  if (fp) fp.textContent = 'Krypteret til din psykologs nøgle · ID ' + PINNED_KEY_ID;
+  if (fp) fp.textContent = 'Krypteret til din psykologs nøgle · ID ' + aktivKeyId();
 }
 
 // §1 (privatliv, verbatim) + §2 (Art.9-samtykke, verbatim checkbox) — server-path.
@@ -1543,7 +1547,7 @@ function renderBaselineWelcome() {
   intro.textContent = baselineSkema.instruction;
   startBtn.disabled = false;
   const fp = document.getElementById('baseline-key-fp');
-  if (fp) fp.textContent = 'Krypteret til din psykologs nøgle · ID ' + PINNED_KEY_ID;
+  if (fp) fp.textContent = 'Krypteret til din psykologs nøgle · ID ' + aktivKeyId();
 }
 
 function startBaseline() {
