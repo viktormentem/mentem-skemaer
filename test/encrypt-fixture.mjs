@@ -34,7 +34,12 @@ const answers = {
   waisr: { 0: 5, 1: 4, 2: 6, 3: 5, 4: 5, 5: 4, 6: 6, 7: 5, 8: 4, 9: 6, 10: 5, 11: 5 },
 };
 
-const payload = buildPayload(answers, { name: 'Round-trip Klient', sessionNumber: 4 });
+// Crypto-round-trip + pin-drift-harness: Swift StaticSiteCryptoRoundTripTests decoder
+// klarteksten som FLAD TerapiEksportPayload via prod-E2EKryptering.dekrypter(). Envelope-
+// wrap (PR-2) er en TRANSPORT-form på producent-benet; denne fixture tester krypto-
+// primitiverne, ikke transport-formen → behold den flade payload (`.data`) så app-
+// kontrakten er urørt (envelope-wrap leveres app-side separat, ikke i denne PR).
+const payload = buildPayload(answers, { name: 'Round-trip Klient', sessionNumber: 4 }).data;
 // Krypter til den PINNED nøgle (præcis som siden gør) — ikke til argv direkte.
 const k = resolveRecipientKey(null);   // → pinned
 const container = await mentemEncrypt(k.key, payload, k.keyId);

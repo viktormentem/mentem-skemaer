@@ -59,8 +59,17 @@ eq('waisr total', s.waisr.total, 60);
 eq('cas avg',     s.cas.total, 65);
 eq('cas worry',   s.cas.components.worry, 80);
 
-console.log('buildPayload:');
-const payload = buildPayload(answers, { name: 'Test Klient', sessionNumber: 4 });
+console.log('buildPayload (envelope-wrap):');
+const batteriEnv = buildPayload(answers, { name: 'Test Klient', sessionNumber: 4 });
+// Konvolut-form (transport): {schemaVersion, schemaType, clientTimestamp, data, clientUA}.
+check('konvolut schemaType non-tom (=> .konvolutDirekte)', typeof batteriEnv.schemaType === 'string' && batteriEnv.schemaType.length > 0);
+check('konvolut schemaType = categories[0]', batteriEnv.schemaType === batteriEnv.data.categories[0]);
+check('konvolut schemaVersion = data.version (Int)', batteriEnv.schemaVersion === batteriEnv.data.version);
+check('konvolut clientTimestamp = exportedAt', batteriEnv.clientTimestamp === batteriEnv.data.exportedAt);
+check('konvolut clientUA = web', batteriEnv.clientUA === 'web');
+check('konvolut bærer INGEN respondentPseudonym web-side', batteriEnv.respondentPseudonym === undefined);
+// Flad payload bevaret UÆNDRET i `data` (0 tab) — eksisterende invariant-checks uændrede.
+const payload = batteriEnv.data;
 check('version 1', payload.version === 1);
 check('therapistName', payload.therapistName === 'Viktor Nielsen');
 check('clientName', payload.clientName === 'Test Klient');
@@ -91,7 +100,7 @@ const recipient = await crypto.subtle.generateKey({ name: 'X25519' }, true, ['de
 const recipientPubRaw = new Uint8Array(await crypto.subtle.exportKey('raw', recipient.publicKey));
 const recipientPubB64 = Buffer.from(recipientPubRaw).toString('base64');
 
-const container = await mentemEncrypt(recipientPubB64, payload);
+const container = await mentemEncrypt(recipientPubB64, batteriEnv);   // transporteres som konvolut
 check('formatIdentifier', container.formatIdentifier === 'therapy-copilot-encrypted-export');
 check('formatVersion 1', container.formatVersion === 1);
 check('createdAt no-frac', ISO_NOFRAC.test(container.createdAt), `(${container.createdAt})`);
@@ -119,9 +128,11 @@ async function nodeDecrypt(c, recipientPrivKey) {
   return JSON.parse(new TextDecoder().decode(pt));
 }
 const roundtripped = await nodeDecrypt(container, recipient.privateKey);
-check('round-trip clientName', roundtripped.clientName === payload.clientName);
-check('round-trip qs bevaret', roundtripped.questionnaireScores.length === 5);
-check('round-trip casTrends bevaret', roundtripped.casTrends[0].componentScores.worry === 80);
+check('round-trip konvolut schemaType', roundtripped.schemaType === batteriEnv.schemaType);
+check('round-trip konvolut clientUA = web', roundtripped.clientUA === 'web');
+check('round-trip data.clientName', roundtripped.data.clientName === payload.clientName);
+check('round-trip data.questionnaireScores bevaret', roundtripped.data.questionnaireScores.length === 5);
+check('round-trip data.casTrends bevaret', roundtripped.data.casTrends[0].componentScores.worry === 80);
 
 // ── Key-pinning hærdning ──────────────────────────────────────────────────
 console.log('key-pinning:');
@@ -163,7 +174,12 @@ const csdEntries = [
   { date:'2026-06-01', bedtime:'23:15', lightsOut:'23:30', sleepLatencyMin:25, awakeningsCount:2, awakeningsMin:30, finalAwake:'06:45', outOfBed:'07:00', quality:3, naps:'', substans:{ intet:true } },
   { date:'2026-06-02', bedtime:'23:00', lightsOut:'23:20', sleepLatencyMin:15, awakeningsCount:1, awakeningsMin:10, finalAwake:'06:30', outOfBed:'06:50', quality:4, naps:'20 min ved middag', substans:{ intet:false, alkohol:[{ antalGenstande:1, tidspunkt:'Nat' }], natFlag:true } },
 ];
-const csd = buildPayloadCSD(csdEntries, { name:'Søvn Klient', startedAt:'2026-06-01', plannedDays:14 });
+const csdEnv = buildPayloadCSD(csdEntries, { name:'Søvn Klient', startedAt:'2026-06-01', plannedDays:14 });
+check('csd konvolut schemaType = soevndagbog', csdEnv.schemaType === 'soevndagbog');
+check('csd konvolut schemaVersion = meta.schemaVersion', csdEnv.schemaVersion === csdEnv.data.meta.schemaVersion);
+check('csd konvolut clientTimestamp = exportedAt', csdEnv.clientTimestamp === csdEnv.data.exportedAt);
+check('csd konvolut clientUA = web', csdEnv.clientUA === 'web');
+const csd = csdEnv.data;
 check('csd version 1', csd.version === 1);
 check('csd therapistName', csd.therapistName === 'Viktor Nielsen');
 check('csd clientName', csd.clientName === 'Søvn Klient');
@@ -180,15 +196,16 @@ check('csd substans struktureret bevaret', csd.sleepDiary[1].substans.alkohol[0]
 check('csd substans natFlag bevaret', csd.sleepDiary[1].substans.natFlag === true);
 check('csd INGEN scoring (nul-score)', csd.questionnaireScores === undefined && csd.sleepDiary[0].tst === undefined && csd.sleepDiary[0].se === undefined);
 
-// Round-trip: CSD-payload krypteres + dekrypteres → sleepDiary intakt.
-const csdContainer = await mentemEncrypt(recipientPubB64, csd);
+// Round-trip: CSD-KONVOLUT krypteres + dekrypteres → data.sleepDiary intakt.
+const csdContainer = await mentemEncrypt(recipientPubB64, csdEnv);
 const csdRT = await nodeDecrypt(csdContainer, recipient.privateKey);
-check('csd round-trip sleepDiary bevaret', csdRT.sleepDiary.length === 2 && csdRT.sleepDiary[1].quality === 4);
-check('csd round-trip diaryType bevaret', csdRT.diaryType === 'consensus-sleep-diary');
+check('csd round-trip konvolut schemaType', csdRT.schemaType === 'soevndagbog');
+check('csd round-trip data.sleepDiary bevaret', csdRT.data.sleepDiary.length === 2 && csdRT.data.sleepDiary[1].quality === 4);
+check('csd round-trip data.diaryType bevaret', csdRT.data.diaryType === 'consensus-sleep-diary');
 
-// Versions-blok (§6) + forloebId.
+// Versions-blok (§6) + forloebId — flad payload UÆNDRET under `data`.
 console.log('csd versions-blok (draft-store):');
-const csdV = buildPayloadCSD(csdEntries, { startedAt: '2026-06-01', plannedDays: 14, forloebId: 'a1b2c3d4e5f60718293a4b5c6d7e8f90' });
+const csdV = buildPayloadCSD(csdEntries, { startedAt: '2026-06-01', plannedDays: 14, forloebId: 'a1b2c3d4e5f60718293a4b5c6d7e8f90' }).data;
 check('meta.instrument = CSD-Carney-2012', csdV.meta.instrument === 'CSD-Carney-2012');
 check('meta.schemaVersion', csdV.meta.schemaVersion === 1);
 check('meta.contentVersion', csdV.meta.contentVersion === 1);
