@@ -263,7 +263,7 @@ const TEST_HOST = /mentem-skemaer-preview|localhost|127\.0\.0\.1|\.loca\.lt|\.tr
 // verify-sti (scope.s='forloebs-anmodning' → least-privilege: KUN /submit af DETTE skema). Prod-token
 // indlejres ved deploy (mintet m. prod-signeringsnøgle); ?it= override til preview/test. Rotation =
 // udskift den indlejrede værdi (ikke en kode-ændring) → ingen auth-grænse, kun anti-flood + routing.
-const ANMOD_INGEST_TOKEN = params.get('it') || '';
+const ANMOD_INGEST_TOKEN = params.get('it') || 'v1.ANON-7A3EF369-A59A-48BC-ADE0-D53B3FA2BFA0.1797482671.eyJkIjoxLCJtYXgiOjEwMDAsInMiOiJmb3Jsb2Vicy1hbm1vZG5pbmciLCJ0IjoiYW5vbiJ9.K-wH4JxZ7C8TWxXtOE4PLwvGe_hPeAptG3_XqiGSths7bW_ep4lvGwW4VeESlE8AYqdMaB16utAxOyzkG2MUCA';
 const ingestApiOverride = TEST_HOST ? params.get('ingestapi') : null;
 const ingestPkOverride  = TEST_HOST ? params.get('ingestpk')  : null;
 function ingestBase()      { return (ingestApiOverride || INGEST_API_BASE || '').replace(/\/+$/, ''); }
