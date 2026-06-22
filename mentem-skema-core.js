@@ -677,12 +677,40 @@ function bytesToB64(bytes) {
   return btoa(bin);
 }
 
+/// Feature-test: kan denne browser køre X25519-WebCrypto-stien? Ældre/indlejrede
+/// Android-browsere (in-app SMS-browser, gammel System-WebView) mangler X25519 i
+/// crypto.subtle — også når crypto.subtle SELV findes — så kryptering kaster en
+/// uforståelig fejl. Den konkrete primitiv der fejler først er X25519-nøglegenerering.
+/// Resultatet caches (ét forsøg pr. side-load). Bruges til at feature-detektere FØR
+/// kryptering, så en ikke-understøttet browser får en klar besked i stedet for en rød fejl.
+let _x25519Stoettet = null;
+export async function kryptoStoettet() {
+  if (_x25519Stoettet !== null) return _x25519Stoettet;
+  try {
+    const s = globalThis.crypto && globalThis.crypto.subtle;
+    if (!s || !globalThis.isSecureContext) { _x25519Stoettet = false; return false; }
+    await s.generateKey({ name: 'X25519' }, true, ['deriveBits']);
+    _x25519Stoettet = true;
+  } catch (_e) {
+    _x25519Stoettet = false;
+  }
+  return _x25519Stoettet;
+}
+
 /// Krypter et payload-objekt mod modtagerens X25519-public-key (base64 / base64url).
 /// Returnerer et KrypteretEksportContainer-objekt (klar til JSON.stringify).
 /// `keyId` stemples i containeren (default = PINNED_KEY_ID) så Mentem kan
 /// detektere nøgle-version-mismatch ved decrypt. Swift-decrypt ignorerer
 /// ukendte felter → bagudkompatibelt.
 export async function mentemEncrypt(recipientPubB64, payloadObj, keyId = PINNED_KEY_ID) {
+  // Hård feature-gate: kast en TYPET fejl FØR vi rører nøgler/data, så kalderen kan
+  // vise "åbn i Chrome/Safari"-beskeden i stedet for en generisk krypto-fejl. Krypto-
+  // outputtet (format/contract) er UÆNDRET — zero-knowledge urørt.
+  if (!(await kryptoStoettet())) {
+    const err = new Error('X25519-WebCrypto er ikke understøttet i denne browser');
+    err.name = 'CryptoUnsupportedError';
+    throw err;
+  }
   const subtle = globalThis.crypto.subtle;
   const recipientPub = await subtle.importKey('raw', b64ToBytes(recipientPubB64), { name: 'X25519' }, false, []);
 
