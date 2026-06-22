@@ -677,24 +677,43 @@ function bytesToB64(bytes) {
   return btoa(bin);
 }
 
-/// Feature-test: kan denne browser køre X25519-WebCrypto-stien? Ældre/indlejrede
-/// Android-browsere (in-app SMS-browser, gammel System-WebView) mangler X25519 i
-/// crypto.subtle — også når crypto.subtle SELV findes — så kryptering kaster en
-/// uforståelig fejl. Den konkrete primitiv der fejler først er X25519-nøglegenerering.
-/// Resultatet caches (ét forsøg pr. side-load). Bruges til at feature-detektere FØR
-/// kryptering, så en ikke-understøttet browser får en klar besked i stedet for en rød fejl.
-let _x25519Stoettet = null;
-export async function kryptoStoettet() {
-  if (_x25519Stoettet !== null) return _x25519Stoettet;
+/// 🔴 SHIP-GATE-FLAG: aktivér den rene-JS X25519-fallback (browser-uafhængig kryptering).
+/// DEFAULT false => uændret adfærd (X25519-løse browsere får "åbn i Chrome/Safari"; fallback
+/// er dormant). Flip til true KUN efter BEGGE gates er grønne:
+///   1. test/x25519-fallback-roundtrip.mjs (JS-side, RFC-vektorer + WebCrypto-oracle).
+///   2. app-side CryptoKit-roundtrip (StaticSiteCryptoRoundTripTests mod en fallback-container,
+///      via `node test/encrypt-fixture.mjs <pub> --force-fallback`) + Viktor-GO.
+/// Aktivering uden den gate => risiko for silent decrypt-fail (værre end den synlige fejl nu).
+export const X25519_FALLBACK_AKTIV = false;
+
+/// Findes WebCrypto subtle + secure context (forudsætning for HKDF+AES-GCM, som begge stier bruger)?
+/// `isSecureContext` er undefined i Node (CryptoKit-gate-harnessen), hvor subtle altid er sikker;
+/// bloker derfor KUN når den eksplicit er false (usikker http-browser-kontekst).
+function subtleTilgaengelig() {
+  const s = globalThis.crypto && globalThis.crypto.subtle;
+  return !!s && globalThis.isSecureContext !== false;
+}
+
+/// Feature-test: understøtter crypto.subtle X25519? Ældre/indlejrede Android-browsere mangler
+/// primitiven (selv når subtle findes) => nøglegenerering kaster. Cachet (ét forsøg pr. side-load).
+let _x25519WC = null;
+async function x25519WebCryptoStoettet() {
+  if (_x25519WC !== null) return _x25519WC;
   try {
-    const s = globalThis.crypto && globalThis.crypto.subtle;
-    if (!s || !globalThis.isSecureContext) { _x25519Stoettet = false; return false; }
-    await s.generateKey({ name: 'X25519' }, true, ['deriveBits']);
-    _x25519Stoettet = true;
-  } catch (_e) {
-    _x25519Stoettet = false;
-  }
-  return _x25519Stoettet;
+    if (!subtleTilgaengelig()) { _x25519WC = false; return false; }
+    await globalThis.crypto.subtle.generateKey({ name: 'X25519' }, true, ['deriveBits']);
+    _x25519WC = true;
+  } catch (_e) { _x25519WC = false; }
+  return _x25519WC;
+}
+
+/// "Kan vi faktisk kryptere?" Feature-detektér FØR udfyldning/Send. Med fallback AKTIV rækker
+/// WebCrypto subtle (X25519-hullet dækkes af ren-JS-fallbacken); uden fallback (default) kræves
+/// WebCrypto-X25519. Bruges af klient-UI til banner/fejl-besked.
+export async function kryptoStoettet() {
+  if (!subtleTilgaengelig()) return false;
+  if (X25519_FALLBACK_AKTIV) return true;
+  return await x25519WebCryptoStoettet();
 }
 
 /// Krypter et payload-objekt mod modtagerens X25519-public-key (base64 / base64url).
@@ -702,24 +721,44 @@ export async function kryptoStoettet() {
 /// `keyId` stemples i containeren (default = PINNED_KEY_ID) så Mentem kan
 /// detektere nøgle-version-mismatch ved decrypt. Swift-decrypt ignorerer
 /// ukendte felter → bagudkompatibelt.
-export async function mentemEncrypt(recipientPubB64, payloadObj, keyId = PINNED_KEY_ID) {
-  // Hård feature-gate: kast en TYPET fejl FØR vi rører nøgler/data, så kalderen kan
-  // vise "åbn i Chrome/Safari"-beskeden i stedet for en generisk krypto-fejl. Krypto-
-  // outputtet (format/contract) er UÆNDRET — zero-knowledge urørt.
-  if (!(await kryptoStoettet())) {
-    const err = new Error('X25519-WebCrypto er ikke understøttet i denne browser');
+export async function mentemEncrypt(recipientPubB64, payloadObj, keyId = PINNED_KEY_ID, opts = {}) {
+  // Forudsætning: WebCrypto subtle (HKDF+AES-GCM, som begge ECDH-stier bruger). Mangler den,
+  // kast en TYPET fejl FØR vi rører nøgler/data, så kalderen viser "åbn i Chrome/Safari" i
+  // stedet for en generisk krypto-fejl.
+  if (!subtleTilgaengelig()) {
+    const err = new Error('WebCrypto (subtle) er ikke tilgængelig i denne browser');
     err.name = 'CryptoUnsupportedError';
     throw err;
   }
   const subtle = globalThis.crypto.subtle;
-  const recipientPub = await subtle.importKey('raw', b64ToBytes(recipientPubB64), { name: 'X25519' }, false, []);
+  const recipientPubBytes = b64ToBytes(recipientPubB64);
 
-  // Sender-ephemeral keypair (fresh pr. kryptering → forward secrecy).
-  const eph = await subtle.generateKey({ name: 'X25519' }, true, ['deriveBits']);
-  const ephPubRaw = await subtle.exportKey('raw', eph.publicKey);
+  // ECDH-sti-valg. PRIMÆR: WebCrypto-X25519 (uændret). FALLBACK: ren-JS X25519 (RFC 7748,
+  // byte-eksakt mod WebCrypto/CryptoKit; se test/x25519-fallback-roundtrip.mjs). Krypto-outputtet
+  // (format/contract) er identisk i begge stier, så zero-knowledge er urørt. opts.tvingFallback
+  // tvinger fallback-stien (kun til roundtrip-fixturen / CryptoKit-gaten).
+  const x25519WC = await x25519WebCryptoStoettet();
+  const brugFallback = opts.tvingFallback === true || (!x25519WC && X25519_FALLBACK_AKTIV);
+  if (!x25519WC && !brugFallback) {
+    const err = new Error('X25519-WebCrypto er ikke understøttet i denne browser');
+    err.name = 'CryptoUnsupportedError';
+    throw err;
+  }
 
-  // ECDH → rå 32-byte shared secret (matcher CryptoKit sharedSecretFromKeyAgreement).
-  const shared = new Uint8Array(await subtle.deriveBits({ name: 'X25519', public: recipientPub }, eph.privateKey, 256));
+  // Rå 32-byte ephemeral public key + shared secret (sti-uafhængigt format; fresh ephemeral
+  // pr. kryptering giver forward secrecy). Matcher CryptoKit sharedSecretFromKeyAgreement.
+  let ephPubRaw, shared;
+  if (brugFallback) {
+    const { x25519 } = await import('./mentem-x25519-fallback.js');
+    const ephPriv = x25519.utils.randomPrivateKey();
+    ephPubRaw = x25519.getPublicKey(ephPriv);
+    shared = x25519.getSharedSecret(ephPriv, recipientPubBytes);
+  } else {
+    const recipientPub = await subtle.importKey('raw', recipientPubBytes, { name: 'X25519' }, false, []);
+    const eph = await subtle.generateKey({ name: 'X25519' }, true, ['deriveBits']);
+    ephPubRaw = new Uint8Array(await subtle.exportKey('raw', eph.publicKey));
+    shared = new Uint8Array(await subtle.deriveBits({ name: 'X25519', public: recipientPub }, eph.privateKey, 256));
+  }
 
   // HKDF-SHA256 (salt random 32B, info låst til Mentem-kontrakten).
   const salt = globalThis.crypto.getRandomValues(new Uint8Array(32));
