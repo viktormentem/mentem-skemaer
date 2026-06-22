@@ -517,7 +517,7 @@ const AKUT_HJAELP_HTML = `
     <div class="akut-hjaelp-head"><span aria-hidden="true" style="display:inline-flex">${AKUT_TELEFON_SVG}</span>Akut hjælp</div>
     <ul>
       <li>Akut fare lige nu: ring <a href="tel:112">112</a></li>
-      <li>Livslinien: <a href="tel:70201201">70 201 201</a> (hver dag kl. 11&ndash;05, anonym og gratis &middot; <a href="https://livslinien.dk" target="_blank" rel="noopener">chat: livslinien.dk</a>)</li>
+      <li>Livslinien: <a href="tel:70201201">70 201 201</a> (hver dag kl. 11-05, anonym og gratis &middot; <a href="https://livslinien.dk" target="_blank" rel="noopener">chat: livslinien.dk</a>)</li>
       <li>Kontakt din psykolog, Viktor Nielsen, direkte</li>
     </ul>
   </div>`;
@@ -532,7 +532,7 @@ function toggleItem9Nudge(block, show) {
   let n = block.nextElementSibling;
   const erNudge = n && n.classList && n.classList.contains('item9-nudge');
   if (show && !erNudge) {
-    block.insertAdjacentHTML('afterend', '<div class="item9-nudge">Tak, fordi du svarer ærligt. Hvis det er svært lige nu, så se <a data-akut-scroll>Akut hjælp</a> nederst på siden &mdash; du behøver ikke vente til samtalen.</div>');
+    block.insertAdjacentHTML('afterend', '<div class="item9-nudge">Tak, fordi du svarer ærligt. Hvis det er svært lige nu, så se <a data-akut-scroll>Akut hjælp</a> nederst på siden. Du behøver ikke vente til samtalen.</div>');
     const link = block.nextElementSibling.querySelector('[data-akut-scroll]');
     if (link) link.addEventListener('click', () => {
       const box = block.closest('.screen')?.querySelector('.akut-hjaelp') || document.querySelector('.akut-hjaelp');
