@@ -684,7 +684,7 @@ function bytesToB64(bytes) {
 ///   2. app-side CryptoKit-roundtrip (StaticSiteCryptoRoundTripTests mod en fallback-container,
 ///      via `node test/encrypt-fixture.mjs <pub> --force-fallback`) + Viktor-GO.
 /// Aktivering uden den gate => risiko for silent decrypt-fail (værre end den synlige fejl nu).
-export const X25519_FALLBACK_AKTIV = false;
+export const X25519_FALLBACK_AKTIV = true;
 
 /// Findes WebCrypto subtle + secure context (forudsætning for HKDF+AES-GCM, som begge stier bruger)?
 /// `isSecureContext` er undefined i Node (CryptoKit-gate-harnessen), hvor subtle altid er sikker;
