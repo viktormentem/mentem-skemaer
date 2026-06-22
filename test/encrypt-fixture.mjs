@@ -1,4 +1,4 @@
-// encrypt-fixture.mjs — round-trip-harness for Swift StaticSiteCryptoRoundTripTests.
+// encrypt-fixture.mjs: round-trip-harness for Swift StaticSiteCryptoRoundTripTests.
 //
 // Krypterer en repræsentativ MCT-skema-payload (alle 7 skemaer) mod en
 // modtager-X25519-public-key og printer KrypteretEksportContainer-JSON til stdout.
@@ -16,6 +16,9 @@ import { buildPayload, mentemEncrypt, PINNED_PUBKEY, resolveRecipientKey } from 
 const pub = process.argv[2];
 if (!pub) { console.error('mangler pubkey-arg'); process.exit(2); }
 const breakTag = process.argv.includes('--break-tag');
+// --force-fallback: krypter via den rene-JS X25519-fallback-sti (i stedet for WebCrypto-X25519),
+// så den app-side CryptoKit-roundtrip kan verificere at FALLBACK-containeren dekrypterer byte-eksakt.
+const forceFallback = process.argv.includes('--force-fallback');
 
 // Pin-drift-guard: den hardcodede PINNED_PUBKEY SKAL matche Mentems ægte nøgle.
 const norm = (k) => k.replace(/-/g, '+').replace(/_/g, '/').replace(/=+$/, '');
@@ -40,9 +43,9 @@ const answers = {
 // primitiverne, ikke transport-formen → behold den flade payload (`.data`) så app-
 // kontrakten er urørt (envelope-wrap leveres app-side separat, ikke i denne PR).
 const payload = buildPayload(answers, { name: 'Round-trip Klient', sessionNumber: 4 }).data;
-// Krypter til den PINNED nøgle (præcis som siden gør) — ikke til argv direkte.
+// Krypter til den PINNED nøgle (præcis som siden gør): ikke til argv direkte.
 const k = resolveRecipientKey(null);   // → pinned
-const container = await mentemEncrypt(k.key, payload, k.keyId);
+const container = await mentemEncrypt(k.key, payload, k.keyId, { tvingFallback: forceFallback });
 
 if (breakTag) {
   // Flip byte 0 i tag'et → AES-GCM authentication-fail ved dekryptering.

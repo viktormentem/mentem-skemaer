@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="Udfyld dine forberedelses-skemaer sikkert i din browser. Dine svar krypteres lokalt og deles kun med din psykolog.">
 <meta name="author" content="Viktor Nielsen, Mentem Psykologpraksis">
-<meta property="og:title" content="Mentem — Forberedelse til din samtale">
+<meta property="og:title" content="Mycel: Forberedelse til din samtale">
 <meta property="og:description" content="Udfyld dine forberedelses-skemaer sikkert i din browser.">
 <meta property="og:type" content="website">
-<title>Mentem — Forberedelse til din samtale</title>
+<title>Mycel: Forberedelse til din samtale</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
   :root {
@@ -173,7 +173,7 @@
 
 <div class="header">
   <div>
-    <div class="header-logo">Mentem</div>
+    <div class="header-logo">Mycel</div>
     <div class="header-sub">Forberedelse · Viktor Nielsen, autoriseret psykolog</div>
   </div>
   <div class="header-right">
@@ -197,8 +197,8 @@
     <p class="intro" id="welcome-intro"></p>
     <div class="schema-cards" id="schema-cards"></div>
     <button class="btn-primary" id="start-btn" disabled>Start</button>
-    <p class="start-note">Til sidst får du én fil, som du nemt deler med din psykolog — vi viser dig hvordan.</p>
-    <div class="disclaimer"><span aria-hidden="true" style="display:inline-flex;width:1em;height:1em;vertical-align:-2px;margin-right:5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><span class="disc-body" data-autosend="<strong>Privatliv:</strong> Du udfylder alt i din egen browser. Når du er færdig, sendes svarene sikkert og krypteret direkte til din psykolog — kun din psykolog kan åbne dem. Har du det akut svært, skal du ikke vente til samtalen — se Akut hjælp nederst."><strong>Privatliv:</strong> Du udfylder alt i din egen browser. Når du er færdig, samles svarene i én krypteret fil, som kun din psykolog kan åbne. Intet gemmes på en server, og du sender selv filen. Har du det akut svært, skal du ikke vente til samtalen — se Akut hjælp nederst.</span></div>
+    <p class="start-note">Til sidst får du én fil, som du nemt deler med din psykolog. Vi viser dig hvordan.</p>
+    <div class="disclaimer"><span aria-hidden="true" style="display:inline-flex;width:1em;height:1em;vertical-align:-2px;margin-right:5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><span class="disc-body" data-autosend="<strong>Privatliv:</strong> Du udfylder alt i din egen browser. Når du er færdig, sendes svarene sikkert og krypteret direkte til din psykolog. Kun din psykolog kan åbne dem. Har du det akut svært, skal du ikke vente til samtalen. Se Akut hjælp nederst."><strong>Privatliv:</strong> Du udfylder alt i din egen browser. Når du er færdig, samles svarene i én krypteret fil, som kun din psykolog kan åbne. Intet gemmes på en server, og du sender selv filen. Har du det akut svært, skal du ikke vente til samtalen. Se Akut hjælp nederst.</span></div>
     <p class="footer-credit">Skemaerne bygger på anerkendte spørgeskemaer (GAD-7, PHQ-9, WHO-5, WSAS), som din psykolog bruger til at følge din udvikling.</p>
     <p class="footer-credit" id="key-fp"></p>
   </div>
@@ -227,11 +227,11 @@
 <div id="screen-done" class="screen">
   <div class="done-wrap">
     <div class="done-mark" aria-hidden="true"><span style="display:inline-flex;width:56px;height:56px;color:#34c759"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.3l2.7 2.7L16 9"/></svg></span></div>
-    <h2>Tak — du er færdig</h2>
+    <h2>Tak. Du er færdig</h2>
     <p>Dine svar er nu samlet i én krypteret fil. Tryk nedenfor for at sende filen til din psykolog i den samme SMS-tråd, hvor du fik linket.</p>
     <button class="btn-primary" id="share-btn">Send filen til din psykolog</button>
     <div class="done-status" id="done-status"></div>
-    <div class="disclaimer" style="text-align:left;margin-top:28px">Filen indeholder kun dine svar og er krypteret, så kun din psykolog kan læse den. Du får ikke en score eller en vurdering her — det gennemgår I sammen til samtalen. <strong>Har du det akut svært, skal du ikke vente til samtalen</strong> — se Akut hjælp nederst (eller ring 112 / Livslinien 70 201 201).</div>
+    <div class="disclaimer" style="text-align:left;margin-top:28px">Filen indeholder kun dine svar og er krypteret, så kun din psykolog kan læse den. Du får ikke en score eller en vurdering her. Det gennemgår I sammen til samtalen. <strong>Har du det akut svært, skal du ikke vente til samtalen</strong>. Se Akut hjælp nederst (eller ring 112 / Livslinien 70 201 201).</div>
   </div>
 </div>
 
@@ -281,7 +281,7 @@
     <p class="intro" id="baseline-intro"></p>
     <button class="btn-primary" id="baseline-start-btn">Start</button>
     <p class="start-note">Det tager et par minutter og udfyldes kun denne ene gang.</p>
-    <div class="disclaimer"><span aria-hidden="true" style="display:inline-flex;width:1em;height:1em;vertical-align:-2px;margin-right:5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><span class="disc-body" data-autosend="<strong>Privatliv:</strong> Du udfylder alt i din egen browser. Til sidst sendes svarene sikkert og krypteret direkte til din psykolog — kun din psykolog kan åbne dem. Har du det akut svært, skal du ikke vente til samtalen — se Akut hjælp nederst."><strong>Privatliv:</strong> Du udfylder alt i din egen browser. Til sidst samles svarene i én krypteret fil, som kun din psykolog kan åbne, og du sender den selv. Intet gemmes på en server. Har du det akut svært, skal du ikke vente til samtalen — se Akut hjælp nederst.</span></div>
+    <div class="disclaimer"><span aria-hidden="true" style="display:inline-flex;width:1em;height:1em;vertical-align:-2px;margin-right:5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><span class="disc-body" data-autosend="<strong>Privatliv:</strong> Du udfylder alt i din egen browser. Til sidst sendes svarene sikkert og krypteret direkte til din psykolog. Kun din psykolog kan åbne dem. Har du det akut svært, skal du ikke vente til samtalen. Se Akut hjælp nederst."><strong>Privatliv:</strong> Du udfylder alt i din egen browser. Til sidst samles svarene i én krypteret fil, som kun din psykolog kan åbne, og du sender den selv. Intet gemmes på en server. Har du det akut svært, skal du ikke vente til samtalen. Se Akut hjælp nederst.</span></div>
     <p class="footer-credit" id="baseline-key-fp"></p>
   </div>
 </div>
@@ -302,7 +302,7 @@
 
 <script type="module">
 import { SKEMAER, SKEMA_ORDER, buildPayload, buildPayloadCSD, buildPayloadBaseline, mentemEncrypt,
-         CSD_SOEVNDAGBOG, SOEVN_BASELINE, CONTENT_VERSION, SITE_BUILD,
+         CSD_SOEVNDAGBOG, SOEVN_BASELINE, CONTENT_VERSION, SITE_BUILD, kryptoStoettet,
          PINNED_PUBKEY, PINNED_KEY_ID, resolveRecipientKey } from './mentem-skema-core.js';
 
 // ── URL-parametre (?s=batteri  ?n=sessionsnummer  ?pk=cross-check) ────────
@@ -407,6 +407,80 @@ const fixedFromLink = selected.length > 0;                    // ?s= → låst b
 
 const answers = {};
 
+// ── P0 incident-hærdning: krypto-fallback + diagnostik (klient-facing) ───────
+// Baggrund: indlejrede/forældede Android-browsere mangler X25519 i crypto.subtle
+// → kryptering kaster. Vi feature-detekterer FØR udfyldning og ved Send, bevarer
+// svar lokalt, guider til Chrome/Safari, og tilbyder en METADATA-ONLY diagnostik-SMS.
+const BATTERI_LS_KEY = 'mentem_batteri_svar_v1';
+const DIAG_TELEFON   = '+4553537585';
+
+// Bevar klientens svar lokalt (samme-browser-retry; localStorage er origin/enheds-bundet,
+// så et browser-SKIFT bærer dem ikke med — derfor er Chrome/Safari-guiden primær).
+function gemSvarLokalt() {
+  try {
+    const navnEl = document.getElementById('patient-name');
+    localStorage.setItem(BATTERI_LS_KEY, JSON.stringify({
+      answers, navn: (navnEl && navnEl.value) || '', ts: Date.now(),
+    }));
+  } catch (e) { /* private mode / quota → bedst-anstrengelse */ }
+}
+
+// Diagnostik-linje: KUN ikke-PII metadata. 🔴 ALDRIG et klient-svar, fritekst eller
+// fuldt token. token vises KORTET (6 tegn), aldrig fuldt; ingen navn/svar/fri-tekst.
+async function byggDiagnostikLinje(fejl) {
+  const kortToken = draftToken ? String(draftToken).slice(0, 6) + '…' : '-';
+  const ua = (navigator.userAgent || '').replace(/[·\n]/g, ' ').slice(0, 120);
+  return [
+    'MENTEM-DIAG',
+    's=' + (sParam || '-'),
+    'd=' + (dParam != null ? dParam : '-'),
+    'tok=' + kortToken,
+    'sec=' + (!!globalThis.isSecureContext),
+    'crypto=' + (await kryptoStoettet()),
+    'fejl=' + ((fejl && fejl.name) ? fejl.name : 'ukendt'),
+    'ver=' + (typeof SITE_BUILD !== 'undefined' ? SITE_BUILD : '-'),
+    'ts=' + new Date().toISOString(),
+    'ua=' + ua,
+  ].join(' · ');
+}
+
+function smsLink(telefon, body) {
+  return 'sms:' + telefon + '?&body=' + encodeURIComponent(body);
+}
+
+// Krypto-fejl-tilstand (C3): bevar svar + guide til anden browser + diagnostik-knap
+// (metadata-only). Ingen blind rød fejl. `unsupported` styrer ordlyden.
+async function visKryptoFallback(statusEl, fejl, btn, unsupported) {
+  gemSvarLokalt();
+  const diag = await byggDiagnostikLinje(fejl);
+  statusEl.style.color = '#c0392b';
+  statusEl.innerHTML = '';
+  const p = document.createElement('p');
+  p.style.margin = '0 0 10px';
+  p.innerHTML = unsupported
+    ? '<strong>Din browser kan ikke sende sikkert.</strong> Åbn siden i <strong>Chrome</strong> eller <strong>Safari</strong> for at sende. Dine svar er gemt på denne enhed, så du ikke skal udfylde igen.'
+    : '<strong>Noget gik galt under kryptering.</strong> Prøv igen, eller åbn siden i Chrome eller Safari. Dine svar er gemt på denne enhed.';
+  const a = document.createElement('a');
+  a.href = smsLink(DIAG_TELEFON, diag);
+  a.className = 'btn-secondary';
+  a.style.display = 'inline-block';
+  a.textContent = 'Send teknisk info til psykolog (uden dine svar)';
+  statusEl.appendChild(p);
+  statusEl.appendChild(a);
+  if (btn) btn.disabled = false;
+}
+
+// P0-B: tjek ved INDLÆSNING — kan browseren ikke kryptere, vis straks en banner FØR
+// klienten udfylder noget, så ingen spilder tid på en udfyldning der ikke kan sendes.
+async function tjekKryptoVedIndlaesning() {
+  if (await kryptoStoettet()) return;
+  const b = document.createElement('div');
+  b.setAttribute('role', 'alert');
+  b.style.cssText = 'background:#c0392b;color:#fff;padding:12px 16px;font-size:14px;line-height:1.5;text-align:center';
+  b.innerHTML = '<strong>Denne browser kan ikke sende sikkert.</strong> Åbn siden i Chrome eller Safari, før du udfylder, så dine svar kan krypteres og sendes til din psykolog.';
+  document.body.insertBefore(b, document.body.firstChild);
+}
+
 // Neutrale line-ikoner (stroke = currentColor; pale-grøn cirkel via .schema-icon).
 const SVG = (inner) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
 const ICONS = {
@@ -480,7 +554,7 @@ function renderWelcome() {
   // SIKKERHED: hvis linket peger på en ukendt nøgle, så advar straks og
   // bloker — klienten skal ikke engang udfylde via et manipuleret link.
   if (!keyCheck.ok) {
-    intro.innerHTML = '<strong style="color:#c0392b">Sikkerhedstjek fejlede.</strong> Dette link peger på en ukendt sikkerhedsnøgle. Brug det IKKE — kontakt din psykolog for et nyt link.';
+    intro.innerHTML = '<strong style="color:#c0392b">Sikkerhedstjek fejlede.</strong> Dette link peger på en ukendt sikkerhedsnøgle. Brug det IKKE. Kontakt din psykolog for et nyt link.';
     document.getElementById('schema-cards').innerHTML = '';
     startBtn.disabled = true;
     startBtn.textContent = 'Linket kan ikke bruges';
@@ -490,7 +564,7 @@ function renderWelcome() {
   const battery = fixedFromLink ? selected : SKEMA_ORDER;
   selected = battery;   // hele batteriet udfyldes
 
-  intro.textContent = 'Din psykolog har sammensat nogle korte skemaer, der hjælper jer med at få mest ud af jeres samtale. Tag dem i dit eget tempo — det tager omkring 10 minutter, og der er ingen rigtige eller forkerte svar.';
+  intro.textContent = 'Din psykolog har sammensat nogle korte skemaer, der hjælper jer med at få mest ud af jeres samtale. Tag dem i dit eget tempo. Det tager omkring 10 minutter, og der er ingen rigtige eller forkerte svar.';
 
   cardsEl.innerHTML = '';
   battery.forEach(id => {
@@ -680,7 +754,7 @@ async function shareEncrypted() {
   // SIKKERHED: nægt at kryptere hvis linket peger på en ukendt nøgle.
   if (!keyCheck.ok) {
     status.style.color = '#c0392b';
-    status.textContent = 'Sikkerhedstjek fejlede: linket peger på en ukendt nøgle. Del IKKE dine svar — kontakt din psykolog for et nyt link.';
+    status.textContent = 'Sikkerhedstjek fejlede: linket peger på en ukendt nøgle. Del IKKE dine svar. Kontakt din psykolog for et nyt link.';
     return;
   }
   btn.disabled = true;
@@ -694,9 +768,7 @@ async function shareEncrypted() {
     containerJSON = JSON.stringify(await mentemEncrypt(keyCheck.key, payload, keyCheck.keyId)); // ALTID pinned key
   } catch (e) {
     console.error('[mentem] kryptering fejlede', e && e.name, e && e.message, e);
-    status.style.color = '#c0392b';
-    status.textContent = 'Noget gik galt under kryptering. Prøv igen, eller kontakt din psykolog.';
-    btn.disabled = false;
+    await visKryptoFallback(status, e, btn, e && e.name === 'CryptoUnsupportedError');
     return;
   }
   // AUTO-SEND (#1/#2): kun it=-links. Lykkes → færdig; ellers fald til download/del.
@@ -844,7 +916,7 @@ function renderDiaryWelcome() {
 
   // SIKKERHED: samme key-pin-guard som spørgeskema-flowet.
   if (!keyCheck.ok) {
-    intro.innerHTML = '<strong style="color:#c0392b">Sikkerhedstjek fejlede.</strong> Dette link peger på en ukendt sikkerhedsnøgle. Brug det IKKE — kontakt din psykolog for et nyt link.';
+    intro.innerHTML = '<strong style="color:#c0392b">Sikkerhedstjek fejlede.</strong> Dette link peger på en ukendt sikkerhedsnøgle. Brug det IKKE. Kontakt din psykolog for et nyt link.';
     startBtn.disabled = true; startBtn.textContent = 'Linket kan ikke bruges';
     finishNow.style.display = 'none';
     document.getElementById('diary-dots').innerHTML = '';
@@ -855,7 +927,7 @@ function renderDiaryWelcome() {
   const done = diaryState.entries.length;
   const filledToday = diaryHasToday();
 
-  intro.textContent = 'Udfyld dagbogen kort hver morgen for natten, der gik. Det tager et øjeblik — skriv bare som du husker den. Til sidst samler vi alle dagene i én fil, som du sender til din psykolog.';
+  intro.textContent = 'Udfyld dagbogen kort hver morgen for natten, der gik. Det tager et øjeblik. Skriv bare som du husker den. Til sidst samler vi alle dagene i én fil, som du sender til din psykolog.';
 
   // Privatlivstekst.
   // - localStorage-variant: v1-tekst i diary-privacy (under knappen, uændret).
@@ -864,7 +936,7 @@ function renderDiaryWelcome() {
   //   diary-privacy tømmes for at undgå dublet. Se renderDiaryConsent().
   const priv = document.getElementById('diary-privacy');
   if (priv) priv.innerHTML = LOCAL_ONLY
-    ? chipIcon('laas') + '<strong>Privatliv:</strong> Dine svar gemmes kun i denne browser på din egen enhed — de sendes ikke nogen steder undervejs. Udfyld alle dagene på den samme enhed. Når du er klar, ' + (autoSendEnabled() ? 'sendes de sikkert og krypteret direkte til din psykolog, så kun din psykolog kan åbne dem.' : 'samles svarene i én krypteret fil, som kun din psykolog kan åbne, og du sender den selv til sidst.') + ' <strong>Bemærk:</strong> rydder du browseren eller skifter enhed, mistes de dage, du har gemt, og du må starte forfra.'
+    ? chipIcon('laas') + '<strong>Privatliv:</strong> Dine svar gemmes kun i denne browser på din egen enhed. De sendes ikke nogen steder undervejs. Udfyld alle dagene på den samme enhed. Når du er klar, ' + (autoSendEnabled() ? 'sendes de sikkert og krypteret direkte til din psykolog, så kun din psykolog kan åbne dem.' : 'samles svarene i én krypteret fil, som kun din psykolog kan åbne, og du sender den selv til sidst.') + ' <strong>Bemærk:</strong> rydder du browseren eller skifter enhed, mistes de dage, du har gemt, og du må starte forfra.'
     : '';
   renderDiaryConsent();
 
@@ -887,7 +959,7 @@ function renderDiaryWelcome() {
 
   if (filledToday) {
     startBtn.textContent = 'Ret dagens svar';
-    note.textContent = 'Du har allerede udfyldt for i dag. Kom tilbage i morgen — eller ret dagens svar.';
+    note.textContent = 'Du har allerede udfyldt for i dag. Kom tilbage i morgen, eller ret dagens svar.';
   } else {
     startBtn.textContent = 'Udfyld for i nat';
     note.textContent = `Gemt: ${done} ${done === 1 ? 'dag' : 'dage'}. Kom tilbage hver morgen.`;
@@ -896,7 +968,7 @@ function renderDiaryWelcome() {
 
   finishNow.style.display = done >= 1 ? 'block' : 'none';
   if (done >= N) {
-    finishNow.textContent = 'Perioden er fuldført — send til psykolog';
+    finishNow.textContent = 'Perioden er fuldført. Send til psykolog';
     note.textContent = `Du har udfyldt alle ${N} dage. Tryk for at sende til din psykolog.`;
   } else {
     finishNow.textContent = 'Afslut og send til psykolog nu';
@@ -914,7 +986,7 @@ function renderDiaryWelcome() {
 
   // Server-recovery (ITP-wipe): lokal kladde væk, men serveren havde en krypteret.
   if (recoveredBlob && done === 0) {
-    note.textContent = 'Vi fandt en tidligere gemt dagbog (krypteret) hos din psykolog — den er sikker. Du kan udfylde flere dage, eller sende den nu.';
+    note.textContent = 'Vi fandt en tidligere gemt dagbog (krypteret) hos din psykolog. Den er sikker. Du kan udfylde flere dage, eller sende den nu.';
     finishNow.style.display = 'block';
     finishNow.textContent = 'Send gendannet dagbog til psykolog';
     if (backfillBtn) backfillBtn.style.display = 'none';
@@ -939,12 +1011,12 @@ function renderDiaryConsent() {
   // UI (ikke låst tekst): viser at server-PUT er blokeret til samtykke er givet.
   el.innerHTML = `
     <h3>Sådan opbevares dine svar</h3>
-    <p>Dine svar gemmes <strong>krypteret</strong>, så du kan vende tilbage til dem fra det samme link — også hvis du skifter telefon eller rydder din browser. Det betyder, at du ikke mister de dage, du allerede har udfyldt.</p>
+    <p>Dine svar gemmes <strong>krypteret</strong>, så du kan vende tilbage til dem fra det samme link, også hvis du skifter telefon eller rydder din browser. Det betyder, at du ikke mister de dage, du allerede har udfyldt.</p>
     <ul>
-      <li><strong>Kun jeg (din psykolog) kan låse dine svar op.</strong> De opbevares krypteret, så ingen andre kan læse dem — heller ikke der, hvor de ligger.</li>
+      <li><strong>Kun jeg (din psykolog) kan låse dine svar op.</strong> De opbevares krypteret, så ingen andre kan læse dem, heller ikke der, hvor de ligger.</li>
       <li><strong>Linket indeholder ikke dit navn</strong> eller andre oplysninger om dig.</li>
       <li>Dine data ligger på en server i <strong>EU</strong> og <strong>slettes automatisk efter 45 dage</strong>.</li>
-      <li>Du kan <strong>når som helst bede mig om at slette dem</strong> — eller trække dit samtykke tilbage.</li>
+      <li>Du kan <strong>når som helst bede mig om at slette dem</strong>, eller trække dit samtykke tilbage.</li>
     </ul>
     <label class="diary-consent-label">
       <input type="checkbox" id="diary-consent-cb"${accepted ? ' checked' : ''}>
@@ -952,7 +1024,7 @@ function renderDiaryConsent() {
     </label>
     <p class="diary-consent-status">${accepted
       ? 'Tak. Dine svar gemmes nu krypteret, så du kan fortsætte på tværs af enheder.'
-      : 'Indtil du sætter flueben, gemmes dine svar kun på denne enhed — de sendes ikke til serveren.'}</p>`;
+      : 'Indtil du sætter flueben, gemmes dine svar kun på denne enhed. De sendes ikke til serveren.'}</p>`;
   const cb = document.getElementById('diary-consent-cb');
   cb.addEventListener('change', () => {
     recordConsent(cb.checked);
@@ -1013,7 +1085,7 @@ function startDiaryEntry(forDate, prefillEntry) {
       sameBtn.onclick = () => {
         startDiaryEntry(diaryFillDate, prev);
         // a11y: annoncér effekten (spec-ux §3) — felterne bærer nu gårsdagens svar.
-        announceA11y('Udfyldt med dine svar fra i går — du kan rette dem.');
+        announceA11y('Udfyldt med dine svar fra i går. Du kan rette dem.');
       };
     } else {
       sameBtn.style.display = 'none';
@@ -1095,7 +1167,7 @@ function buildSubstansField(f, draft, afterChange) {
     });
     if (entry.tidspunkt === 'Nat') {
       const flag = document.createElement('div');
-      flag.innerHTML = chipIcon('maane') + 'Tæt på sengetid — markeres til din psykolog.';
+      flag.innerHTML = chipIcon('maane') + 'Tæt på sengetid. Markeres til din psykolog.';
       flag.style.cssText = 'flex-basis:100%;font-size:12px;color:#8a6d00;margin-top:2px';
       wrap.appendChild(flag);
     }
@@ -1471,7 +1543,7 @@ async function shareDiaryEncrypted() {
   const btn = document.getElementById('share-btn');
   if (!keyCheck.ok) {
     status.style.color = '#c0392b';
-    status.textContent = 'Sikkerhedstjek fejlede: linket peger på en ukendt nøgle. Del IKKE dine svar — kontakt din psykolog for et nyt link.';
+    status.textContent = 'Sikkerhedstjek fejlede: linket peger på en ukendt nøgle. Del IKKE dine svar. Kontakt din psykolog for et nyt link.';
     return;
   }
   if (diaryState.entries.length === 0 && !recoveredBlob) {
@@ -1488,9 +1560,7 @@ async function shareDiaryEncrypted() {
     containerJSON = await byggDiaryContainerJSON(true);
   } catch (e) {
     console.error('[mentem] kryptering fejlede (dagbog)', e && e.name, e && e.message, e);
-    status.style.color = '#c0392b';
-    status.textContent = 'Noget gik galt under kryptering. Prøv igen, eller kontakt din psykolog.';
-    btn.disabled = false;
+    await visKryptoFallback(status, e, btn, e && e.name === 'CryptoUnsupportedError');
     return;
   }
   // AUTO-SEND (#1/#2): kun it=-links + når der findes plaintext-entries (recoveredBlob-
@@ -1522,7 +1592,7 @@ async function sendDiaryOpdatering() {
   const btn = document.getElementById('diary-update-btn');
   if (!keyCheck.ok) {
     status.style.color = '#c0392b';
-    status.textContent = 'Sikkerhedstjek fejlede — kontakt din psykolog for et nyt link.';
+    status.textContent = 'Sikkerhedstjek fejlede. Kontakt din psykolog for et nyt link.';
     return;
   }
   if (diaryState.entries.length === 0) {
@@ -1539,9 +1609,7 @@ async function sendDiaryOpdatering() {
     containerJSON = await byggDiaryContainerJSON(false);
   } catch (e) {
     console.error('[mentem] kryptering fejlede (opdatering)', e && e.name, e && e.message, e);
-    status.style.color = '#c0392b';
-    status.textContent = 'Noget gik galt. Prøv igen, eller kontakt din psykolog.';
-    btn.disabled = false;
+    await visKryptoFallback(status, e, btn, e && e.name === 'CryptoUnsupportedError');
     return;
   }
   // AUTO-SEND (#1/#2): ikke-terminal → ryd ALDRIG kladden; knap forbliver brugbar.
@@ -1586,7 +1654,7 @@ function renderBaselineWelcome() {
   const intro = document.getElementById('baseline-intro');
   const startBtn = document.getElementById('baseline-start-btn');
   if (!keyCheck.ok) {
-    intro.innerHTML = '<strong style="color:#c0392b">Sikkerhedstjek fejlede.</strong> Dette link peger på en ukendt sikkerhedsnøgle. Brug det IKKE — kontakt din psykolog for et nyt link.';
+    intro.innerHTML = '<strong style="color:#c0392b">Sikkerhedstjek fejlede.</strong> Dette link peger på en ukendt sikkerhedsnøgle. Brug det IKKE. Kontakt din psykolog for et nyt link.';
     startBtn.disabled = true; startBtn.textContent = 'Linket kan ikke bruges';
     return;
   }
@@ -1710,7 +1778,7 @@ async function shareBaselineEncrypted() {
   const btn = document.getElementById('share-btn');
   if (!keyCheck.ok) {
     status.style.color = '#c0392b';
-    status.textContent = 'Sikkerhedstjek fejlede: linket peger på en ukendt nøgle. Del IKKE dine svar — kontakt din psykolog for et nyt link.';
+    status.textContent = 'Sikkerhedstjek fejlede: linket peger på en ukendt nøgle. Del IKKE dine svar. Kontakt din psykolog for et nyt link.';
     return;
   }
   btn.disabled = true;
@@ -1725,9 +1793,7 @@ async function shareBaselineEncrypted() {
     containerJSON = JSON.stringify(await mentemEncrypt(keyCheck.key, payload, keyCheck.keyId)); // ALTID pinned key
   } catch (e) {
     console.error('[mentem] kryptering fejlede (baseline)', e && e.name, e && e.message, e);
-    status.style.color = '#c0392b';
-    status.textContent = 'Noget gik galt under kryptering. Prøv igen, eller kontakt din psykolog.';
-    btn.disabled = false;
+    await visKryptoFallback(status, e, btn, e && e.name === 'CryptoUnsupportedError');
     return;
   }
   // AUTO-SEND (#1/#2): kun it=-links. Lykkes → færdig; ellers fald til download/del.
@@ -1886,7 +1952,8 @@ function initA11yMode() {
 initTextsize();
 initAloud();
 initA11yMode();
+tjekKryptoVedIndlaesning();
 </script>
-<p class="a11y-hint">Vil du have siden læst op? På iPhone: slå "Læs skærm op" til i Indstillinger → Tilgængelighed → Talt indhold, og stryg ned med to fingre.</p>
+<p class="a11y-hint">Vil du have siden læst op? På iPhone: slå "Læs skærm op" til i Indstillinger → Tilgængelighed → Talt indhold, og stryg ned med to fingre. På Android: tryk på "Få læst op" øverst på siden. Vil du bruge telefonens egen oplæsning, kan du i Chrome trykke på menuen (tre prikker) og vælge "Læs højt", eller slå "Vælg og oplæs" til i Indstillinger, Tilgængelighed.</p>
 </body>
 </html>
