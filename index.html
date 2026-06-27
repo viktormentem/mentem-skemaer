@@ -199,7 +199,7 @@
     <button class="btn-primary" id="start-btn" disabled>Start</button>
     <p class="start-note">Til sidst får du én fil, som du nemt deler med din psykolog. Vi viser dig hvordan.</p>
     <div class="disclaimer"><span aria-hidden="true" style="display:inline-flex;width:1em;height:1em;vertical-align:-2px;margin-right:5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><span class="disc-body" data-autosend="<strong>Privatliv:</strong> Du udfylder alt i din egen browser. Når du er færdig, sendes svarene sikkert og krypteret direkte til din psykolog. Kun din psykolog kan åbne dem. Har du det akut svært, skal du ikke vente til samtalen. Se Akut hjælp nederst."><strong>Privatliv:</strong> Du udfylder alt i din egen browser. Når du er færdig, samles svarene i én krypteret fil, som kun din psykolog kan åbne. Intet gemmes på en server, og du sender selv filen. Har du det akut svært, skal du ikke vente til samtalen. Se Akut hjælp nederst.</span></div>
-    <p class="footer-credit">Skemaerne bygger på anerkendte spørgeskemaer (GAD-7, PHQ-9, WHO-5, WSAS), som din psykolog bruger til at følge din udvikling.</p>
+    <p class="footer-credit" id="footer-credit">Skemaerne bygger på anerkendte, validerede spørgeskemaer, som din psykolog bruger til at følge din udvikling.</p>
     <p class="footer-credit" id="key-fp"></p>
   </div>
 </div>
@@ -301,7 +301,7 @@
 </div>
 
 <script type="module">
-import { SKEMAER, SKEMA_ORDER, buildPayload, buildPayloadCSD, buildPayloadBaseline, mentemEncrypt,
+import { SKEMAER, SKEMA_ORDER, OFFENTLIGT_KLAR, buildPayload, buildPayloadCSD, buildPayloadBaseline, mentemEncrypt,
          CSD_SOEVNDAGBOG, SOEVN_BASELINE, CONTENT_VERSION, SITE_BUILD, kryptoStoettet,
          PINNED_PUBKEY, PINNED_KEY_ID, resolveRecipientKey } from './mentem-skema-core.js';
 
@@ -402,8 +402,12 @@ const rawSelected = (sParam ? sParam.split(',').map(x => x.trim().toLowerCase())
 const diaryId = rawSelected.find(id => SKEMAER[id].kind === 'diary') || null;
 // Søvn-baseline (kind:'baseline') = engangs intake-skema, eget flow (runBaseline).
 const baselineId = rawSelected.find(id => SKEMAER[id].kind === 'baseline') || null;
-let selected = SKEMA_ORDER.filter(id => rawSelected.includes(id));   // kanonisk rækkefølge (kun spørgeskemaer)
-const fixedFromLink = selected.length > 0;                    // ?s= → låst batteri
+// Offentlig batteri-allowlist: kun OFFENTLIGT_KLAR-skemaer kan rendres på den
+// uautentificerede flade (parallelt register, ikke SKEMA_ORDER): et licenspending
+// skema kan derfor ikke længere lække via ?s=. Kanonisk rækkefølge bevares (OFFENTLIGT_KLAR
+// er ordnet som SKEMA_ORDER). Kun spørgeskemaer (diary/baseline har egne flows).
+let selected = OFFENTLIGT_KLAR.filter(id => rawSelected.includes(id));
+const fixedFromLink = selected.length > 0;                    // gyldigt ?s=-subset → låst batteri
 
 const answers = {};
 
@@ -561,7 +565,19 @@ function renderWelcome() {
     return;
   }
 
-  const battery = fixedFromLink ? selected : SKEMA_ORDER;
+  // C (batteri-hygiejne): et offentligt/uautentificeret link UDEN gyldigt skema-subset
+  // (bar URL, ukendt eller gated token) må ALDRIG falde tilbage til hele batteriet. Intet
+  // psykolog-genereret link er tomt. Vis "ufuldstændigt link"-skærm i stedet for at reklamere
+  // for det fulde batteri (lukker fuld-batteri-eksponeringen på den offentlige flade).
+  if (!fixedFromLink) {
+    intro.textContent = 'Dette link er ufuldstændigt. Kontakt din psykolog for at få et helt link, der passer til dig.';
+    cardsEl.innerHTML = '';
+    startBtn.disabled = true;
+    startBtn.textContent = 'Linket er ufuldstændigt';
+    return;
+  }
+
+  const battery = selected;   // gyldigt, låst subset fra linket
   selected = battery;   // hele batteriet udfyldes
 
   intro.textContent = 'Din psykolog har sammensat nogle korte skemaer, der hjælper jer med at få mest ud af jeres samtale. Tag dem i dit eget tempo. Det tager omkring 10 minutter, og der er ingen rigtige eller forkerte svar.';
@@ -581,6 +597,13 @@ function renderWelcome() {
   startBtn.disabled = battery.length === 0;
   startBtn.textContent = 'Start';
   startBtn.addEventListener('click', startForm);
+
+  // Footer-credit drives af OFFENTLIGT_KLAR: generisk ordlyd, ingen instrumentnavne
+  // (samme register som batteri-allowlisten). Tomt register → ingen credit.
+  const credit = document.getElementById('footer-credit');
+  if (credit) credit.textContent = OFFENTLIGT_KLAR.length
+    ? 'Skemaerne bygger på anerkendte, validerede spørgeskemaer, som din psykolog bruger til at følge din udvikling.'
+    : '';
 
   const fp = document.getElementById('key-fp');
   if (fp) fp.textContent = 'Krypteret til din psykologs nøgle · ID ' + aktivKeyId();

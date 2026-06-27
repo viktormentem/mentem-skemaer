@@ -1,0 +1,64 @@
+// Batteri KLAR-gate guard (offentligheds-/licensgate for spørgeskema-batteriet).
+// Analog til test/instrument-klar-gate.mjs, men for det batteri-register der lever i
+// mentem-skema-core.js (SKEMA_ORDER/SKEMAER). Låser de to invarianter fra batteri-
+// velkomst-licenslækken (noter/batteri-velkomst-licens-laek-2026-06-27):
+//
+//   B (lukker L2 — instrumentnavne i velkomst-/footer-copy):
+//      ÉT register, OFFENTLIGT_KLAR, afgør hvad der må vises offentligt; footer-credit
+//      er generisk og navngiver ALDRIG et instrument (GAD-7/PHQ-9/WHO-5/WSAS/WAI-SR).
+//   C (lukker L1 — fuld-batteri-reklame på bar URL/ukendt/gated token):
+//      renderWelcome falder IKKE tilbage til hele SKEMA_ORDER; et tomt/ugyldigt link
+//      viser en "ufuldstændigt link"-skærm i stedet.
+//
+// Køres: node test/batteri-klar-gate.mjs
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+import { SKEMA_ORDER, OFFENTLIGT_KLAR, SKEMAER } from '../mentem-skema-core.js';
+
+let fejl = 0;
+function ok(cond, navn) { console.log((cond ? '  ✓ ' : '  ✗ FAIL ') + navn); if (!cond) fejl++; }
+
+console.log('Batteri KLAR-gate guard (offentligheds-/licensgate, B+C):');
+
+// ── 1. Register-invarianter (OFFENTLIGT_KLAR parallelt til SKEMA_ORDER) ──────
+ok(Array.isArray(OFFENTLIGT_KLAR) && OFFENTLIGT_KLAR.length > 0, 'OFFENTLIGT_KLAR er et ikke-tomt register');
+ok(new Set(OFFENTLIGT_KLAR).size === OFFENTLIGT_KLAR.length, 'OFFENTLIGT_KLAR har ingen dubletter');
+for (const id of OFFENTLIGT_KLAR) {
+  ok(SKEMA_ORDER.includes(id), `'${id}' er en delmængde af SKEMA_ORDER (intet fremmed id)`);
+  ok(id in SKEMAER, `'${id}' er et registreret skema i SKEMAER`);
+}
+// Kanonisk rækkefølge bevares (OFFENTLIGT_KLAR er ordnet som SKEMA_ORDER) → batteriet
+// rendres altid i samme rækkefølge uanset hvilket register der driver allowlisten.
+const ordnet = SKEMA_ORDER.filter(id => OFFENTLIGT_KLAR.includes(id));
+ok(ordnet.join(',') === OFFENTLIGT_KLAR.join(','), 'OFFENTLIGT_KLAR følger SKEMA_ORDERs kanoniske rækkefølge');
+
+// ── 2. index.html-kontrakt (statisk kilde-tjek) ─────────────────────────────
+const here = dirname(fileURLToPath(import.meta.url));
+const html = readFileSync(join(here, '..', 'index.html'), 'utf8');
+
+// B: registret importeres + driver den offentlige allowlist (`selected`), ikke SKEMA_ORDER.
+ok(/import \{[^}]*\bOFFENTLIGT_KLAR\b[^}]*\} from '\.\/mentem-skema-core\.js'/.test(html),
+  'index.html importerer OFFENTLIGT_KLAR fra core');
+ok(/let selected = OFFENTLIGT_KLAR\.filter\(id => rawSelected\.includes\(id\)\)/.test(html),
+  'selected udledes af OFFENTLIGT_KLAR (offentlig allowlist), ikke SKEMA_ORDER');
+
+// C: ingen fuld-SKEMA_ORDER-fallback-batteri tilbage; ufuldstændigt-link-skærm i stedet.
+ok(!/fixedFromLink \? selected : SKEMA_ORDER/.test(html),
+  'INGEN fuld-batteri-fallback (fixedFromLink ? selected : SKEMA_ORDER) tilbage (L1 lukket)');
+ok(/if \(!fixedFromLink\) \{/.test(html) && /Dette link er ufuldstændigt/.test(html),
+  'renderWelcome viser "ufuldstændigt link"-skærm når linket ikke bærer et gyldigt subset');
+
+// B (L2): velkomst-footer-credit er generisk og navngiver INTET instrument.
+// Scopet til footer-credit-strengene (statisk <p> + JS-drevet) — ikke JS-kommentarer
+// (hvor fx PHQ-9-item-9-nudge legitimt nævnes).
+const navne = /(GAD-7|PHQ-9|WHO-5|WSAS|WAI-SR)/;
+const staticCredit = (html.match(/<p class="footer-credit" id="footer-credit"[^>]*>([^<]*)<\/p>/) || [])[1] || '';
+ok(staticCredit.length > 0, 'statisk footer-credit findes (id="footer-credit")');
+ok(!navne.test(staticCredit), 'statisk footer-credit navngiver INTET instrument (L2 lukket)');
+ok(/anerkendte, validerede spørgeskemaer/.test(staticCredit), 'statisk footer-credit bruger den generiske ordlyd');
+const jsCredit = (html.match(/credit\.textContent = OFFENTLIGT_KLAR\.length[\s\S]*?:\s*'';/) || [''])[0];
+ok(jsCredit.length > 0 && !navne.test(jsCredit), 'JS-drevet footer-credit (af OFFENTLIGT_KLAR) navngiver INTET instrument');
+
+console.log(fejl === 0 ? '\nBATTERI KLAR-GATE GUARD PASSED ✅' : '\nBATTERI KLAR-GATE GUARD FAILED ❌ (' + fejl + ')');
+process.exit(fejl === 0 ? 0 : 1);
