@@ -18,6 +18,16 @@
 // Kanonisk rækkefølge (proces-spine først, så symptom/outcome/funktion, alliance sidst).
 export const SKEMA_ORDER = ['cas', 'mcb', 'gad7', 'phq9', 'who5', 'wsas', 'waisr'];
 
+// ── Offentligheds-/licensgate (rod-gap-luk · batteri-velkomst-licenslæk 2026-06-27) ──
+// SKEMA_ORDER bærer bevidst ingen KLAR/licensstatus (nøgle-isolation). OFFENTLIGT_KLAR er
+// det PARALLELLE register (analogt til instrument-KLAR-gaten): ét sted, der afgør hvilke
+// spørgeskemaer der må vises på en offentlig/uautentificeret flade. Det driver BÅDE den
+// offentlige batteri-allowlist (renderWelcome → `selected`) OG den generiske footer-credit,
+// så vi aldrig navngiver et enkelt instrument på velkomstskærmen (generisk copy fjerner
+// licensnavne-skønnet permanent, Viktor V90). Et fremtidigt licens-pending skema fjernes
+// blot herfra → kan ikke længere rendres offentligt, uden at SKEMA_ORDER røres.
+export const OFFENTLIGT_KLAR = ['cas', 'mcb', 'gad7', 'phq9', 'who5', 'wsas', 'waisr'];
+
 // Frekvens-svarmuligheder (PHQ-9 / GAD-7, 0-3).
 const FREQ_0_3 = [
   { label: 'Slet ikke', value: 0 },
@@ -115,7 +125,7 @@ export const SKEMAER = {
     id: 'who5', kind: 'radio', title: 'WHO-5', short: 'Generel trivsel', icon: 'plante', badge: '5 spørgsmål',
     instruction: 'Angiv for hvert af de fem udsagn, hvad der bedst beskriver, hvordan du har haft det i de seneste 2 uger.',
     options: WHO5_OPTS, max: 25,
-    attribution: 'WHO-5 Trivselindeks © WHO (1998). Gengivet uændret med kildeangivelse (CC BY-NC-SA).',
+    attribution: 'WHO-5 Trivselsindeks (1999). © WHO. CC BY-NC-SA 3.0 IGO.',
     items: [
       'Jeg har følt mig glad og i godt humør',
       'Jeg har følt mig rolig og afslappet',
