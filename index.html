@@ -141,6 +141,29 @@
   .diary-field input[type=text] { width:100%; }
   .diary-field input:focus { border-color:var(--accent); }
   .diary-unit { font-size:14px; color:var(--muted); }
+  /* ── Instrument-skemaer (WHO-5/PHQ-9/GAD-7, kind:'instrument') — porteret ren motor ── */
+  .radio-option .instr-val-badge { flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; min-width:26px; height:26px; padding:0 7px; border-radius:6px; background:var(--border); color:var(--ink); font-size:14px; font-weight:600; font-variant-numeric:tabular-nums; }
+  .radio-option.checked .instr-val-badge { background:var(--accent); color:white; }
+  .instr-review-badge { display:inline-flex; align-items:center; justify-content:center; min-width:22px; height:22px; padding:0 6px; border-radius:5px; background:var(--accent-light); color:var(--accent); font-size:13px; font-weight:600; margin-right:8px; vertical-align:-2px; font-variant-numeric:tabular-nums; }
+  /* ── Instrument-skemaer (WHO-5/PHQ-9, kind:'instrument') ── */
+  .instrument-stem { font-size:15px; font-weight:600; margin:30px 0 8px; line-height:1.45; color:var(--ink); }
+  .instrument-field .diary-q { margin-bottom:4px; }
+  /* Item 9-safety: prominent, men ikke-alarmerende kald-til-hjaelp-panel (PHQ-9 selvmordstanker>0). */
+  .instrument-safety { margin-top:12px; padding:14px 16px; background:var(--card); border:1px solid var(--border); border-left:3px solid #c0392b; border-radius:8px; font-size:14px; color:var(--ink); line-height:1.55; }
+  .instrument-safety-head { display:flex; align-items:center; gap:7px; font-weight:600; color:#c0392b; margin-bottom:6px; }
+  .instrument-safety ul { margin:6px 0 0; padding-left:18px; }
+  .instrument-safety li { margin:3px 0; }
+  .instrument-safety a { color:var(--accent); font-weight:600; }
+  .instrument-review-row { display:flex; align-items:flex-start; gap:12px; padding:14px 0; border-bottom:1px solid var(--border); }
+  .instrument-review-row:last-of-type { border-bottom:none; }
+  .instrument-review-main { flex:1; min-width:0; }
+  .instrument-review-q { font-size:15px; line-height:1.5; color:var(--text); margin:0 0 6px; }
+  .instrument-review-q .question-num { color:var(--muted); margin-right:6px; }
+  .instrument-review-a { font-family:'DM Serif Display',serif; font-size:18px; color:var(--accent); line-height:1.35; }
+  .instrument-review-a.tom { font-family:'DM Sans',sans-serif; font-size:14px; font-style:italic; color:var(--muted); }
+  .instrument-review-ret { flex:0 0 auto; min-height:44px; min-width:64px; padding:8px 16px; border:1.5px solid var(--accent); background:white; color:var(--accent); border-radius:8px; cursor:pointer; font-family:'DM Sans',sans-serif; font-size:15px; font-weight:600; }
+  .instrument-review-ret:focus-visible { outline:3px solid var(--accent); outline-offset:3px; }
+  .instrument-copyright { font-size:12px; color:var(--muted); margin-top:22px; }
 
   /* WCAG 2.1 AA: synligt tastatur-fokus (B7) + touch-mål ≥44px. */
   :focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
@@ -199,7 +222,7 @@
     <button class="btn-primary" id="start-btn" disabled>Start</button>
     <p class="start-note">Til sidst får du én fil, som du nemt deler med din psykolog. Vi viser dig hvordan.</p>
     <div class="disclaimer"><span aria-hidden="true" style="display:inline-flex;width:1em;height:1em;vertical-align:-2px;margin-right:5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><span class="disc-body" data-autosend="<strong>Privatliv:</strong> Du udfylder alt i din egen browser. Når du er færdig, sendes svarene sikkert og krypteret direkte til din psykolog. Kun din psykolog kan åbne dem. Har du det akut svært, skal du ikke vente til samtalen. Se Akut hjælp nederst."><strong>Privatliv:</strong> Du udfylder alt i din egen browser. Når du er færdig, samles svarene i én krypteret fil, som kun din psykolog kan åbne. Intet gemmes på en server, og du sender selv filen. Har du det akut svært, skal du ikke vente til samtalen. Se Akut hjælp nederst.</span></div>
-    <p class="footer-credit">Skemaerne bygger på anerkendte spørgeskemaer (GAD-7, PHQ-9, WHO-5, WSAS), som din psykolog bruger til at følge din udvikling.</p>
+    <p class="footer-credit" id="footer-credit">Skemaerne bygger på anerkendte, validerede spørgeskemaer, som din psykolog bruger til at følge din udvikling.</p>
     <p class="footer-credit" id="key-fp"></p>
   </div>
 </div>
@@ -300,10 +323,52 @@
   </div>
 </div>
 
+
+<div id="screen-instrument" class="screen">
+  <div class="wrap">
+    <h1 id="instrument-title">Skema</h1>
+    <p class="intro" id="instrument-intro"></p>
+    <p class="schema-attribution" id="instrument-attribution" style="margin:-6px 0 14px"></p>
+    <div class="form-progress">
+      <span class="progress-label" id="instrument-progress-current">0 af 0</span>
+      <div class="progress-bar-track"><div class="progress-bar-fill" id="instrument-progress-fill"></div></div>
+    </div>
+    <div id="instrument-fields"></div>
+    <button class="btn-primary" id="instrument-submit" style="margin-top:8px" disabled>Gennemse dine svar</button>
+    <p class="start-note" id="instrument-note"></p>
+  </div>
+</div>
+
+<!-- Instrument review: afsluttende oversigt (klienten kan se alt + rette FOER afsendelse). -->
+<div id="screen-instrument-review" class="screen">
+  <div class="wrap">
+    <h1>Gennemse dine <em>svar</em></h1>
+    <p class="intro" id="instrument-review-intro"></p>
+    <div id="instrument-review-list"></div>
+    <button class="btn-primary" id="instrument-review-submit" style="margin-top:8px">Send til din psykolog</button>
+    <button class="btn-secondary" id="instrument-review-back" style="margin-top:12px">Tilbage til spørgsmålene</button>
+    <p class="instrument-copyright" id="instrument-review-attribution"></p>
+  </div>
+</div>
+
+<!-- Instrument kvittering: viser [MYCEL v1]-blokken + kopiér/del-mekanisme -->
+<div id="screen-instrument-done" class="screen">
+  <div class="wrap">
+    <div class="done-wrap">
+      <div class="done-mark" aria-hidden="true"><span style="display:inline-flex;width:56px;height:56px;color:#34c759"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.3l2.7 2.7L16 9"/></svg></span></div>
+      <h2>Tak. Du er færdig</h2>
+      <p>Dine svar er samlet nedenfor. Send dem til din psykolog i den samme SMS-tråd, hvor du fik linket.</p>
+      <div class="done-status" id="instrument-done-status"></div>
+      <div class="disclaimer" style="text-align:left;margin-top:28px">Du får ikke en score eller en vurdering her. Det gennemgår I sammen til samtalen. <strong>Har du det akut svært, skal du ikke vente til samtalen</strong>. Se Akut hjælp nederst (eller ring 112 / Livslinien 70 201 201).</div>
+    </div>
+  </div>
+</div>
+
 <script type="module">
-import { SKEMAER, SKEMA_ORDER, buildPayload, buildPayloadCSD, buildPayloadBaseline, mentemEncrypt,
+import { SKEMAER, SKEMA_ORDER, OFFENTLIGT_KLAR, buildPayload, buildPayloadCSD, buildPayloadBaseline, mentemEncrypt,
          CSD_SOEVNDAGBOG, SOEVN_BASELINE, CONTENT_VERSION, SITE_BUILD, kryptoStoettet,
-         PINNED_PUBKEY, PINNED_KEY_ID, resolveRecipientKey } from './mentem-skema-core.js';
+         PINNED_PUBKEY, PINNED_KEY_ID, resolveRecipientKey,
+         INSTRUMENTER, instrumentFeltOrden, buildInstrumentMycel } from './mentem-skema-core.js';
 
 // ── URL-parametre (?s=batteri  ?n=sessionsnummer  ?pk=cross-check) ────────
 const params   = new URLSearchParams(location.search);
@@ -402,8 +467,18 @@ const rawSelected = (sParam ? sParam.split(',').map(x => x.trim().toLowerCase())
 const diaryId = rawSelected.find(id => SKEMAER[id].kind === 'diary') || null;
 // Søvn-baseline (kind:'baseline') = engangs intake-skema, eget flow (runBaseline).
 const baselineId = rawSelected.find(id => SKEMAER[id].kind === 'baseline') || null;
-let selected = SKEMA_ORDER.filter(id => rawSelected.includes(id));   // kanonisk rækkefølge (kun spørgeskemaer)
-const fixedFromLink = selected.length > 0;                    // ?s= → låst batteri
+// Standalone instrument-skema (kind:'instrument', WHO-5/PHQ-9/GAD-7) = eget flow (renderInstrument)
+// -> [MYCEL v1]-konvolut. Lever i SEPARAT register (INSTRUMENTER), ikke SKEMAER-batteriet. Rammes
+// KUN af et SINGLE-token ?s=who5 (routing-prioritet); et multi-token batteri gaar uaendret til batteri-
+// flowet. KLAR:false-instrumenter er IKKE i INSTRUMENTER (licens-gate i core.js) -> ueksponerbare.
+const sTokens = sParam ? sParam.split(',').map(x => x.trim().toLowerCase()) : [];
+const instrumentId = (sTokens.length === 1 && INSTRUMENTER[sTokens[0]]) ? sTokens[0] : null;
+// Offentlig batteri-allowlist: kun OFFENTLIGT_KLAR-skemaer kan rendres på den
+// uautentificerede flade (parallelt register, ikke SKEMA_ORDER): et licenspending
+// skema kan derfor ikke længere lække via ?s=. Kanonisk rækkefølge bevares (OFFENTLIGT_KLAR
+// er ordnet som SKEMA_ORDER). Kun spørgeskemaer (diary/baseline har egne flows).
+let selected = OFFENTLIGT_KLAR.filter(id => rawSelected.includes(id));
+const fixedFromLink = selected.length > 0;                    // gyldigt ?s=-subset → låst batteri
 
 const answers = {};
 
@@ -561,7 +636,19 @@ function renderWelcome() {
     return;
   }
 
-  const battery = fixedFromLink ? selected : SKEMA_ORDER;
+  // C (batteri-hygiejne): et offentligt/uautentificeret link UDEN gyldigt skema-subset
+  // (bar URL, ukendt eller gated token) må ALDRIG falde tilbage til hele batteriet. Intet
+  // psykolog-genereret link er tomt. Vis "ufuldstændigt link"-skærm i stedet for at reklamere
+  // for det fulde batteri (lukker fuld-batteri-eksponeringen på den offentlige flade).
+  if (!fixedFromLink) {
+    intro.textContent = 'Dette link er ufuldstændigt. Kontakt din psykolog for at få et helt link, der passer til dig.';
+    cardsEl.innerHTML = '';
+    startBtn.disabled = true;
+    startBtn.textContent = 'Linket er ufuldstændigt';
+    return;
+  }
+
+  const battery = selected;   // gyldigt, låst subset fra linket
   selected = battery;   // hele batteriet udfyldes
 
   intro.textContent = 'Din psykolog har sammensat nogle korte skemaer, der hjælper jer med at få mest ud af jeres samtale. Tag dem i dit eget tempo. Det tager omkring 10 minutter, og der er ingen rigtige eller forkerte svar.';
@@ -581,6 +668,13 @@ function renderWelcome() {
   startBtn.disabled = battery.length === 0;
   startBtn.textContent = 'Start';
   startBtn.addEventListener('click', startForm);
+
+  // Footer-credit drives af OFFENTLIGT_KLAR: generisk ordlyd, ingen instrumentnavne
+  // (samme register som batteri-allowlisten). Tomt register → ingen credit.
+  const credit = document.getElementById('footer-credit');
+  if (credit) credit.textContent = OFFENTLIGT_KLAR.length
+    ? 'Skemaerne bygger på anerkendte, validerede spørgeskemaer, som din psykolog bruger til at følge din udvikling.'
+    : '';
 
   const fp = document.getElementById('key-fp');
   if (fp) fp.textContent = 'Krypteret til din psykologs nøgle · ID ' + aktivKeyId();
@@ -839,6 +933,7 @@ let diarySkema = null;
 let recoveredBlob = null;   // opaque server-kladde efter ITP-wipe (kan IKKE dekrypteres klient-side)
 let diaryFillDate = null;   // hvilken kalenderdag formularen udfylder (i dag / i går-backfill)
 let diaryStepIndex = 0;     // oplæsnings-venlig tilstand: aktivt trin (ét spørgsmål ad gangen)
+let stepperCfg = null;      // aktiv generisk-stepper-konfiguration (instrument-flow); null = ingen
 
 function diaryPlannedDays() {
   if (dParam && dParam > 0 && dParam <= 60) return dParam;   // ?d= ved første åbning
@@ -1473,6 +1568,326 @@ function showDiaryStep(i, moveFocus = true) {
   if (moveFocus && head) requestAnimationFrame(() => { try { head.focus(); } catch (e) {} });
 }
 
+// ════════════════════════════════════════════════════════════════════════
+//  GENERISK STEPPER-MOTOR (ét-spørgsmål-ad-gangen) + INSTRUMENT-RENDER (WHO-5/
+//  PHQ-9/GAD-7). Porteret ren motor (spec-instrument-kerne-genbygning 27/6): den
+//  generiske applyStepper/showStep deler intet med søvndagbogens egen stepper
+//  (lever side om side); INSTRUMENTER-routing + buildInstrumentMycel i core.js.
+// ════════════════════════════════════════════════════════════════════════
+function applyStepper(cfg) {
+  const root = document.getElementById(cfg.rootId);
+  if (!root) return;
+  const steps = cfg.steps();
+  if (!steps.length) return;
+  stepperCfg = cfg;
+  const head = document.createElement('h2');
+  head.id = 'a11y-step-head'; head.className = 'a11y-step-head';
+  head.tabIndex = -1;
+  head.setAttribute('role', 'status');
+  head.setAttribute('aria-live', 'polite');
+  head.setAttribute('aria-atomic', 'true');
+  root.parentNode.insertBefore(head, root);
+
+  const nav = document.createElement('div');
+  nav.className = 'a11y-stepnav';
+  const prev = document.createElement('button');
+  prev.type = 'button'; prev.className = 'btn-secondary'; prev.id = 'a11y-prev'; prev.textContent = 'Forrige';
+  prev.addEventListener('click', () => showStep(diaryStepIndex - 1));
+  const next = document.createElement('button');
+  next.type = 'button'; next.className = 'btn-primary'; next.id = 'a11y-next'; next.textContent = 'Næste';
+  next.addEventListener('click', () => showStep(diaryStepIndex + 1));
+  nav.appendChild(prev); nav.appendChild(next);
+  root.parentNode.insertBefore(nav, root.nextSibling);
+
+  showStep(Math.min(diaryStepIndex, steps.length - 1), false);
+}
+
+function showStep(i, moveFocus = true) {
+  if (!stepperCfg) return;
+  const cfg = stepperCfg;
+  const steps = cfg.steps();
+  if (!steps.length) return;
+  i = Math.max(0, Math.min(i, steps.length - 1));
+  diaryStepIndex = i;
+  if (cfg.beforeShow) cfg.beforeShow();
+  steps.forEach((s, idx) => {
+    const on = idx === i;
+    s.hidden = !on;
+    if (on) s.setAttribute('aria-current', 'step'); else s.removeAttribute('aria-current');
+  });
+  if (cfg.onShowStep) cfg.onShowStep(i, steps);
+  const last = i === steps.length - 1;
+  const head = document.getElementById('a11y-step-head');
+  if (head) head.textContent = `Spørgsmål ${i + 1} af ${steps.length}`;
+  const prev = document.getElementById('a11y-prev');
+  const next = document.getElementById('a11y-next');
+  if (prev) prev.disabled = i === 0;
+  if (next) next.style.display = last ? 'none' : '';
+  if (cfg.lastBtnId) {
+    const lb = document.getElementById(cfg.lastBtnId);
+    if (lb) lb.style.display = last ? (cfg.lastBtnShow || '') : 'none';
+  }
+  window.scrollTo(0, 0);
+  // Fokus til "Spørgsmål X af Y" → skærmlæser læser fremskridtet FØRST, derefter
+  // navigerer brugeren til selve spørgsmålet. rAF: efter layout/visibility-skift.
+  if (moveFocus && head) requestAnimationFrame(() => { try { head.focus(); } catch (e) {} });
+}
+
+function instrumentStepperCfg() {
+  return {
+    rootId: 'instrument-fields',
+    steps: () => Array.from(document.querySelectorAll('#instrument-fields > .instrument-field')),
+    lastBtnId: 'instrument-submit', lastBtnShow: '',
+    beforeShow: () => {
+      document.querySelectorAll('#instrument-fields > .instrument-stem').forEach(p => { p.hidden = true; });
+    },
+    onShowStep: (i, steps) => {
+      const active = steps[i];
+      if (active && active.dataset.stemId) {
+        const p = document.getElementById(active.dataset.stemId);
+        if (p) p.hidden = false;
+      }
+      const intro = document.getElementById('instrument-intro'); if (intro) intro.hidden = i !== 0;
+      const attr = document.getElementById('instrument-attribution'); if (attr) attr.hidden = i !== 0;
+      const note = document.getElementById('instrument-note'); if (note) note.hidden = i !== (steps.length - 1);
+    },
+    onTeardown: () => {
+      const intro = document.getElementById('instrument-intro'); if (intro) intro.hidden = false;
+      const attr = document.getElementById('instrument-attribution'); if (attr) attr.hidden = false;
+      const note = document.getElementById('instrument-note'); if (note) note.hidden = false;
+      const submit = document.getElementById('instrument-submit'); if (submit) submit.style.display = '';
+    }
+  };
+}
+function applyInstrumentStepper() { applyStepper(instrumentStepperCfg()); }
+
+function instrEsc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+function instrEscAttr(s) { return instrEsc(s).replace(/"/g, '&quot;'); }
+function instrumentStemAria(stem, text) {
+  return (stem ? stem.replace(/\s*\.\.\.\s*$/, '') + ' ' : '') + text;
+}
+function renderInstrument(id) {
+  const skema = INSTRUMENTER[id];
+  const ref  = params.get('ref')  || '';
+  const dato = params.get('dato') || '';
+  const instrAnswers = {};   // { [feltkey]: heltal }: KUN faktiske klik, ingen default
+
+  // Alle scorede items + (valgfrit) funktionsspoergsmaal = trin i stepperen.
+  const trinItems = skema.scoredItems.map((it) => ({ ...it, stem: skema.stem, options: skema.options, required: true }));
+  if (skema.funktion) trinItems.push({ ...skema.funktion, stem: '', options: skema.funktion.options, required: false });
+  const REQ_KEYS = skema.scoredItems.map((it) => it.key);
+  const TOTAL = REQ_KEYS.length;
+
+  document.getElementById('instrument-title').textContent = skema.uiTitle;
+  document.getElementById('instrument-intro').textContent = skema.instruktion ||
+    'Vælg det svar, der passer bedst for dig. Der er ingen rigtige eller forkerte svar.';
+  document.getElementById('instrument-attribution').textContent = skema.attribution || '';
+
+  const wrap = document.getElementById('instrument-fields');
+  wrap.innerHTML = '';
+  let qnum = 0, stemIdx = 0;
+
+  trinItems.forEach((item) => {
+    qnum++;
+    // Delt stem (verbatim) vises over det aktive spoergsmaal (ét-ad-gangen, analog til CAS-1).
+    let stemId = '';
+    if (item.stem) {
+      stemIdx++;
+      stemId = 'instrument-stem-' + stemIdx;
+      const ph = document.createElement('p');
+      ph.className = 'instrument-stem'; ph.id = stemId;
+      ph.textContent = item.stem;
+      wrap.appendChild(ph);
+    }
+    const fs = document.createElement('fieldset');
+    fs.className = 'diary-field instrument-field';
+    if (stemId) fs.dataset.stemId = stemId;
+    const legend = document.createElement('legend');
+    legend.className = 'diary-q';
+    legend.innerHTML = `<span class="question-num" aria-hidden="true">${qnum}.</span>` + instrEsc(item.text);
+    fs.appendChild(legend);
+
+    const group = document.createElement('div');
+    group.className = 'radio-group';
+    group.setAttribute('role', 'radiogroup');
+    group.setAttribute('aria-label', instrumentStemAria(item.stem, item.text));
+    const optByVal = {};
+    item.options.forEach((opt) => {
+      const rid = `${item.key}-${opt.value}`;
+      const lbl = document.createElement('label');
+      lbl.className = 'radio-option';
+      // Inputtet wrappes af labelen (ingen `for` -> ingen dobbelt-association); labelens
+      // <span>-tekst = radioens tilgaengelige navn (samme moenster som batteriets radioBlock).
+      // showValueBadge (kun WHO-5): synligt tal-badge (aria-hidden) FORAN ordlyd-labelen, og
+      // tallet flyttes ind i radioens tilgaengelige navn via aria-label ("5, Hele tiden") saa
+      // instruktionens "et hoejere tal" ogsaa giver mening for skaermlaeser. Begge synlige
+      // spans aria-hidden -> navnet styres alene af aria-label -> ingen dobbelt-oplaesning.
+      if (skema.showValueBadge) {
+        const aria = instrEscAttr(opt.value + ', ' + opt.label);
+        lbl.innerHTML = `<input type="radio" id="${rid}" name="${instrEscAttr(item.key)}" value="${opt.value}" aria-label="${aria}"><span class="instr-val-badge" aria-hidden="true">${opt.value}</span><span aria-hidden="true">${instrEsc(opt.label)}</span>`;
+      } else {
+        lbl.innerHTML = `<input type="radio" id="${rid}" name="${instrEscAttr(item.key)}" value="${opt.value}"><span>${instrEsc(opt.label)}</span>`;
+      }
+      optByVal[opt.value] = lbl;
+      lbl.querySelector('input').addEventListener('change', () => commitInstr(item, fs, group, optByVal, opt.value));
+      group.appendChild(lbl);
+    });
+    fs.appendChild(group);
+    wrap.appendChild(fs);
+  });
+
+  function commitInstr(item, fs, group, optByVal, v) {
+    instrAnswers[item.key] = v;
+    fs.classList.add('answered');
+    group.querySelectorAll('.radio-option').forEach((o) => o.classList.remove('checked'));
+    if (optByVal[v]) {
+      optByVal[v].classList.add('checked');
+      const ri = optByVal[v].querySelector('input');
+      if (ri && !ri.checked) ri.checked = true;
+    }
+    // Safety: PHQ-9 item 9 (selvmordstanker) > 0 -> prominent safety-panel under spoergsmaalet.
+    if (skema.safetyKey && item.key === skema.safetyKey) toggleInstrumentSafety(fs, Number(v) > 0);
+    opdaterInstrFremdrift();
+    seeingAdvanceInstr(fs);
+  }
+
+  // Prominent (men ikke-alarmerende) safety-panel: 112 + Livslinien 70 201 201 + kontakt
+  // psykolog (samme ressourcer som Akut hjælp-boksen, der altid staar nederst). Idempotent.
+  function toggleInstrumentSafety(fs, show) {
+    let n = fs.nextElementSibling;
+    const erPanel = n && n.classList && n.classList.contains('instrument-safety');
+    if (show && !erPanel) {
+      const panel = document.createElement('div');
+      panel.className = 'instrument-safety';
+      panel.setAttribute('role', 'note');
+      panel.innerHTML =
+        '<div class="instrument-safety-head"><span aria-hidden="true" style="display:inline-flex">' + AKUT_TELEFON_SVG + '</span>Tak, fordi du svarer ærligt</div>'
+        + '<p style="margin:0">Hvis det er svært lige nu, behøver du ikke vente til samtalen. Der er hjælp at få med det samme:</p>'
+        + '<ul>'
+        + '<li>Akut fare lige nu: ring <a href="tel:112">112</a></li>'
+        + '<li>Livslinien: <a href="tel:70201201">70 201 201</a> (hver dag kl. 11-05, anonym og gratis)</li>'
+        + '<li>Kontakt din psykolog, Viktor Nielsen, direkte</li>'
+        + '</ul>';
+      fs.insertAdjacentElement('afterend', panel);
+    } else if (!show && erPanel) {
+      n.remove();
+    }
+  }
+
+  // Greb 1 (seende): auto-frem til naeste trin naar man besvarer det AKTIVE front-trin
+  // (alle FOER besvaret). a11y/reduced-motion: ingen auto-frem (bruger styrer via Naeste/Forrige).
+  function seeingAdvanceInstr(currentFs) {
+    if (a11yOn()) return;
+    const fields = Array.from(wrap.querySelectorAll('.instrument-field'));
+    const idx = fields.indexOf(currentFs);
+    if (idx < 0 || idx !== diaryStepIndex) return;
+    if (idx >= fields.length - 1) return;
+    const frontier = fields.slice(0, idx).every((f) => f.classList.contains('answered'));
+    if (!frontier) return;
+    setTimeout(() => { if (diaryStepIndex === idx && !a11yOn()) showStep(idx + 1); }, 320);
+  }
+
+  const submitBtn = document.getElementById('instrument-submit');
+  const note = document.getElementById('instrument-note');
+  function opdaterInstrFremdrift() {
+    const n = REQ_KEYS.filter((k) => instrAnswers[k] != null).length;
+    document.getElementById('instrument-progress-current').textContent = n + ' af ' + TOTAL;
+    document.getElementById('instrument-progress-fill').style.width = Math.round(n / TOTAL * 100) + '%';
+    submitBtn.disabled = (n < TOTAL);
+    note.textContent = (n < TOTAL) ? ('Besvar alle ' + TOTAL + ' spørgsmål for at sende.') : '';
+  }
+  opdaterInstrFremdrift();
+
+  submitBtn.addEventListener('click', () => {
+    if (REQ_KEYS.some((k) => instrAnswers[k] == null)) return;
+    visInstrumentReview();
+  });
+
+  // Afsluttende review-skaerm: alle svar i raekkefoelge, "Ret" pr. item -> tilbage til trinnet.
+  function visInstrumentReview() {
+    const list = document.getElementById('instrument-review-list');
+    list.innerHTML = '';
+    trinItems.forEach((item, stepIndex) => {
+      const v = instrAnswers[item.key];
+      const opt = (v == null) ? null : item.options.find((o) => o.value === v);
+      const row = document.createElement('div');
+      row.className = 'instrument-review-row';
+      const main = document.createElement('div');
+      main.className = 'instrument-review-main';
+      const q = document.createElement('p');
+      q.className = 'instrument-review-q';
+      q.innerHTML = `<span class="question-num" aria-hidden="true">${stepIndex + 1}.</span>` + instrEsc(item.text);
+      const ans = document.createElement('p');
+      if (v == null) {
+        ans.className = 'instrument-review-a tom';
+        ans.textContent = item.required ? 'Ikke besvaret' : 'Ikke besvaret (valgfrit)';
+      } else if (opt && skema.showValueBadge) {
+        // Konsistens m. svar-knappens tal-badge; tallet aria-hidden (label-teksten laeses).
+        ans.className = 'instrument-review-a';
+        ans.innerHTML = `<span class="instr-review-badge" aria-hidden="true">${opt.value}</span>${instrEsc(opt.label)}`;
+      } else { ans.className = 'instrument-review-a'; ans.textContent = opt ? opt.label : String(v); }
+      main.appendChild(q); main.appendChild(ans);
+      const ret = document.createElement('button');
+      ret.type = 'button'; ret.className = 'instrument-review-ret'; ret.textContent = 'Ret';
+      ret.setAttribute('aria-label', 'Ret svar på spørgsmål ' + (stepIndex + 1));
+      ret.addEventListener('click', () => { showScreen('screen-instrument'); window.scrollTo(0, 0); showStep(stepIndex); });
+      row.appendChild(main); row.appendChild(ret);
+      list.appendChild(row);
+    });
+    document.getElementById('instrument-review-intro').textContent =
+      'Se dine svar igennem. Du kan rette et svar, før du sender det til din psykolog.';
+    document.getElementById('instrument-review-attribution').textContent = skema.attribution || '';
+    showScreen('screen-instrument-review');
+    window.scrollTo(0, 0);
+  }
+
+  document.getElementById('instrument-review-submit').addEventListener('click', () => {
+    if (REQ_KEYS.some((k) => instrAnswers[k] == null)) return;
+    const mycel = buildInstrumentMycel(skema, instrAnswers, { ref, dato, kilde: 'web' });
+    visInstrumentKvittering(mycel, skema);
+  });
+  document.getElementById('instrument-review-back').addEventListener('click', () => {
+    showScreen('screen-instrument'); window.scrollTo(0, 0); showStep(trinItems.length - 1);
+  });
+
+  showScreen('screen-instrument');
+  window.scrollTo(0, 0);
+  diaryStepIndex = 0;
+}
+
+// Instrument-kvittering: vis [MYCEL v1]-blokken + kopiér/del (samme moenster som CAS-1).
+function visInstrumentKvittering(mycelTekst, skema) {
+  const status = document.getElementById('instrument-done-status');
+  status.style.color = 'var(--ink)';
+  status.innerHTML = '';
+  const intro = document.createElement('p');
+  intro.style.cssText = 'margin:0 0 12px;line-height:1.45;text-align:left';
+  intro.textContent = 'Kopiér teksten nedenfor og send den til din psykolog i SMS-tråden, hvor du fik linket.';
+  const ta = document.createElement('textarea');
+  ta.readOnly = true; ta.value = mycelTekst;
+  ta.setAttribute('aria-label', 'Dine svar i tekstform');
+  ta.style.cssText = 'width:100%;min-height:220px;margin:0 0 12px;font-size:12px;font-family:ui-monospace,Menlo,monospace;box-sizing:border-box';
+  const copy = document.createElement('button');
+  copy.type = 'button'; copy.className = 'btn-primary'; copy.textContent = 'Kopiér mine svar';
+  copy.style.cssText = 'display:block;width:100%;box-sizing:border-box';
+  copy.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(mycelTekst); copy.textContent = 'Svar kopieret'; }
+    catch (e) { ta.focus(); ta.select(); copy.textContent = 'Markér teksten og kopiér manuelt'; }
+  });
+  const share = document.createElement('button');
+  share.type = 'button'; share.className = 'btn-secondary'; share.textContent = 'Send svar';
+  share.style.cssText = 'display:block;width:100%;box-sizing:border-box;margin-top:8px';
+  share.addEventListener('click', async () => {
+    if (navigator.share) {
+      try { await navigator.share({ text: mycelTekst, title: (skema.kort || 'Skema') + ' til min psykolog' }); }
+      catch (e) { ta.focus(); ta.select(); }
+    } else { ta.focus(); ta.select(); }
+  });
+  status.appendChild(intro); status.appendChild(ta); status.appendChild(copy); status.appendChild(share);
+  showScreen('screen-instrument-done');
+  window.scrollTo(0, 0);
+}
+
 // Q10 substans har indhold KUN hvis "Intet" aktivt er valgt eller mindst én chip er
 // udfyldt. Et urørt substans-felt (start-tilstand {}) er ubesvaret → persistér det
 // ikke som et tomt objekt (ellers snige et falsk "svar" forbi; spec-ux §1+§4).
@@ -1813,6 +2228,8 @@ if (baselineId) {
   runBaseline(baselineId);
 } else if (diaryId) {
   runDiary(diaryId);
+} else if (instrumentId) {
+  renderInstrument(instrumentId);
 } else {
   document.getElementById('finish-btn').addEventListener('click', goDone);
   document.getElementById('share-btn').addEventListener('click', shareEncrypted);
@@ -1952,6 +2369,13 @@ function initA11yMode() {
 initTextsize();
 initAloud();
 initA11yMode();
+// Instrument-skemaer (WHO-5/PHQ-9/GAD-7): ét-spørgsmål-ad-gangen-stepperen anvendes HER, efter
+// A11Y_KEY/data-a11y/localStorage er resolved (a11yOn() rammer TDZ under routing). a11y skifter kun
+// auto-frem, ikke selve trin-flowet. Søvndagbogen rammer ikke dette (felter renderes efter navigation).
+if (instrumentId) {
+  const instrScreen = document.getElementById('screen-instrument');
+  if (instrScreen && instrScreen.classList.contains('active')) { diaryStepIndex = 0; applyInstrumentStepper(); }
+}
 tjekKryptoVedIndlaesning();
 </script>
 <p class="a11y-hint">Vil du have siden læst op? På iPhone: slå "Læs skærm op" til i Indstillinger → Tilgængelighed → Talt indhold, og stryg ned med to fingre. På Android: tryk på "Få læst op" øverst på siden. Vil du bruge telefonens egen oplæsning, kan du i Chrome trykke på menuen (tre prikker) og vælge "Læs højt", eller slå "Vælg og oplæs" til i Indstillinger, Tilgængelighed.</p>
