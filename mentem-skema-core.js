@@ -125,7 +125,7 @@ export const SKEMAER = {
     id: 'who5', kind: 'radio', title: 'WHO-5', short: 'Generel trivsel', icon: 'plante', badge: '5 spørgsmål',
     instruction: 'Angiv for hvert af de fem udsagn, hvad der bedst beskriver, hvordan du har haft det i de seneste 2 uger.',
     options: WHO5_OPTS, max: 25,
-    attribution: 'WHO-5 Trivselindeks © WHO (1998). Gengivet uændret med kildeangivelse (CC BY-NC-SA).',
+    attribution: 'WHO-5 Trivselsindeks (1999). © WHO. CC BY-NC-SA 3.0 IGO.',
     items: [
       'Jeg har følt mig glad og i godt humør',
       'Jeg har følt mig rolig og afslappet',
