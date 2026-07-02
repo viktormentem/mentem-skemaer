@@ -254,7 +254,7 @@
     <p>Dine svar er nu samlet i én krypteret fil. Tryk nedenfor for at sende filen til din psykolog i den samme SMS-tråd, hvor du fik linket.</p>
     <button class="btn-primary" id="share-btn">Send filen til din psykolog</button>
     <div class="done-status" id="done-status"></div>
-    <div class="disclaimer" style="text-align:left;margin-top:28px">Filen indeholder kun dine svar og er krypteret, så kun din psykolog kan læse den. Du får ikke en score eller en vurdering her. Det gennemgår I sammen til samtalen. <strong>Har du det akut svært, skal du ikke vente til samtalen</strong>. Se Akut hjælp nederst (eller ring 112 / Livslinien 70 201 201).</div>
+    <div class="disclaimer" style="text-align:left;margin-top:28px"><span class="disc-body" data-autosend="Dine svar er krypteret, så kun din psykolog kan læse dem. Du får ikke en score eller en vurdering her. Det gennemgår I sammen til samtalen. <strong>Har du det akut svært, skal du ikke vente til samtalen</strong>. Se Akut hjælp nederst (eller ring 112 / Livslinien 70 201 201).">Filen indeholder kun dine svar og er krypteret, så kun din psykolog kan læse den. Du får ikke en score eller en vurdering her. Det gennemgår I sammen til samtalen. <strong>Har du det akut svært, skal du ikke vente til samtalen</strong>. Se Akut hjælp nederst (eller ring 112 / Livslinien 70 201 201).</span></div>
   </div>
 </div>
 
@@ -323,6 +323,18 @@
   </div>
 </div>
 
+<!-- S1: SØVN-SCREENING — velkomst (Fase C §3a, engangs). Klient-copy = UDKAST til
+     Viktor-ratifikation (batch §3a) — ship IKKE klient-facing tekst uden GO. -->
+<div id="screen-screening-welcome" class="screen">
+  <div class="wrap">
+    <h1>Kort <em>sikkerhedsskema</em></h1>
+    <p class="intro" id="screening-intro"></p>
+    <button class="btn-primary" id="screening-start-btn">Start</button>
+    <p class="start-note">Det tager cirka 5 minutter og udfyldes kun denne ene gang. Din psykolog gennemgår dine svar og vender tilbage til dig.</p>
+    <div class="disclaimer"><span aria-hidden="true" style="display:inline-flex;width:1em;height:1em;vertical-align:-2px;margin-right:5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><span class="disc-body" data-autosend="<strong>Privatliv:</strong> Du udfylder alt i din egen browser. Når du er færdig, sendes svarene sikkert og krypteret direkte til din psykolog. Kun din psykolog kan åbne dem. Har du det akut svært, skal du ikke vente til samtalen. Se Akut hjælp nederst."><strong>Privatliv:</strong> Du udfylder alt i din egen browser. Til sidst samles svarene i én krypteret fil, som kun din psykolog kan åbne, og du sender den selv. Intet gemmes på en server. Har du det akut svært, skal du ikke vente til samtalen. Se Akut hjælp nederst.</span></div>
+    <p class="footer-credit" id="screening-key-fp"></p>
+  </div>
+</div>
 
 <div id="screen-instrument" class="screen">
   <div class="wrap">
@@ -368,7 +380,8 @@
 import { SKEMAER, SKEMA_ORDER, OFFENTLIGT_KLAR, buildPayload, buildPayloadCSD, buildPayloadBaseline, mentemEncrypt,
          CSD_SOEVNDAGBOG, SOEVN_BASELINE, CONTENT_VERSION, SITE_BUILD, kryptoStoettet,
          PINNED_PUBKEY, PINNED_KEY_ID, resolveRecipientKey,
-         INSTRUMENTER, instrumentFeltOrden, buildInstrumentMycel } from './mentem-skema-core.js';
+         INSTRUMENTER, instrumentFeltOrden, buildInstrumentMycel,
+         SOEVN_SCREENING, buildPayloadScreening } from './mentem-skema-core.js';
 
 // ── URL-parametre (?s=batteri  ?n=sessionsnummer  ?pk=cross-check) ────────
 const params   = new URLSearchParams(location.search);
@@ -421,7 +434,13 @@ const testDayOffset = (TEST_HOST && params.get('testday')) ? (parseInt(params.ge
 const INGEST_API_BASE = 'https://ingest.mycel.dk';                   // contracted domæne (worker LIVE på D1-EU; POST kun ved gyldigt it=)
 const INGEST_PUBKEY   = 't6ZBVtH41pVBECxELB1eBH6WvEgdguw9HLEUOMdl_Ec'; // ÆGTE prod ingest-X25519-pubkey (B4)
 const INGEST_KEY_ID   = '2af28306';                                  // = første 8 hex af SHA-256(rå ingest-pubkey)
-const ingestToken = params.get('it');                                // v1.<pseudonym>.<udløb>.<scope>.<Ed25519-sig> (auth)
+// v1.<pseudonym>.<udløb>.<scope>.<Ed25519-sig> (auth). Fase C §3a: Mentems opstarts-
+// links bærer v1-tokenet i &t= (SoevnSendTokens.linkToken / screeningIngestToken) —
+// accepter derfor et v1-formateret t= som ingest-token. Formaterne er DISJUNKTE
+// (draft-token = 32 hex, ingest-token = 'v1.'-præfiks) → ingen kollision med
+// draftToken ovenfor (dens 32-hex-regex afviser v1-tokens tilsvarende).
+const ingestToken = params.get('it')
+  || ((params.get('t') && /^v1\./.test(params.get('t'))) ? params.get('t') : null);
 // Manipuleret-nøgle-/endpoint-forsvar: pin er autoritativ; override KUN på TEST_HOST (som ?testday).
 const ingestPkOverride  = TEST_HOST ? params.get('ingestpk')  : null;
 const ingestApiOverride = TEST_HOST ? params.get('ingestapi') : null;
@@ -467,6 +486,10 @@ const rawSelected = (sParam ? sParam.split(',').map(x => x.trim().toLowerCase())
 const diaryId = rawSelected.find(id => SKEMAER[id].kind === 'diary') || null;
 // Søvn-baseline (kind:'baseline') = engangs intake-skema, eget flow (runBaseline).
 const baselineId = rawSelected.find(id => SKEMAER[id].kind === 'baseline') || null;
+// Søvn-screening (kind:'screening', Fase C §3a) = klient-selvrapport-delen af
+// sikkerhedsscreeningen, eget flow (runScreening) på instrument-skærmene (ét
+// spørgsmål ad gangen + review) med krypteret ingest-transport som søvndagbogen.
+const screeningId = rawSelected.find(id => SKEMAER[id].kind === 'screening') || null;
 // Standalone instrument-skema (kind:'instrument', WHO-5/PHQ-9/GAD-7) = eget flow (renderInstrument)
 // -> [MYCEL v1]-konvolut. Lever i SEPARAT register (INSTRUMENTER), ikke SKEMAER-batteriet. Rammes
 // KUN af et SINGLE-token ?s=who5 (routing-prioritet); et multi-token batteri gaar uaendret til batteri-
@@ -1022,7 +1045,9 @@ function renderDiaryWelcome() {
   const done = diaryState.entries.length;
   const filledToday = diaryHasToday();
 
-  intro.textContent = 'Udfyld dagbogen kort hver morgen for natten, der gik. Det tager et øjeblik. Skriv bare som du husker den. Til sidst samler vi alle dagene i én fil, som du sender til din psykolog.';
+  // §3f forventningsstyring (Fase C, UDKAST til Viktor-ratifikation): dagbogen er
+  // nyttig uanset hvad sikkerhedsskemaet viser — klienten skal roligt gå i gang nu.
+  intro.textContent = 'Udfyld dagbogen kort hver morgen for natten, der gik. Det tager et øjeblik. Skriv bare som du husker den. Til sidst samler vi alle dagene i én fil, som du sender til din psykolog. Har du også fået et kort sikkerhedsskema, kan du trygt gå i gang med dagbogen med det samme: den er nyttig for dit forløb, uanset hvad sikkerhedsskemaet viser.';
 
   // Privatlivstekst.
   // - localStorage-variant: v1-tekst i diary-privacy (under knappen, uændret).
@@ -1888,6 +1913,258 @@ function visInstrumentKvittering(mycelTekst, skema) {
   window.scrollTo(0, 0);
 }
 
+// ════════════════════════════════════════════════════════════════════════
+//  SØVN-SCREENING-FLOW (Fase C §3a) — klient-selvrapport-delen af sikkerheds-
+//  screeningen på instrument-skærmene (ét spørgsmål ad gangen + review, universel
+//  standard) med krypteret ingest-transport som søvndagbogen (&t= v1-token).
+//  Ingen scoring/tolkning vises klienten — STOP-Bang-score + rød-flag beregnes
+//  ALENE Mentem-side (SoevnScreeningRoedFlag; flag oplyser, Viktor afgør).
+//  Klient-copy = UDKAST til Viktor-ratifikation (batch §3a) — ship IKKE uden GO.
+// ════════════════════════════════════════════════════════════════════════
+function runScreening(id) {
+  const skema = SKEMAER[id];
+  const svar = {};   // { itemKey: true|false|null } — KUN aktive valg, ingen committed defaults
+  const JA_NEJ = [{ label: 'Ja', value: true }, { label: 'Nej', value: false }];
+  const trinItems = [
+    ...skema.kontraItems.map((it) => ({ ...it, stem: skema.kontraStem, options: JA_NEJ, required: true })),
+    ...skema.stopBangItems.map((it) => ({
+      ...it, stem: skema.stopBangStem, required: true,
+      // "Ved ikke" KUN på halsomfang (kontrakt: null = ved ikke; tæller aldrig som nej).
+      options: it.vedIkke ? [...JA_NEJ, { label: 'Ved ikke', value: null }] : JA_NEJ,
+    })),
+    { ...skema.fritekst, stem: '', options: null, required: false },
+  ];
+  const REQ_KEYS = trinItems.filter((it) => it.required).map((it) => it.key);
+  const TOTAL = REQ_KEYS.length;
+  // Radio-værdi (DOM-streng) ↔ svar-værdi (bool|null): eksplicit map, aldrig coercion.
+  const VAL_ENC = (v) => (v === true ? 'ja' : v === false ? 'nej' : 'vedikke');
+  const VAL_DEC = { ja: true, nej: false, vedikke: null };
+  const VAL_LABEL = (v) => (v === true ? 'Ja' : v === false ? 'Nej' : 'Ved ikke');
+
+  // ── Velkomst (samme key-pin-gate + privatliv/fingeraftryk-mønster som baseline) ──
+  const intro = document.getElementById('screening-intro');
+  const startBtn = document.getElementById('screening-start-btn');
+  if (!keyCheck.ok) {
+    intro.innerHTML = '<strong style="color:#c0392b">Sikkerhedstjek fejlede.</strong> Dette link peger på en ukendt sikkerhedsnøgle. Brug det IKKE. Kontakt din psykolog for et nyt link.';
+    startBtn.disabled = true; startBtn.textContent = 'Linket kan ikke bruges';
+  } else {
+    intro.textContent = skema.instruction;
+    const fp = document.getElementById('screening-key-fp');
+    if (fp) fp.textContent = 'Krypteret til din psykologs nøgle · ID ' + aktivKeyId();
+    startBtn.addEventListener('click', startScreening);
+  }
+  showScreen('screen-screening-welcome');
+
+  function startScreening() {
+    document.getElementById('instrument-title').textContent = skema.title;
+    document.getElementById('instrument-intro').textContent = skema.instruction;
+    document.getElementById('instrument-attribution').textContent = '';
+    renderScreeningFields();
+    opdaterScrFremdrift();
+    showScreen('screen-instrument');
+    window.scrollTo(0, 0);
+    // Ét-spørgsmål-ad-gangen (universel standard): genbrug instrument-stepperen
+    // (samme rootId/steps-selektor). A11Y-state er resolved her (klik > bootstrap).
+    diaryStepIndex = 0;
+    applyInstrumentStepper();
+  }
+
+  function renderScreeningFields() {
+    const wrap = document.getElementById('instrument-fields');
+    wrap.innerHTML = '';
+    let qnum = 0, stemIdx = 0, sidsteStem = null;
+    trinItems.forEach((item) => {
+      qnum++;
+      let stemId = '';
+      if (item.stem && item.stem !== sidsteStem) {
+        stemIdx++;
+        stemId = 'screening-stem-' + stemIdx;
+        const ph = document.createElement('p');
+        ph.className = 'instrument-stem'; ph.id = stemId;
+        ph.textContent = item.stem;
+        wrap.appendChild(ph);
+      }
+      sidsteStem = item.stem || null;
+      const fs = document.createElement('fieldset');
+      fs.className = 'diary-field instrument-field';
+      // Stem vises over HVERT trin i sin gruppe (stepperen skjuler alle stems og
+      // viser kun det aktive trins) → peg alle gruppens trin på samme stem-id.
+      if (item.stem) fs.dataset.stemId = 'screening-stem-' + stemIdx;
+      const legend = document.createElement('legend');
+      legend.className = 'diary-q';
+      const optTag = item.required ? '' : '<span class="diary-optional">valgfrit</span>';
+      legend.innerHTML = `<span class="question-num" aria-hidden="true">${qnum}.</span>` + instrEsc(item.text) + optTag;
+      fs.appendChild(legend);
+      if (item.hint) {
+        const hint = document.createElement('p');
+        hint.className = 'diary-hint'; hint.textContent = item.hint;
+        fs.appendChild(hint);
+      }
+
+      if (!item.options) {
+        // Fritekst (valgfri): textarea, gemmes ved input; tom = udeladt af payload.
+        const ta = document.createElement('textarea');
+        ta.rows = 4;
+        ta.setAttribute('aria-label', item.text);
+        ta.style.cssText = 'width:100%;box-sizing:border-box;font:inherit;padding:10px;border:1.5px solid var(--line, #ccc);border-radius:10px';
+        ta.addEventListener('input', (e) => { svar[item.key] = e.target.value; });
+        fs.appendChild(ta);
+      } else {
+        const group = document.createElement('div');
+        group.className = 'radio-group';
+        group.setAttribute('role', 'radiogroup');
+        group.setAttribute('aria-label', instrumentStemAria(item.stem, item.text));
+        const optByVal = {};
+        item.options.forEach((opt) => {
+          const enc = VAL_ENC(opt.value);
+          const rid = `scr-${item.key}-${enc}`;
+          const lbl = document.createElement('label');
+          lbl.className = 'radio-option';
+          lbl.innerHTML = `<input type="radio" id="${rid}" name="${instrEscAttr('scr-' + item.key)}" value="${enc}"><span>${instrEsc(opt.label)}</span>`;
+          optByVal[enc] = lbl;
+          lbl.querySelector('input').addEventListener('change', () => commitScr(item, fs, group, optByVal, enc));
+          group.appendChild(lbl);
+        });
+        fs.appendChild(group);
+      }
+      wrap.appendChild(fs);
+    });
+  }
+
+  function commitScr(item, fs, group, optByVal, enc) {
+    svar[item.key] = VAL_DEC[enc];
+    fs.classList.add('answered');
+    group.querySelectorAll('.radio-option').forEach((o) => o.classList.remove('checked'));
+    if (optByVal[enc]) {
+      optByVal[enc].classList.add('checked');
+      const ri = optByVal[enc].querySelector('input');
+      if (ri && !ri.checked) ri.checked = true;
+    }
+    opdaterScrFremdrift();
+    seeingAdvanceScr(fs);
+  }
+
+  // Greb 1 (seende): auto-frem når det AKTIVE front-trin besvares (samme regel som
+  // instrument-flowet). a11y/reduced-motion: brugeren styrer selv via Næste/Forrige.
+  function seeingAdvanceScr(currentFs) {
+    if (a11yOn()) return;
+    const fields = Array.from(document.querySelectorAll('#instrument-fields > .instrument-field'));
+    const idx = fields.indexOf(currentFs);
+    if (idx < 0 || idx !== diaryStepIndex) return;
+    if (idx >= fields.length - 1) return;
+    const frontier = fields.slice(0, idx).every((f) => f.classList.contains('answered'));
+    if (!frontier) return;
+    setTimeout(() => { if (diaryStepIndex === idx && !a11yOn()) showStep(idx + 1); }, 320);
+  }
+
+  const submitBtn = document.getElementById('instrument-submit');
+  const note = document.getElementById('instrument-note');
+  function opdaterScrFremdrift() {
+    const n = REQ_KEYS.filter((k) => svar[k] !== undefined).length;
+    document.getElementById('instrument-progress-current').textContent = n + ' af ' + TOTAL;
+    document.getElementById('instrument-progress-fill').style.width = Math.round(n / TOTAL * 100) + '%';
+    submitBtn.disabled = (n < TOTAL);
+    note.textContent = (n < TOTAL) ? ('Besvar alle ' + TOTAL + ' spørgsmål for at sende.') : '';
+  }
+
+  submitBtn.addEventListener('click', () => {
+    if (REQ_KEYS.some((k) => svar[k] === undefined)) return;
+    visScreeningReview();
+  });
+
+  function visScreeningReview() {
+    const list = document.getElementById('instrument-review-list');
+    list.innerHTML = '';
+    trinItems.forEach((item, stepIndex) => {
+      const v = svar[item.key];
+      const row = document.createElement('div');
+      row.className = 'instrument-review-row';
+      const main = document.createElement('div');
+      main.className = 'instrument-review-main';
+      const q = document.createElement('p');
+      q.className = 'instrument-review-q';
+      q.innerHTML = `<span class="question-num" aria-hidden="true">${stepIndex + 1}.</span>` + instrEsc(item.text);
+      const ans = document.createElement('p');
+      if (!item.options) {
+        const t = (typeof v === 'string') ? v.trim() : '';
+        ans.className = 'instrument-review-a' + (t ? '' : ' tom');
+        ans.textContent = t || 'Ikke udfyldt (valgfrit)';
+      } else if (v === undefined) {
+        ans.className = 'instrument-review-a tom';
+        ans.textContent = 'Ikke besvaret';
+      } else {
+        ans.className = 'instrument-review-a';
+        ans.textContent = VAL_LABEL(v);
+      }
+      main.appendChild(q); main.appendChild(ans);
+      const ret = document.createElement('button');
+      ret.type = 'button'; ret.className = 'instrument-review-ret'; ret.textContent = 'Ret';
+      ret.setAttribute('aria-label', 'Ret svar på spørgsmål ' + (stepIndex + 1));
+      ret.addEventListener('click', () => { showScreen('screen-instrument'); window.scrollTo(0, 0); showStep(stepIndex); });
+      row.appendChild(main); row.appendChild(ret);
+      list.appendChild(row);
+    });
+    document.getElementById('instrument-review-intro').textContent =
+      'Se dine svar igennem. Du kan rette et svar, før du sender det til din psykolog.';
+    document.getElementById('instrument-review-attribution').textContent = '';
+    showScreen('screen-instrument-review');
+    window.scrollTo(0, 0);
+  }
+
+  document.getElementById('instrument-review-submit').addEventListener('click', () => {
+    if (REQ_KEYS.some((k) => svar[k] === undefined)) return;
+    const p = document.querySelector('#screen-done p');
+    if (p) p.textContent = autoSendEnabled()
+      ? 'Dine svar er klar. Tryk nedenfor for at sende dem sikkert og krypteret til din psykolog.'
+      : 'Dine svar er nu samlet i én krypteret fil. Tryk nedenfor for at sende filen til din psykolog i den samme SMS-tråd, hvor du fik linket.';
+    const btn = document.getElementById('share-btn');
+    if (btn) btn.textContent = autoSendEnabled() ? 'Send til din psykolog' : 'Send filen til din psykolog';
+    showScreen('screen-done');
+    window.scrollTo(0, 0);
+  });
+  document.getElementById('instrument-review-back').addEventListener('click', () => {
+    showScreen('screen-instrument'); window.scrollTo(0, 0); showStep(trinItems.length - 1);
+  });
+
+  document.getElementById('share-btn').addEventListener('click', shareScreeningEncrypted);
+
+  async function shareScreeningEncrypted() {
+    const status = document.getElementById('done-status');
+    const btn = document.getElementById('share-btn');
+    if (!keyCheck.ok) {
+      status.style.color = '#c0392b';
+      status.textContent = 'Sikkerhedstjek fejlede: linket peger på en ukendt nøgle. Del IKKE dine svar. Kontakt din psykolog for et nyt link.';
+      return;
+    }
+    btn.disabled = true;
+    status.style.color = 'var(--accent)';
+    status.textContent = 'Krypterer …';
+    // TRIN 1 — payload + kryptering (fail-loud kontrakt-builder; kun ægte krypto-fejl → fallback-guide).
+    let payload, containerJSON;
+    try {
+      payload = buildPayloadScreening(svar);
+      containerJSON = JSON.stringify(await mentemEncrypt(keyCheck.key, payload, keyCheck.keyId)); // ALTID pinned key (fil-fallback)
+    } catch (e) {
+      console.error('[mentem] kryptering fejlede (screening)', e && e.name, e && e.message, e);
+      await visKryptoFallback(status, e, btn, e && e.name === 'CryptoUnsupportedError');
+      return;
+    }
+    // AUTO-SEND: v1-token-links (&t=/&it=) → krypteret ingest, samme kanal som søvndagbogen.
+    if (autoSendEnabled()) {
+      const ok = await sendTilIngest(payload, 'soevn-screening');
+      if (ok) {
+        status.style.color = 'var(--accent)';
+        status.textContent = 'Dine svar er sendt sikkert og krypteret til din psykolog. Du kan roligt gå i gang med din søvndagbog med det samme. Tak!';
+        return;
+      }
+    }
+    // TRIN 2 — levering (deling el. robust download/kopiér-fallback; aldrig fastlås).
+    const filename = `mentem-soevn-screening-${new Date().toISOString().slice(0, 10)}.json`;
+    const r = await leverKrypteretFil(containerJSON, filename, 'Sikkerhedsskema til min psykolog', status);
+    if (r === 'delt') { status.style.color = 'var(--accent)'; status.textContent = 'Filen er klar til at sende. Tak!'; }
+  }
+}
+
 // Q10 substans har indhold KUN hvis "Intet" aktivt er valgt eller mindst én chip er
 // udfyldt. Et urørt substans-felt (start-tilstand {}) er ubesvaret → persistér det
 // ikke som et tomt objekt (ellers snige et falsk "svar" forbi; spec-ux §1+§4).
@@ -2224,7 +2501,9 @@ async function shareBaselineEncrypted() {
 
 // ── BOOTSTRAP: baseline-flow ELLER dagbog-flow ELLER spørgeskema-flow ──────
 injectAkutHjaelp();   // patientsikkerhed: Akut hjælp-boks i bunden af hver skærm (alle flows)
-if (baselineId) {
+if (screeningId) {
+  runScreening(screeningId);
+} else if (baselineId) {
   runBaseline(baselineId);
 } else if (diaryId) {
   runDiary(diaryId);
