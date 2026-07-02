@@ -135,6 +135,9 @@ try {
   check(/2af28306/.test(fp), 'fingeraftryk viser INGEST-nøgle-id (auto-send via &t= v1-token)', fp);
   const disc = await page.locator('#screen-screening-welcome .disc-body').innerHTML();
   check(/direkte til din psykolog/.test(disc), 'privatlivstekst flippet til auto-send-variant (t=v1 aktiverer)', disc.slice(0, 80));
+  // F3 (nudansk): toolbar-toggle i ét ord.
+  const a11yBtn = await page.locator('#a11y-mode-btn').textContent();
+  check(/^Oplæsningsvenlig visning/.test(a11yBtn.trim()), 'toolbar: "Oplæsningsvenlig" i ét ord (F3)', a11yBtn);
   await shot('screening-1-velkomst.png');
 
   // ── Stepper: 6 anamnese + 8 STOP-Bang (facit-svar) ──
@@ -143,6 +146,9 @@ try {
   await page.waitForSelector('#a11y-step-head', { timeout: 6000 });
   const head0 = await page.locator('#a11y-step-head').textContent();
   check(/Spørgsmål 1 af 15/.test(head0), 'stepper aktiv: Spørgsmål 1 af 15', head0);
+  // F1: ÉN tælling — fremdriftsbaren følger trin-positionen (samme tal som overskriften).
+  const prog0 = await page.locator('#instrument-progress-current').textContent();
+  check(/^1 af 15$/.test(prog0.trim()), 'fremdriftsbar følger 15-trins-tællingen (1 af 15)', prog0);
   check(!(await page.locator('#instrument-submit').isVisible()), 'submit skjult før sidste trin');
   await shot('screening-2-spoergsmaal1.png');
 
@@ -171,7 +177,9 @@ try {
   await page.waitForSelector('#instrument-submit:not([disabled])', { timeout: 6000 });
   check(true, 'submit ENABLED ved 14/14 besvarede');
   const prog = await page.locator('#instrument-progress-current').textContent();
-  check(/14 af 14/.test(prog), 'fremdrift viser 14 af 14', prog);
+  check(/^15 af 15$/.test(prog.trim()), 'fremdrift følger positionen: 15 af 15 på sidste trin', prog);
+  const head15 = await page.locator('#a11y-step-head').textContent();
+  check(/Spørgsmål 15 af 15/.test(head15), 'overskrift og fremdriftsbar viser SAMME tælling (F1)', head15);
   await page.fill('#instrument-fields textarea', 'Jeg går nogle gange i søvne.');
   await shot('screening-4-fritekst-submit.png');
 

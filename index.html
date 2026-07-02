@@ -171,7 +171,14 @@
   /* <label>/<fieldset>/<legend> for diary-felter (A11Y semantik). */
   label.diary-q { display:block; }
   fieldset.diary-field { min-width:0; }
-  legend.diary-q { padding:0; }
+  /* Flerlinje-legend-fix (F2, 3-linse 2/7): en <legend> lægges pr. standard PÅ fieldset-
+     rammen, så spørgsmålstekstens linje 2 krydser kortets overkant på items uden hjælpe-
+     tekst. float:left tvinger legenden ind i normalt flow inde i kortet; efterfølgende
+     indhold clearer floaten, så svar-kort/hjælpetekst aldrig overlappes. */
+  legend.diary-q { padding:0; float:left; width:100%; }
+  fieldset.diary-field > .radio-group, fieldset.diary-field > .diary-hint,
+  fieldset.diary-field > .diary-input-row { clear:both; }
+  fieldset.diary-field > textarea { clear:both; display:block; }   /* clear kræver block-level */
 
   /* ── Oplæsnings-venlig tilstand (synshandicap / skærmlæser-brugere) ─────── */
   .a11y-toggle-btn { min-height:44px; padding:8px 14px; border:2px solid rgba(255,255,255,0.35); background:transparent; color:white; border-radius:8px; cursor:pointer; font-family:'DM Sans',sans-serif; font-size:14px; }
@@ -201,7 +208,7 @@
   </div>
   <div class="header-right">
     <div class="header-a11y">
-      <button type="button" id="a11y-mode-btn" class="a11y-toggle-btn" aria-pressed="false">Oplæsnings-venlig visning: fra</button>
+      <button type="button" id="a11y-mode-btn" class="a11y-toggle-btn" aria-pressed="false">Oplæsningsvenlig visning: fra</button>
       <div class="ts-toggle" role="group" aria-label="Tekststørrelse">
         <button type="button" class="ts-btn" data-ts="normal" aria-label="Normal tekststørrelse" aria-pressed="true">A</button>
         <button type="button" class="ts-btn" data-ts="stor" aria-label="Større tekst" aria-pressed="false">A+</button>
@@ -1965,8 +1972,18 @@ function runScreening(id) {
     window.scrollTo(0, 0);
     // Ét-spørgsmål-ad-gangen (universel standard): genbrug instrument-stepperen
     // (samme rootId/steps-selektor). A11Y-state er resolved her (klik > bootstrap).
+    // F1 (3-linse 2/7): ÉN tælling pr. skærm — fremdriftsbaren følger 15-trins-
+    // positionen (samme tal som "Spørgsmål N af 15"-overskriften); besvaret-tællingen
+    // gater kun submit (opdaterScrFremdrift) og konkurrerer ikke længere visuelt.
     diaryStepIndex = 0;
-    applyInstrumentStepper();
+    const cfg = instrumentStepperCfg();
+    const basisOnShow = cfg.onShowStep;
+    cfg.onShowStep = (i, steps) => {
+      basisOnShow(i, steps);
+      document.getElementById('instrument-progress-current').textContent = (i + 1) + ' af ' + steps.length;
+      document.getElementById('instrument-progress-fill').style.width = Math.round((i + 1) / steps.length * 100) + '%';
+    };
+    applyStepper(cfg);
   }
 
   function renderScreeningFields() {
@@ -2059,10 +2076,10 @@ function runScreening(id) {
 
   const submitBtn = document.getElementById('instrument-submit');
   const note = document.getElementById('instrument-note');
+  // F1: rører IKKE fremdriftsbaren (den følger trin-positionen via stepper-cfg'en) —
+  // besvaret-tællingen gater alene submit + forklaringsnoten.
   function opdaterScrFremdrift() {
     const n = REQ_KEYS.filter((k) => svar[k] !== undefined).length;
-    document.getElementById('instrument-progress-current').textContent = n + ' af ' + TOTAL;
-    document.getElementById('instrument-progress-fill').style.width = Math.round(n / TOTAL * 100) + '%';
     submitBtn.disabled = (n < TOTAL);
     note.textContent = (n < TOTAL) ? ('Besvar alle ' + TOTAL + ' spørgsmål for at sende.') : '';
   }
@@ -2620,7 +2637,9 @@ function updateA11yToggleBtn() {
   if (!btn) return;
   const on = a11yOn();
   btn.setAttribute('aria-pressed', on ? 'true' : 'false');
-  btn.textContent = on ? 'Oplæsnings-venlig visning: til' : 'Oplæsnings-venlig visning: fra';
+  // F3 (nudansk, Viktor-direktiv 27/6): "Oplæsningsvenlig" i ÉT ord (anglicistisk
+  // bindestreg forbudt i klient-copy); mønstret er seedet i nudansk-guarden.
+  btn.textContent = on ? 'Oplæsningsvenlig visning: til' : 'Oplæsningsvenlig visning: fra';
 }
 function onA11yToggle() {
   const on = !a11yOn();
