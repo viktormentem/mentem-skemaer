@@ -26,23 +26,25 @@ function eq(name, got, want) {
 
 console.log('soevn-screening kontrakt (facit = SoevnFaseCTests.testScreeningSvarPayloadRoundtrip):');
 
-// ── FACIT (verbatim fra Swift-testen; nøgle-rækkefølge = STOPBang-feltorden) ──
+// ── FACIT (verbatim fra Swift-testen; nøgle-rækkefølge = STOPBang-feltorden).
+// Æ2 (2/7): koen bæres råt (kvinde) + koenMand AFLEDT (kvinde → false). ──
 const FACIT_SCREENING_SVAR = {
   stopBang: {
     snorken: true, observeretApnoe: false, dagtraethed: true, hypertension: false,
     bmiOver35: false, alderOver50: true, halsomfangOver40: null, koenMand: false,
   },
   kontraindikationer: ['parasomnier'],
+  koen: 'kvinde',
   fritekst: 'Jeg går nogle gange i søvne.',
 };
 
 // Klient-svar der SKAL producere facit (parasomnier ja, alt andet nej; STOP-Bang
-// 3 ja-svar; halsomfang "ved ikke" = null).
+// 3 ja-svar; halsomfang "ved ikke" = null; køn = kvinde → koenMand afledt false).
 const svar = {
   bipolarMani: false, epilepsiAnfald: false, parasomnier: true,
   betydeligFaldrisiko: false, erhvervschauffoer: false, natarbejde: false,
   snorken: true, observeretApnoe: false, dagtraethed: true, hypertension: false,
-  bmiOver35: false, alderOver50: true, halsomfangOver40: null, koenMand: false,
+  bmiOver35: false, alderOver50: true, halsomfangOver40: null, koen: 'kvinde',
   fritekst: 'Jeg går nogle gange i søvne.',
 };
 
@@ -103,11 +105,30 @@ eq('fritekst trimmes', trimmet.data.screeningSvar.fritekst, 'hej');
 eq('kontraItems-keys = SoevnKontraindikation-rawValues (klient-delen, UDEN suicidalitet)',
   SOEVN_SCREENING.kontraItems.map((it) => it.key),
   ['bipolarMani', 'epilepsiAnfald', 'parasomnier', 'betydeligFaldrisiko', 'erhvervschauffoer', 'natarbejde']);
-eq('stopBangItems-keys = STOPBang-feltnavne (rækkefølge = Swift-structen)',
+eq('stopBangItems-keys = 7 direkte STOPBang-felter + koen-item (koenMand AFLEDES)',
   SOEVN_SCREENING.stopBangItems.map((it) => it.key),
-  ['snorken', 'observeretApnoe', 'dagtraethed', 'hypertension', 'bmiOver35', 'alderOver50', 'halsomfangOver40', 'koenMand']);
+  ['snorken', 'observeretApnoe', 'dagtraethed', 'hypertension', 'bmiOver35', 'alderOver50', 'halsomfangOver40', 'koen']);
 check('kun halsomfang har vedIkke-mulighed',
   SOEVN_SCREENING.stopBangItems.filter((it) => it.vedIkke).map((it) => it.key).join(',') === 'halsomfangOver40');
+
+// ── 7. Æ2: køns-afledning + rå koen på wiren ──────────────────────────────
+const mandSvar = buildPayloadScreening({ ...svar, koen: 'mand' });
+check('koen=mand → koenMand afledt true + koen bevaret råt',
+  mandSvar.data.screeningSvar.stopBang.koenMand === true && mandSvar.data.screeningSvar.koen === 'mand');
+const andetSvar = buildPayloadScreening({ ...svar, koen: 'andet' });
+check('koen=andet → koenMand afledt false + koen=andet på wiren (Mentem flager GUL)',
+  andetSvar.data.screeningSvar.stopBang.koenMand === false && andetSvar.data.screeningSvar.koen === 'andet');
+const udenKoen = { ...svar }; delete udenKoen.koen;
+check('manglende koen kaster (paakraevet_mangler)',
+  kaster(() => buildPayloadScreening(udenKoen))?.code === 'paakraevet_mangler');
+check('ugyldigt koen kaster (ugyldig_enum)',
+  kaster(() => buildPayloadScreening({ ...svar, koen: 'x' }))?.code === 'ugyldig_enum');
+
+// ── 8. Æ1 dataminimering: BMI-beregnerens tal må ALDRIG nå payloaden ──────
+const medBmiTal = buildPayloadScreening({ ...svar, hoejde: 183, vaegt: 120, bmi: 35.8 });
+const medBmiJson = JSON.stringify(medBmiTal);
+check('hoejde/vaegt/bmi-keys emitteres ALDRIG (kun kendte item-keys læses)',
+  !/hoejde|vaegt|"bmi"/.test(medBmiJson) && !/183|120|35\.8/.test(medBmiJson));
 
 console.log('');
 if (failures > 0) { console.error(`SOEVN-SCREENING-KONTRAKT FAILED: ${failures} fejl`); process.exit(1); }

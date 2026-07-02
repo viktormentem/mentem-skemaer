@@ -29,13 +29,15 @@ let fails = 0;
 const log = (...a) => console.log(...a);
 function check(cond, label, extra = '') { if (cond) log('  OK ', label); else { log('  XX ', label, extra); fails++; } }
 
-// ── FACIT (verbatim fra SoevnFaseCTests.testScreeningSvarPayloadRoundtrip) ──
+// ── FACIT (verbatim fra SoevnFaseCTests.testScreeningSvarPayloadRoundtrip;
+// Æ2: koen=kvinde råt + koenMand afledt false) ──
 const FACIT_SCREENING_SVAR = {
   stopBang: {
     snorken: true, observeretApnoe: false, dagtraethed: true, hypertension: false,
     bmiOver35: false, alderOver50: true, halsomfangOver40: null, koenMand: false,
   },
   kontraindikationer: ['parasomnier'],
+  koen: 'kvinde',
   fritekst: 'Jeg går nogle gange i søvne.',
 };
 
@@ -162,7 +164,21 @@ try {
   await svarTrin('observeretApnoe', 'nej');
   await svarTrin('dagtraethed', 'ja');
   await svarTrin('hypertension', 'nej');
-  await svarTrin('bmiOver35', 'nej');
+
+  // ── Æ1: indbygget BMI-beregner (item 11) — lokal-only, auto-sætter svaret ──
+  await page.waitForSelector('#scr-bmiOver35-nej', { state: 'visible', timeout: 6000 });
+  await page.click('button:has-text("Beregn mit BMI")');
+  await page.fill('input[aria-label="Højde i cm"]', '170');
+  await page.fill('input[aria-label="Vægt i kg"]', '70');
+  await page.waitForFunction(() => document.querySelector('#scr-bmiOver35-nej')?.checked, null, { timeout: 4000 });
+  check(true, 'Æ1: beregner auto-satte Nej (BMI 24,2 ≤ 35)');
+  const bmiTekst = await page.locator('#instrument-fields [role="status"]').first().textContent();
+  check(/24,2/.test(bmiTekst) && /rette/.test(bmiTekst), 'Æ1: BMI vist m. dansk komma + kan-rettes-tekst', bmiTekst);
+  const stadigTrin11 = await page.locator('#a11y-step-head').textContent();
+  check(/Spørgsmål 11 af 15/.test(stadigTrin11), 'Æ1: INGEN auto-frem fra beregneren (klienten ser resultatet)', stadigTrin11);
+  await shot('screening-8-bmi-beregner.png');
+  await page.click('#a11y-next');
+
   await svarTrin('alderOver50', 'ja');
   // Halsomfang: "Ved ikke" (kontrakt: null — aldrig et tavst nej).
   await page.waitForSelector('#scr-halsomfangOver40-vedikke', { state: 'visible', timeout: 6000 });
@@ -170,7 +186,14 @@ try {
   check(await page.locator('#scr-snorken-vedikke').count() === 0, 'andre STOP-Bang-items har IKKE Ved ikke');
   await shot('screening-3-halsomfang-vedikke.png');
   await svarTrin('halsomfangOver40', 'vedikke');
-  await svarTrin('koenMand', 'nej');
+
+  // ── Æ2: køns-spørgsmål (item 14) — Mand/Kvinde/Andet, afledning web-side ──
+  await page.waitForSelector('#scr-koen-kvinde', { state: 'visible', timeout: 6000 });
+  check(await page.locator('#scr-koen-mand').count() === 1
+    && await page.locator('#scr-koen-kvinde').count() === 1
+    && await page.locator('#scr-koen-andet').count() === 1, 'Æ2: køns-item har Mand/Kvinde/Andet');
+  await shot('screening-9-koen.png');
+  await svarTrin('koen', 'kvinde');
 
   // ── Fritekst (sidste trin, valgfri) + submit-gate ──
   await page.waitForSelector('#instrument-fields textarea', { state: 'visible', timeout: 6000 });
@@ -190,6 +213,8 @@ try {
   check(rows === 15, 'review viser 15 rækker (14 items + fritekst)', String(rows));
   const reviewTekst = await page.locator('#instrument-review-list').textContent();
   check(/Ved ikke/.test(reviewTekst), 'review viser Ved ikke-svaret');
+  check(/Kvinde/.test(reviewTekst), 'review viser køns-svaret som label (Kvinde)');
+  check(!/170/.test(reviewTekst), 'review lækker ikke beregner-tal (højde 170 vises ikke)');
   check(/Jeg går nogle gange i søvne\./.test(reviewTekst), 'review viser fritekst');
   await shot('screening-5-review.png');
 
@@ -214,6 +239,8 @@ try {
     const got = JSON.stringify(konvolut.data.screeningSvar);
     const want = JSON.stringify(FACIT_SCREENING_SVAR);
     check(got === want, 'DEKRYPTERET data.screeningSvar == Mentem-facit (byte-form)', `got ${got}`);
+    // Æ1 dataminimering E2E: højde/vægt/BMI-tal fra beregneren er IKKE på wiren.
+    check(!/hoejde|vaegt|"bmi"|170|24\.2|24,2/.test(got), 'Æ1: beregner-tal (170/70/BMI) er ALDRIG på wiren', got);
   }
 
   check(pageErrors.length === 0, 'ingen JS-fejl gennem hele flowet', pageErrors.join(' | '));

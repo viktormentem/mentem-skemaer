@@ -1936,17 +1936,27 @@ function runScreening(id) {
     ...skema.kontraItems.map((it) => ({ ...it, stem: skema.kontraStem, options: JA_NEJ, required: true })),
     ...skema.stopBangItems.map((it) => ({
       ...it, stem: skema.stopBangStem, required: true,
+      // Æ2: køns-itemet bærer sine EGNE optioner (mand/kvinde/andet, string-values).
       // "Ved ikke" KUN på halsomfang (kontrakt: null = ved ikke; tæller aldrig som nej).
-      options: it.vedIkke ? [...JA_NEJ, { label: 'Ved ikke', value: null }] : JA_NEJ,
+      options: it.koensValg ? it.options
+        : (it.vedIkke ? [...JA_NEJ, { label: 'Ved ikke', value: null }] : JA_NEJ),
     })),
     { ...skema.fritekst, stem: '', options: null, required: false },
   ];
   const REQ_KEYS = trinItems.filter((it) => it.required).map((it) => it.key);
   const TOTAL = REQ_KEYS.length;
-  // Radio-værdi (DOM-streng) ↔ svar-værdi (bool|null): eksplicit map, aldrig coercion.
+  // Radio-værdi (DOM-streng) ↔ svar-værdi: eksplicit map, aldrig coercion. Køns-itemet
+  // (koensValg) bærer string-values direkte (mand/kvinde/andet); resten er bool|null.
   const VAL_ENC = (v) => (v === true ? 'ja' : v === false ? 'nej' : 'vedikke');
   const VAL_DEC = { ja: true, nej: false, vedikke: null };
   const VAL_LABEL = (v) => (v === true ? 'Ja' : v === false ? 'Nej' : 'Ved ikke');
+  const optEnc = (item, opt) => (item.koensValg ? String(opt.value) : VAL_ENC(opt.value));
+  const optDec = (item, enc) => (item.koensValg ? enc : VAL_DEC[enc]);
+  const svarLabel = (item, v) => {
+    if (!item.koensValg) return VAL_LABEL(v);
+    const o = item.options.find((x) => x.value === v);
+    return o ? o.label : String(v);
+  };
 
   // ── Velkomst (samme key-pin-gate + privatliv/fingeraftryk-mønster som baseline) ──
   const intro = document.getElementById('screening-intro');
@@ -2033,7 +2043,7 @@ function runScreening(id) {
         group.setAttribute('aria-label', instrumentStemAria(item.stem, item.text));
         const optByVal = {};
         item.options.forEach((opt) => {
-          const enc = VAL_ENC(opt.value);
+          const enc = optEnc(item, opt);
           const rid = `scr-${item.key}-${enc}`;
           const lbl = document.createElement('label');
           lbl.className = 'radio-option';
@@ -2043,13 +2053,87 @@ function runScreening(id) {
           group.appendChild(lbl);
         });
         fs.appendChild(group);
+        // Æ1: indbygget valgfri BMI-beregner (dataminimering: højde/vægt/BMI lever KUN
+        // i disse felter og røres aldrig af payload-builderen — kun ja/nej sendes).
+        if (item.bmiBeregner) fs.appendChild(byggBmiBeregner(item, fs, group, optByVal));
       }
       wrap.appendChild(fs);
     });
   }
 
+  // Æ1 BMI-beregner: fold-ud med højde (cm) + vægt (kg) → viser BMI + sætter ja/nej-
+  // svaret automatisk (uden auto-frem, så klienten kan se og evt. rette; manuel
+  // override = klik bare på Ja/Nej). Klienten kan altid springe beregneren over.
+  function byggBmiBeregner(item, fs, group, optByVal) {
+    const c = item.beregner;
+    const boks = document.createElement('div');
+    const knap = document.createElement('button');
+    knap.type = 'button'; knap.className = 'btn-secondary';
+    knap.textContent = c.knap;
+    knap.setAttribute('aria-expanded', 'false');
+    knap.style.cssText = 'margin-top:10px;width:100%;box-sizing:border-box';
+    const panel = document.createElement('div');
+    panel.hidden = true;
+    panel.style.cssText = 'margin-top:10px;padding:12px;border:1px solid var(--border, #ddd);border-radius:10px';
+    function talFelt(labelTekst, unit, min, max) {
+      const row = document.createElement('div'); row.className = 'diary-input-row';
+      row.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:8px';
+      const lab = document.createElement('label');
+      lab.textContent = labelTekst;
+      lab.style.cssText = 'min-width:56px';
+      const inp = document.createElement('input');
+      inp.type = 'number'; inp.inputMode = 'numeric'; inp.min = min; inp.max = max;
+      inp.setAttribute('aria-label', labelTekst + ' i ' + unit);
+      inp.style.cssText = 'width:90px;font:inherit;padding:8px;border:1.5px solid var(--line, #ccc);border-radius:8px';
+      const u = document.createElement('span'); u.className = 'diary-unit'; u.textContent = unit;
+      row.appendChild(lab); row.appendChild(inp); row.appendChild(u);
+      return { row, inp };
+    }
+    const hoejde = talFelt(c.hoejdeLabel, c.hoejdeUnit, 100, 250);
+    const vaegt = talFelt(c.vaegtLabel, c.vaegtUnit, 30, 350);
+    const resultat = document.createElement('p');
+    resultat.setAttribute('role', 'status'); resultat.setAttribute('aria-live', 'polite');
+    resultat.style.cssText = 'margin:6px 0 0;font-weight:500';
+    const priv = document.createElement('p');
+    priv.className = 'diary-hint'; priv.style.margin = '8px 0 0';
+    priv.textContent = c.privatliv;
+    panel.appendChild(hoejde.row); panel.appendChild(vaegt.row);
+    panel.appendChild(resultat); panel.appendChild(priv);
+    knap.addEventListener('click', () => {
+      panel.hidden = !panel.hidden;
+      knap.setAttribute('aria-expanded', panel.hidden ? 'false' : 'true');
+      if (!panel.hidden) hoejde.inp.focus();
+    });
+    function beregn() {
+      const h = parseFloat(hoejde.inp.value);
+      const v = parseFloat(vaegt.inp.value);
+      if (!(h >= 100 && h <= 250) || !(v >= 30 && v <= 350)) { resultat.textContent = ''; return; }
+      const bmi = v / ((h / 100) * (h / 100));
+      const over = bmi > 35;
+      const enc = over ? 'ja' : 'nej';
+      // Sæt svaret UDEN auto-frem (klienten står midt i beregneren): samme commit-
+      // mekanik som et klik, minus seeingAdvanceScr.
+      svar[item.key] = VAL_DEC[enc];
+      fs.classList.add('answered');
+      group.querySelectorAll('.radio-option').forEach((o) => o.classList.remove('checked'));
+      if (optByVal[enc]) {
+        optByVal[enc].classList.add('checked');
+        const ri = optByVal[enc].querySelector('input');
+        if (ri && !ri.checked) ri.checked = true;
+      }
+      opdaterScrFremdrift();
+      resultat.textContent = 'Dit BMI er ' + bmi.toFixed(1).replace('.', ',')
+        + (over ? ' (over 35). Vi har sat dit svar til Ja.' : ' (35 eller derunder). Vi har sat dit svar til Nej.')
+        + ' Du kan selv rette svaret.';
+    }
+    hoejde.inp.addEventListener('input', beregn);
+    vaegt.inp.addEventListener('input', beregn);
+    boks.appendChild(knap); boks.appendChild(panel);
+    return boks;
+  }
+
   function commitScr(item, fs, group, optByVal, enc) {
-    svar[item.key] = VAL_DEC[enc];
+    svar[item.key] = optDec(item, enc);
     fs.classList.add('answered');
     group.querySelectorAll('.radio-option').forEach((o) => o.classList.remove('checked'));
     if (optByVal[enc]) {
@@ -2111,7 +2195,7 @@ function runScreening(id) {
         ans.textContent = 'Ikke besvaret';
       } else {
         ans.className = 'instrument-review-a';
-        ans.textContent = VAL_LABEL(v);
+        ans.textContent = svarLabel(item, v);
       }
       main.appendChild(q); main.appendChild(ans);
       const ret = document.createElement('button');

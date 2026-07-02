@@ -285,10 +285,29 @@ export const SOEVN_SCREENING = {
     { key: 'observeretApnoe', text: 'Har nogen set dig holde pauser i vejrtrækningen, mens du sover?' },
     { key: 'dagtraethed', text: 'Føler du dig ofte træt, udmattet eller søvnig i dagtimerne?' },
     { key: 'hypertension', text: 'Har du forhøjet blodtryk, eller er du i behandling for det?' },
-    { key: 'bmiOver35', text: 'Er dit BMI over 35?', hint: 'BMI er din vægt set i forhold til din højde. Er du i tvivl, kan du bruge en BMI-beregner på nettet.' },
+    // Æ1 (Viktor-GO 2/7): indbygget valgfri BMI-beregner — klienten skal ikke på nettet.
+    // HÅRDT dataminimerings-krav: højde/vægt/BMI-værdien forbliver LOKALE i browseren
+    // (lever kun i beregner-UI'ens felter) og indgår ALDRIG i payloaden; kun ja/nej sendes.
+    { key: 'bmiOver35', text: 'Er dit BMI over 35?', bmiBeregner: true,
+      hint: 'BMI er din vægt set i forhold til din højde. Er du i tvivl, kan du beregne det lige her. Du kan også bare svare selv.',
+      beregner: {
+        knap: 'Beregn mit BMI (valgfrit)',
+        hoejdeLabel: 'Højde', hoejdeUnit: 'cm',
+        vaegtLabel: 'Vægt', vaegtUnit: 'kg',
+        privatliv: 'Højde og vægt bliver på din enhed og sendes ikke til nogen.',
+      } },
     { key: 'alderOver50', text: 'Er du over 50 år?' },
     { key: 'halsomfangOver40', text: 'Er dit halsomfang mere end 40 cm?', vedIkke: true, hint: 'Mål eventuelt med et målebånd rundt om halsen. Ved du det ikke, vælger du bare Ved ikke.' },
-    { key: 'koenMand', text: 'Er du en mand?' },
+    // Æ2 (Viktor-ratificeret 2/7): køns-spørgsmål erstatter "Er du en mand?". Wire =
+    // screeningSvar.koen (mand/kvinde/andet) + AFLEDT stopBang.koenMand (mand=ja,
+    // kvinde/andet=nej). "Andet" flages Mentem-side (GUL, klinisk vurdering — scoren
+    // antager mand/kvinde). Decoder-tolerance verificeret: koen er String? Mentem-side.
+    { key: 'koen', text: 'Hvilket køn er du?', koensValg: true,
+      options: [
+        { value: 'mand', label: 'Mand' },
+        { value: 'kvinde', label: 'Kvinde' },
+        { value: 'andet', label: 'Andet' },
+      ] },
   ],
   fritekst: { key: 'fritekst', text: 'Er der andet om din søvn eller dit helbred, som din psykolog bør vide?', optional: true },
 };
@@ -551,24 +570,37 @@ function screeningFejl(code, felt) {
   return e;
 }
 
+// Æ2 wire-enum: klientens køns-svar. koenMand AFLEDES (mand=ja, kvinde/andet=nej);
+// det rå svar sendes med i screeningSvar.koen (Mentem viser det råt + flager "andet" GUL).
+export const SCREENING_KOEN_VALG = ['mand', 'kvinde', 'andet'];
+
 export function buildPayloadScreening(svar = {}, meta = {}) {
   for (const k of SCREENING_KLINIKER_KEYS) {
     if (k in svar) throw screeningFejl('klinikerItemForbudt', k);
   }
   const stopBang = {};
   for (const f of SOEVN_SCREENING.stopBangItems) {
+    if (f.koensValg) continue;                                           // Æ2: koenMand afledes nedenfor
     const v = svar[f.key];
     if (f.vedIkke && v === null) { stopBang[f.key] = null; continue; }   // "Ved ikke" → null (aldrig nej)
     if (v !== true && v !== false) throw screeningFejl('paakraevet_mangler', f.key);
     stopBang[f.key] = v;
   }
+  // Æ2: koen er påkrævet enum; koenMand afledes så STOPBang-kontrakten (8 bool-felter,
+  // koenMand sidst) er UÆNDRET på wiren. Dataminimering (Æ1): evt. hoejde/vaegt/bmi-keys
+  // i svar-objektet læses ALDRIG (kun kendte item-keys emitteres) — BMI-tal forlader
+  // aldrig browseren.
+  const koen = svar.koen;
+  if (koen == null || koen === '') throw screeningFejl('paakraevet_mangler', 'koen');
+  if (!SCREENING_KOEN_VALG.includes(koen)) throw screeningFejl('ugyldig_enum', 'koen');
+  stopBang.koenMand = (koen === 'mand');
   const kontraindikationer = [];
   for (const f of SOEVN_SCREENING.kontraItems) {
     const v = svar[f.key];
     if (v !== true && v !== false) throw screeningFejl('paakraevet_mangler', f.key);
     if (v === true) kontraindikationer.push(f.key);
   }
-  const screeningSvar = { stopBang, kontraindikationer };
+  const screeningSvar = { stopBang, kontraindikationer, koen };
   const fritekst = (typeof svar.fritekst === 'string') ? svar.fritekst.trim() : '';
   if (fritekst) screeningSvar.fritekst = fritekst;
 
