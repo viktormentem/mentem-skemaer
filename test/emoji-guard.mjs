@@ -179,6 +179,34 @@ export function runEmDashGuard(files = EMDASH_GUARDED_FILES) {
   return files.flatMap(scanFileEmDash);
 }
 
+// ── NUDANSK-guard (anglicistisk bindestreg i sammensætninger, Viktor-direktiv 27/6) ──
+// EKSPLICIT mønster-liste — ingen heuristik, ingen falske positive: dansk skriver
+// sammensatte ord i ÉT ord ("oplæsningsvenlig", ikke "oplæsnings-venlig"). Når en
+// 3-linse fanger et konkret tilfælde i klient-copy, rettes fladen OG mønstret seedes
+// her, så det aldrig regredierer (født af F3, soevn-screening-3-linsen 2/7). Samme
+// comment-strip som emoji/em-dash (kommentarer renderer ikke → uden for reglen).
+export const NUDANSK_FORBUDT = [
+  { re: /[Oo]plæsnings-venlig/, fix: 'oplæsningsvenlig (ét ord)' },
+];
+
+export function scanNudansk(text, file = '<input>') {
+  const rawLines = text.split('\n');
+  const rendered = renderableLines(text);
+  const violations = [];
+  for (let i = 0; i < rendered.length; i++) {
+    for (const m of NUDANSK_FORBUDT) {
+      const hit = rendered[i].match(m.re);
+      if (!hit) continue;
+      violations.push({ file, line: i + 1, glyphs: [`"${hit[0]}" → ${m.fix}`], raw: (rawLines[i] || '').trim() });
+    }
+  }
+  return violations;
+}
+
+export function runNudanskGuard(files = GUARDED_FILES) {
+  return files.flatMap((relPath) => scanNudansk(readFileSync(join(REPO_ROOT, relPath), 'utf8'), relPath));
+}
+
 // ── Standalone CI-hook ───────────────────────────────────────────────────────
 function isMain() {
   return process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
@@ -187,7 +215,19 @@ function isMain() {
 if (isMain()) {
   const emojiViolations = runGuard();
   const emdashViolations = runEmDashGuard();
+  const nudanskViolations = runNudanskGuard();
   let ok = true;
+
+  if (nudanskViolations.length === 0) {
+    console.log(`nudansk-guard ✓ - 0 forbudte sammensætnings-mønstre i ${GUARDED_FILES.join(', ')}`);
+  } else {
+    ok = false;
+    console.error(`nudansk-guard ✗ - ${nudanskViolations.length} anglicistisk-bindestreg-regression(er):`);
+    for (const v of nudanskViolations) {
+      console.error(`  ${v.file}:${v.line}  ${v.glyphs.join(' ')}\n      ${v.raw}`);
+    }
+    console.error('FIX: skriv sammensætningen i ét ord (nudansk-direktiv 27/6, tjek ordnet.dk i tvivl).');
+  }
 
   if (emojiViolations.length === 0) {
     console.log(`emoji-guard ✓ - 0 emoji-som-ikon i ${GUARDED_FILES.join(', ')}`);

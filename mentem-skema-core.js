@@ -243,6 +243,77 @@ export const SOEVN_BASELINE = {
 SKEMAER['soevn-baseline'] = SOEVN_BASELINE;
 
 // ════════════════════════════════════════════════════════════════════════
+//  SØVN-SCREENING — klient-selvrapport-delen af sikkerhedsscreeningen (Fase C §3a)
+// ════════════════════════════════════════════════════════════════════════
+// SPLIT (Viktor-direktiv 2/7): klienten udfylder SELV anamnese-items + STOP-Bang
+// som selvrapport; kliniker-delen (Viktors vurdering + GRØN/GUL/RØD) bor i Mentem.
+// Suicidalitets-itemet FORBLIVER kliniker-side og indgår ALDRIG her (art30-enheds-
+// flow §c: følsom sikkerhedsscreen holdes ude af self-serve-skemaet).
+//
+// PAYLOAD-KONTRAKT (autoritativ Swift-side: SoevnOpstart.swift SoevnKlientScreeningSvar
+// + SoevnScreeningIngest.parse; facit-test SoevnFaseCTests.testScreeningSvarPayloadRoundtrip):
+//   data.screeningSvar = {
+//     stopBang: { snorken, observeretApnoe, dagtraethed, hypertension, bmiOver35,
+//                 alderOver50, halsomfangOver40 (bool|null = "ved ikke"), koenMand },
+//     kontraindikationer: [SoevnKontraindikation-rawValues med JA-svar],
+//     fritekst (valgfri streng, udelades når tom),
+//   }
+// Item-keys er WIRE-VÆRDIER (Swift-enum-rawValues / STOPBang-felter) — RØR DEM ALDRIG.
+// Klinisk kilde: soevn/screening-tjekliste-ordlyd-2026-06-01.md (Del A + STOP-Bang, Chung 2008).
+//
+// KLIENT-COPY = UDKAST (omskrivning af tjeklistens kliniker-ordlyd til klient-sprog).
+// Viktor-ratificeres ord-for-ord FØR ship (batch §3a); nudansk, æøå, 0 em-dash.
+export const SOEVN_SCREENING = {
+  id: 'soevn-screening', kind: 'screening', title: 'Kort sikkerhedsskema', short: 'Sikkerhedsskema',
+  badge: 'udfyldes én gang',
+  instruction: 'Et kort skema om din søvn og dit helbred. Dine svar hjælper din psykolog med at vælge den fremgangsmåde, der er tryg for dig. Svar så godt du kan. Er du i tvivl om et svar, så svar ja, og skriv gerne mere i tekstfeltet til sidst. Der er ingen rigtige eller forkerte svar.',
+  // Anamnese-items (ja/nej). key = SoevnKontraindikation.rawValue (wire-kontrakt).
+  kontraStem: 'Om dit helbred og din hverdag',
+  kontraItems: [
+    { key: 'bipolarMani', text: 'Har du bipolar lidelse, eller har du haft en periode med mani eller hypomani (unormalt opstemt eller opkørt, med meget lidt behov for søvn)?' },
+    { key: 'epilepsiAnfald', text: 'Har du epilepsi eller en anden lidelse med anfald?' },
+    { key: 'parasomnier', text: 'Går du i søvne, har du natteskræk, eller sker det, at du råber, slår eller sparker i søvne?' },
+    { key: 'betydeligFaldrisiko', text: 'Har du let ved at falde, eller er du usikker på benene, fx når du står op om natten?' },
+    { key: 'erhvervschauffoer', text: 'Kører du bil, bus eller lastbil i dit arbejde, eller har du andet arbejde, hvor et øjebliks uopmærksomhed kan være farligt?' },
+    { key: 'natarbejde', text: 'Arbejder du om natten eller i skiftende vagter?' },
+  ],
+  // STOP-Bang-selvrapport (Chung 2008). key = STOPBang-feltnavn (wire-kontrakt).
+  // halsomfangOver40 er VALGFRI viden: "Ved ikke" = null (tæller ALDRIG som nej i scoren).
+  stopBangStem: 'Om din søvn og din krop',
+  stopBangItems: [
+    { key: 'snorken', text: 'Snorker du højlydt? (fx så det kan høres gennem en lukket dør, eller så din partner har bemærket det)' },
+    { key: 'observeretApnoe', text: 'Har nogen set dig holde pauser i vejrtrækningen, mens du sover?' },
+    { key: 'dagtraethed', text: 'Føler du dig ofte træt, udmattet eller søvnig i dagtimerne?' },
+    { key: 'hypertension', text: 'Har du forhøjet blodtryk, eller er du i behandling for det?' },
+    // Æ1 (Viktor-GO 2/7): indbygget valgfri BMI-beregner — klienten skal ikke på nettet.
+    // HÅRDT dataminimerings-krav: højde/vægt/BMI-værdien forbliver LOKALE i browseren
+    // (lever kun i beregner-UI'ens felter) og indgår ALDRIG i payloaden; kun ja/nej sendes.
+    { key: 'bmiOver35', text: 'Er dit BMI over 35?', bmiBeregner: true,
+      hint: 'BMI er din vægt set i forhold til din højde. Er du i tvivl, kan du beregne det lige her. Du kan også bare svare selv.',
+      beregner: {
+        knap: 'Beregn mit BMI (valgfrit)',
+        hoejdeLabel: 'Højde', hoejdeUnit: 'cm',
+        vaegtLabel: 'Vægt', vaegtUnit: 'kg',
+        privatliv: 'Højde og vægt bliver på din enhed og sendes ikke til nogen.',
+      } },
+    { key: 'alderOver50', text: 'Er du over 50 år?' },
+    { key: 'halsomfangOver40', text: 'Er dit halsomfang mere end 40 cm?', vedIkke: true, hint: 'Mål eventuelt med et målebånd rundt om halsen. Ved du det ikke, vælger du bare Ved ikke.' },
+    // Æ2 (Viktor-ratificeret 2/7): køns-spørgsmål erstatter "Er du en mand?". Wire =
+    // screeningSvar.koen (mand/kvinde/andet) + AFLEDT stopBang.koenMand (mand=ja,
+    // kvinde/andet=nej). "Andet" flages Mentem-side (GUL, klinisk vurdering — scoren
+    // antager mand/kvinde). Decoder-tolerance verificeret: koen er String? Mentem-side.
+    { key: 'koen', text: 'Hvilket køn er du?', koensValg: true,
+      options: [
+        { value: 'mand', label: 'Mand' },
+        { value: 'kvinde', label: 'Kvinde' },
+        { value: 'andet', label: 'Andet' },
+      ] },
+  ],
+  fritekst: { key: 'fritekst', text: 'Er der andet om din søvn eller dit helbred, som din psykolog bør vide?', optional: true },
+};
+SKEMAER['soevn-screening'] = SOEVN_SCREENING;
+
+// ════════════════════════════════════════════════════════════════════════
 //  SCORING (intern - bruges til opaque payload; klienten ser ALDRIG resultatet)
 // ════════════════════════════════════════════════════════════════════════
 function val(a) { return (a && typeof a === 'object') ? a.value : a; }
@@ -475,6 +546,78 @@ export function buildPayloadBaseline(answers, meta = {}) {
     baselineType: 'soevn-intake',
     baseline,
   };
+}
+
+// ════════════════════════════════════════════════════════════════════════
+//  SØVN-SCREENING-PAYLOAD (engangs → krypteret ingest, egen Mentem-rute)
+// ════════════════════════════════════════════════════════════════════════
+// Emitterer PRÆCIS den JSON Mentem-decoderen er testet mod (SoevnScreeningIngest
+// .parse / SoevnFaseCTests.testScreeningSvarPayloadRoundtrip er facit). Fail-loud:
+// et ubesvaret påkrævet item kaster (ubesvaret må ALDRIG blive et tavst nej —
+// tjeklistens scoringsregel; kun halsomfang må være null = "ved ikke"). Ingen
+// scoring her: STOP-Bang-score + rød-flag beregnes ALENE Mentem-side (én
+// sandhedskilde, SoevnScreeningRoedFlag). Envelope-wrap som søvndagbogen.
+export const SOEVN_SCREENING_SCHEMA_TYPE = 'soevn-screening';
+
+// Kliniker-side item-keys der ALDRIG må optræde i en klient-payload (defense-in-
+// depth, spejler Swift-sidens defensive somInput-filter): suicidalitet er
+// kliniker-side (Viktor 2/7) — smugles keyen ind, kaster vi frem for at sende.
+export const SCREENING_KLINIKER_KEYS = ['aktuelSuicidalitet'];
+
+function screeningFejl(code, felt) {
+  const e = new Error(felt ? `${code}:${felt}` : code);
+  e.code = code; if (felt) e.felt = felt;
+  return e;
+}
+
+// Æ2 wire-enum: klientens køns-svar. koenMand AFLEDES (mand=ja, kvinde/andet=nej);
+// det rå svar sendes med i screeningSvar.koen (Mentem viser det råt + flager "andet" GUL).
+export const SCREENING_KOEN_VALG = ['mand', 'kvinde', 'andet'];
+
+export function buildPayloadScreening(svar = {}, meta = {}) {
+  for (const k of SCREENING_KLINIKER_KEYS) {
+    if (k in svar) throw screeningFejl('klinikerItemForbudt', k);
+  }
+  const stopBang = {};
+  for (const f of SOEVN_SCREENING.stopBangItems) {
+    if (f.koensValg) continue;                                           // Æ2: koenMand afledes nedenfor
+    const v = svar[f.key];
+    if (f.vedIkke && v === null) { stopBang[f.key] = null; continue; }   // "Ved ikke" → null (aldrig nej)
+    if (v !== true && v !== false) throw screeningFejl('paakraevet_mangler', f.key);
+    stopBang[f.key] = v;
+  }
+  // Æ2: koen er påkrævet enum; koenMand afledes så STOPBang-kontrakten (8 bool-felter,
+  // koenMand sidst) er UÆNDRET på wiren. Dataminimering (Æ1): evt. hoejde/vaegt/bmi-keys
+  // i svar-objektet læses ALDRIG (kun kendte item-keys emitteres) — BMI-tal forlader
+  // aldrig browseren.
+  const koen = svar.koen;
+  if (koen == null || koen === '') throw screeningFejl('paakraevet_mangler', 'koen');
+  if (!SCREENING_KOEN_VALG.includes(koen)) throw screeningFejl('ugyldig_enum', 'koen');
+  stopBang.koenMand = (koen === 'mand');
+  const kontraindikationer = [];
+  for (const f of SOEVN_SCREENING.kontraItems) {
+    const v = svar[f.key];
+    if (v !== true && v !== false) throw screeningFejl('paakraevet_mangler', f.key);
+    if (v === true) kontraindikationer.push(f.key);
+  }
+  const screeningSvar = { stopBang, kontraindikationer, koen };
+  const fritekst = (typeof svar.fritekst === 'string') ? svar.fritekst.trim() : '';
+  if (fritekst) screeningSvar.fritekst = fritekst;
+
+  const now = isoNoFrac(new Date());
+  const data = {
+    version: 1,
+    exportedAt: now,
+    clientName: meta.name || '',
+    therapistName: 'Viktor Nielsen',
+    categories: [SOEVN_SCREENING_SCHEMA_TYPE],
+    screeningSvar,
+  };
+  return buildIngestKonvolut(data, {
+    schemaType: SOEVN_SCREENING_SCHEMA_TYPE,
+    schemaVersion: 1,
+    clientTimestamp: now,
+  });
 }
 
 // ════════════════════════════════════════════════════════════════════════
