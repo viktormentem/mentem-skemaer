@@ -172,6 +172,22 @@ for (const k of ['bedtime','lightsOut','sleepLatencyMin','awakeningsCount','awak
 // `default` — en fantom-default registreres som falsk svar og forurener kliniske data.
 check('CSD: ingen felter med committed default (fantom-guard)',
   CSD_SOEVNDAGBOG.fields.every(f => f.default == null));
+// M1.6/M1.3 additive SRT-safety-felter (srtOnly => baseline-render urørt).
+for (const k of ['daytimeSleepiness_0_10','incidentFlag','incidentNote']) {
+  check(`CSD-felt (M1.3-kontrakt): ${k}`, diaryKeys.includes(k));
+}
+check('M1.6: F1 er nrs 0-10 m. weekOneDaily + srtOnly', (() => {
+  const f1 = CSD_SOEVNDAGBOG.fields.find(f => f.key === 'daytimeSleepiness_0_10');
+  return f1.kind === 'nrs' && f1.srtOnly === true && f1.weekOneDaily === true && f1.min === 0 && f1.max === 10;
+})());
+check('M1.6: F2 incidentFlag er safety + srtOnly', (() => {
+  const f2 = CSD_SOEVNDAGBOG.fields.find(f => f.key === 'incidentFlag');
+  return f2.kind === 'safety' && f2.srtOnly === true;
+})());
+check('M1.6: incidentNote er valgfri safetyNote', (() => {
+  const n = CSD_SOEVNDAGBOG.fields.find(f => f.key === 'incidentNote');
+  return n.kind === 'safetyNote' && n.optional === true && n.srtOnly === true;
+})());
 // SOL + WASO er VARIGHEDER → number (minutter), ALDRIG ur/tids-vælger (§2-Fælde-B).
 check('CSD: SOL = number m. enhed minutter (ikke ur)',
   CSD_SOEVNDAGBOG.fields.find(f => f.key === 'sleepLatencyMin').kind === 'number' &&
@@ -182,8 +198,10 @@ check('CSD: WASO = number m. enhed minutter (ikke ur)',
 
 console.log('buildPayloadCSD:');
 const csdEntries = [
-  { date:'2026-06-01', bedtime:'23:15', lightsOut:'23:30', sleepLatencyMin:25, awakeningsCount:2, awakeningsMin:30, finalAwake:'06:45', outOfBed:'07:00', quality:3, naps:'', substans:{ intet:true } },
-  { date:'2026-06-02', bedtime:'23:00', lightsOut:'23:20', sleepLatencyMin:15, awakeningsCount:1, awakeningsMin:10, finalAwake:'06:30', outOfBed:'06:50', quality:4, naps:'20 min ved middag', substans:{ intet:false, alkohol:[{ antalGenstande:1, tidspunkt:'Nat' }], natFlag:true } },
+  { date:'2026-06-01', bedtime:'23:15', lightsOut:'23:30', sleepLatencyMin:25, awakeningsCount:2, awakeningsMin:30, finalAwake:'06:45', outOfBed:'07:00', quality:3, naps:'', substans:{ intet:true },
+    daytimeSleepiness_0_10:0, incidentFlag:false },
+  { date:'2026-06-02', bedtime:'23:00', lightsOut:'23:20', sleepLatencyMin:15, awakeningsCount:1, awakeningsMin:10, finalAwake:'06:30', outOfBed:'06:50', quality:4, naps:'20 min ved middag', substans:{ intet:false, alkohol:[{ antalGenstande:1, tidspunkt:'Nat' }], natFlag:true },
+    daytimeSleepiness_0_10:9, incidentFlag:true, incidentNote:'Var ved at falde i søvn bag rattet.' },
 ];
 const csdEnv = buildPayloadCSD(csdEntries, { name:'Søvn Klient', startedAt:'2026-06-01', plannedDays:14 });
 check('csd konvolut schemaType = soevndagbog', csdEnv.schemaType === 'soevndagbog');
@@ -206,6 +224,12 @@ check('csd substans intet bevaret', csd.sleepDiary[0].substans && csd.sleepDiary
 check('csd substans struktureret bevaret', csd.sleepDiary[1].substans.alkohol[0].antalGenstande === 1 && csd.sleepDiary[1].substans.alkohol[0].tidspunkt === 'Nat');
 check('csd substans natFlag bevaret', csd.sleepDiary[1].substans.natFlag === true);
 check('csd INGEN scoring (nul-score)', csd.questionnaireScores === undefined && csd.sleepDiary[0].tst === undefined && csd.sleepDiary[0].se === undefined);
+// M1.3-kontrakt passthrough: 0 og false OVERLEVER drop-tom-reglen; null/udeladt droppes.
+check('M1.3: daytimeSleepiness 0 overlever (ikke droppet som tom)', csd.sleepDiary[0].daytimeSleepiness_0_10 === 0);
+check('M1.3: incidentFlag false overlever', csd.sleepDiary[0].incidentFlag === false);
+check('M1.3: daytimeSleepiness 9 + incidentFlag true bevaret', csd.sleepDiary[1].daytimeSleepiness_0_10 === 9 && csd.sleepDiary[1].incidentFlag === true);
+check('M1.3: incidentNote bevaret ved Ja', /bag rattet/.test(csd.sleepDiary[1].incidentNote || ''));
+check('M1.3: udeladt F1 droppes (null-adfærd)', csd.sleepDiary[0].incidentNote === undefined);
 
 // Round-trip: CSD-KONVOLUT krypteres + dekrypteres → data.sleepDiary intakt.
 const csdContainer = await mentemEncrypt(recipientPubB64, csdEnv);
