@@ -33,6 +33,17 @@ for (const id of OFFENTLIGT_KLAR) {
 const ordnet = SKEMA_ORDER.filter(id => OFFENTLIGT_KLAR.includes(id));
 ok(ordnet.join(',') === OFFENTLIGT_KLAR.join(','), 'OFFENTLIGT_KLAR følger SKEMA_ORDERs kanoniske rækkefølge');
 
+// ── 1b. CAS-1/MCB må ALDRIG rendres digitalt (Viktor-beslutning 2026-07-03, Wells-licens) ──
+// De administreres kun på papir og indtastes separat i klient-record. OFFENTLIGT_KLAR er
+// den offentlige allowlist (?s=-filter) → cas/mcb udeladt her = de kan ikke lække digitalt,
+// heller ikke via et stale/manuelt ?s=cas-link. SKEMA_ORDER + SKEMAER-definitionerne bevares
+// (licens-pending-mønster: fjern blot fra OFFENTLIGT_KLAR). Det digitale batteri = gad7/phq9/
+// who5/wsas (+ waisr alliance).
+ok(!OFFENTLIGT_KLAR.includes('cas'), "CAS-1 ('cas') er IKKE i OFFENTLIGT_KLAR (kun papir, Wells-licens)");
+ok(!OFFENTLIGT_KLAR.includes('mcb'), "MCB ('mcb') er IKKE i OFFENTLIGT_KLAR (kun papir, Wells-licens)");
+ok(OFFENTLIGT_KLAR.join(',') === 'gad7,phq9,who5,wsas,waisr',
+  'det digitale batteri = gad7,phq9,who5,wsas,waisr (cas/mcb fjernet)');
+
 // ── 2. index.html-kontrakt (statisk kilde-tjek) ─────────────────────────────
 const here = dirname(fileURLToPath(import.meta.url));
 const html = readFileSync(join(here, '..', 'index.html'), 'utf8');
