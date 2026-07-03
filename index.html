@@ -164,6 +164,9 @@
   .srt-advarsel ul { margin:12px 0 0; padding-left:20px; }
   .srt-advarsel li { margin:0 0 9px; line-height:1.55; }
   @media (max-width:430px) { .srt-vindue-ur-tider { font-size:32px; gap:12px; } }
+  /* hidden-attributten skal vinde over klassernes display (inline-flex/flex),
+     ellers viser uge-1-badgen/ur-blokken sig altid (fanget ved tn=1-capture 3/7). */
+  #screen-soevnvindue [hidden] { display:none !important; }
   @keyframes srtRo { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
   #screen-soevnvindue.active .wrap > * { animation:srtRo 0.45s ease both; }
   /* ── M1.6 · F2 "Sikkerhed i dag" ── */
@@ -1138,7 +1141,10 @@ function renderSoevnvindue() {
 
   document.getElementById('srt-sc-blok').innerHTML = srtBlokHtml(tekst.scRegler);
 
-  if (srtAdvAktiv) {
+  // Kompression-triage default-tvinger kørsels-advarslen (mikrospec 3/7, safe-fail:
+  // de blødere-triagerede/sårbare har mindst lige så høj dagtræthedsrisiko). ELLER-
+  // flet: adv=1 ELLER mode=kompression => Tekst 3 vises. fuldSRT-stien er uændret.
+  if (srtAdvAktiv || srtMode === 'kompression') {
     var advEl = document.getElementById('srt-advarsel-blok');
     advEl.innerHTML = srtBlokHtml(tekst.koerselsAdvarsel, { headIcon: 'skjold' });
     advEl.hidden = false;
