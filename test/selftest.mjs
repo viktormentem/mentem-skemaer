@@ -242,7 +242,7 @@ check('csd round-trip data.diaryType bevaret', csdRT.data.diaryType === 'consens
 console.log('csd versions-blok (draft-store):');
 const csdV = buildPayloadCSD(csdEntries, { startedAt: '2026-06-01', plannedDays: 14, forloebId: 'a1b2c3d4e5f60718293a4b5c6d7e8f90' }).data;
 check('meta.instrument = CSD-Carney-2012', csdV.meta.instrument === 'CSD-Carney-2012');
-check('meta.schemaVersion', csdV.meta.schemaVersion === 1);
+check('meta.schemaVersion = 2 (M1.3-felt-tillaeg, spec par. 3.2; Viktor-GO 3/7)', csdV.meta.schemaVersion === 2);
 check('meta.contentVersion', csdV.meta.contentVersion === 1);
 check('meta.protocolVersion', csdV.meta.protocolVersion === 1);
 check('meta.siteBuild stamp', typeof csdV.meta.siteBuild === 'string' && csdV.meta.siteBuild.length > 0);

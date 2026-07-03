@@ -530,7 +530,10 @@ export function buildPayload(answers, meta = {}) {
 // `entries` = array af { date:'YYYY-MM-DD', bedtime, lightsOut, sleepLatencyMin,
 //   awakeningsCount, awakeningsMin, finalAwake, outOfBed, quality, naps?, medication? }.
 // Versionering (persistens-spec §5/§6, G2). Additivt på formatVersion:1.
-export const SCHEMA_VERSION = 1;          // payload-strukturversion
+export const SCHEMA_VERSION = 2;          // payload-strukturversion. 2 = M1.3 F1/F2/F3-felt-tillæg
+                                          // (spec §3.2; Viktor-GO 3/7). F1/F2 forbliver rent VALGFRI
+                                          // nøgler (fravær = udeladt på wiren, aldrig falsk 0, §3.5).
+                                          // Mentem-ingest: v2 = nativ accept; v1 = migrate_v1_to_v2.
 export const CONTENT_VERSION = 1;         // CSD-indholdsversion (bump = kun NYE forløb, G2-frys)
 export const PROTOCOL_VERSION = 1;        // draft-store transport-kontrakt
 export const SITE_BUILD = '2026-06-01-fase1';   // synlig version-stamp (G3)
