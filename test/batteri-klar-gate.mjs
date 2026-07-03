@@ -41,8 +41,14 @@ ok(ordnet.join(',') === OFFENTLIGT_KLAR.join(','), 'OFFENTLIGT_KLAR følger SKEM
 // who5/wsas (+ waisr alliance).
 ok(!OFFENTLIGT_KLAR.includes('cas'), "CAS-1 ('cas') er IKKE i OFFENTLIGT_KLAR (kun papir, Wells-licens)");
 ok(!OFFENTLIGT_KLAR.includes('mcb'), "MCB ('mcb') er IKKE i OFFENTLIGT_KLAR (kun papir, Wells-licens)");
-ok(OFFENTLIGT_KLAR.join(',') === 'gad7,phq9,who5,wsas,waisr',
-  'det digitale batteri = gad7,phq9,who5,wsas,waisr (cas/mcb fjernet)');
+// waisr (WAI-SR alliance-selvrapport) SAFE-FAIL-ekskluderet 2026-07-03: en allowlist må
+// KUN indeholde bekræftet-OK instrumenter. Koden annoterer waisr "frit/public domain", men
+// det er en påstand i kilden, ikke en Viktor-ratificeret licens+egnetheds-bekræftelse →
+// holdes ude til Viktor bekræfter (reversibelt: tilføjes igen ved GO). Må ikke optræde uden flag.
+ok(!OFFENTLIGT_KLAR.includes('waisr'),
+  "WAI-SR ('waisr') er IKKE i OFFENTLIGT_KLAR (safe-fail: afventer Viktor licens+egnetheds-bekræftelse)");
+ok(OFFENTLIGT_KLAR.join(',') === 'gad7,phq9,who5,wsas',
+  'det digitale batteri = gad7,phq9,who5,wsas (cas/mcb + waisr-pending fjernet)');
 
 // ── 2. index.html-kontrakt (statisk kilde-tjek) ─────────────────────────────
 const here = dirname(fileURLToPath(import.meta.url));

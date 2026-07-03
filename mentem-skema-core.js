@@ -31,7 +31,12 @@ export const SKEMA_ORDER = ['cas', 'mcb', 'gad7', 'phq9', 'who5', 'wsas', 'waisr
 // de må IKKE sendes/rendres digitalt → administreres kun på papir og indtastes separat
 // i klient-record. SKEMA_ORDER + SKEMAER-definitionerne bevares (licens-pending-mønster);
 // et stale/manuelt ?s=cas-link filtreres bort her → ufuldstændigt-link-skærm.
-export const OFFENTLIGT_KLAR = ['gad7', 'phq9', 'who5', 'wsas', 'waisr'];
+//
+// WAI-SR ('waisr', alliance-selvrapport) SAFE-FAIL-ekskluderet 2026-07-03: en allowlist
+// må kun bære bekræftet-OK instrumenter. Koden annoterer det "frit/public domain", men det
+// er en påstand i kilden, ikke en Viktor-ratificeret licens+egnetheds-bekræftelse. Holdes ude
+// til Viktor bekræfter (reversibelt: tilføj 'waisr' igen her + genindsæt alliance-checkpoint).
+export const OFFENTLIGT_KLAR = ['gad7', 'phq9', 'who5', 'wsas'];
 
 // Frekvens-svarmuligheder (PHQ-9 / GAD-7, 0-3).
 const FREQ_0_3 = [
