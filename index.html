@@ -131,6 +131,50 @@
   .diary-field { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px 22px; margin-bottom:12px; transition:border-color 0.15s; }
   .diary-field.answered { border-color:var(--accent); }
   .diary-q { font-size:15px; font-weight:500; margin-bottom:14px; line-height:1.4; }
+  /* ── M1.6 · F1 søvnigheds-NRS (0-10): titel + 0..10-segmenter + ord-ankre i enderne ── */
+  .nrs-titel { display:block; font-size:16px; font-weight:600; color:var(--accent); margin-bottom:4px; }
+  .nrs-titel-ikon { display:inline-flex; width:18px; height:18px; color:var(--accent); vertical-align:-3px; margin-right:7px; }
+  /* clear:both: legend.diary-q er floated (a11y) og skubber ellers grid'et ud af kortet. */
+  .nrs-scale { display:grid; grid-template-columns:repeat(11, 1fr); gap:6px; margin-top:4px; clear:both; }
+  .nrs-option { display:flex; align-items:center; justify-content:center; min-height:44px; border:1.5px solid var(--border); border-radius:8px; cursor:pointer; background:white; font-size:15px; font-weight:500; transition:all 0.12s; }
+  .nrs-option:hover { border-color:var(--accent); background:#f0faf5; }
+  .nrs-option.checked { border-color:var(--accent); background:var(--accent); color:white; }
+  .nrs-option input[type=radio] { position:absolute; opacity:0; width:1px; height:1px; }
+  .nrs-ankre { display:flex; justify-content:space-between; gap:14px; margin-top:8px; font-size:12.5px; color:var(--muted); line-height:1.4; clear:both; }
+  .nrs-ankre span:last-child { text-align:right; }
+  @media (max-width:430px) { .nrs-scale { grid-template-columns:repeat(6, 1fr); } }
+  /* ── M1.6 · SRT ordinations-vindue (egen visning) ── */
+  .srt-uge1-badge { display:inline-flex; align-items:center; gap:7px; font-size:13px; font-weight:600; color:var(--accent); background:var(--accent-light); border-radius:999px; padding:6px 14px; margin:0 0 18px; }
+  .srt-uge1-ikon { display:inline-flex; width:16px; height:16px; color:var(--accent); }
+  .srt-vindue-ur { display:flex; flex-direction:column; align-items:center; text-align:center; gap:10px; margin:6px 0 28px; }
+  .srt-vindue-ur-ikon { display:inline-flex; width:30px; height:30px; color:var(--accent); }
+  .srt-vindue-ur-tider { display:inline-flex; align-items:center; gap:16px; font-family:'DM Serif Display',serif; font-size:40px; line-height:1; color:var(--text); }
+  .srt-vindue-ur-tider strong { font-weight:400; letter-spacing:0.5px; }
+  .srt-vindue-ur-pil { font-size:26px; color:var(--muted); }
+  .srt-blok { font-size:15px; line-height:1.6; color:var(--text); margin-bottom:22px; }
+  .srt-blok h2 { font-family:'DM Serif Display',serif; font-size:20px; font-weight:400; color:var(--accent); margin:0 0 10px; }
+  .srt-blok p { margin:0 0 12px; }
+  .srt-blok ul { margin:0; padding-left:20px; }
+  .srt-blok li { margin:0 0 9px; line-height:1.55; }
+  .srt-advarsel { background:var(--accent-light); border:1px solid var(--accent); border-radius:12px; padding:20px 22px; margin-bottom:22px; }
+  .srt-advarsel .srt-advarsel-head { display:flex; align-items:center; gap:9px; }
+  .srt-advarsel .srt-advarsel-ikon { display:inline-flex; width:22px; height:22px; color:var(--accent); flex:0 0 auto; }
+  .srt-advarsel h2 { font-family:'DM Serif Display',serif; font-size:19px; font-weight:400; color:var(--accent); margin:0; }
+  .srt-advarsel p { margin:12px 0 0; font-size:15px; line-height:1.6; color:var(--text); }
+  .srt-advarsel ul { margin:12px 0 0; padding-left:20px; }
+  .srt-advarsel li { margin:0 0 9px; line-height:1.55; }
+  @media (max-width:430px) { .srt-vindue-ur-tider { font-size:32px; gap:12px; } }
+  @keyframes srtRo { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+  #screen-soevnvindue.active .wrap > * { animation:srtRo 0.45s ease both; }
+  /* ── M1.6 · F2 "Sikkerhed i dag" ── */
+  .sik-mikro { font-size:13px; color:var(--muted); line-height:1.5; margin:10px 0 0; }
+  .sik-note { width:100%; min-height:84px; padding:12px 16px; border:1.5px solid var(--border); border-radius:8px; font-family:'DM Sans',sans-serif; font-size:15px; margin-top:12px; resize:vertical; }
+  .sik-note:focus { border-color:var(--accent); outline:none; }
+  .sik-sms-btn { display:inline-block; margin-top:14px; padding:12px 20px; min-height:44px; background:var(--accent); color:white; border:none; border-radius:8px; font-family:'DM Sans',sans-serif; font-size:15px; font-weight:600; text-decoration:none; cursor:pointer; }
+  /* ── M1.6 · kompakt vindue-reminder i dagbogen ── */
+  .srt-diary-reminder { display:flex; align-items:center; gap:9px; font-size:14px; color:var(--text); background:var(--accent-light); border:1px solid var(--accent); border-radius:10px; padding:10px 14px; margin-bottom:18px; }
+  .srt-diary-reminder .srt-uge1-ikon { width:18px; height:18px; }
+  .srt-diary-reminder a { color:var(--accent); font-weight:600; }
   .diary-q .question-num { font-size:12px; color:var(--muted); font-weight:400; margin-right:8px; }
   .diary-optional { font-size:12px; color:var(--muted); font-weight:400; font-style:italic; margin-left:6px; }
   .diary-hint { font-size:13px; color:var(--muted); font-weight:400; line-height:1.45; margin:-6px 0 14px; }
@@ -266,6 +310,23 @@
 </div>
 
 <!-- D1: SØVNDAGBOG — status/velkomst (akkumulerende) -->
+<!-- M1.6 · SRT ordinations-vindue: EGEN visning FØR dagbogen (vindue + SC-regler
+     + kørsels-advarsel hvis adv=1 + videre-til-dagbog). Verbatim låst copy;
+     klokkeslæt afledt af tib/wake. Ingen data-indsamling her (ren render). -->
+<div id="screen-soevnvindue" class="screen">
+  <div class="wrap">
+    <p class="srt-uge1-badge" id="srt-uge1-badge" hidden><span class="srt-uge1-ikon" aria-hidden="true"></span><span id="srt-uge1-tekst">Den første uge</span></p>
+    <div class="srt-vindue-ur" id="srt-vindue-ur" hidden>
+      <span class="srt-vindue-ur-ikon" aria-hidden="true"></span>
+      <span class="srt-vindue-ur-tider"><strong id="srt-vindue-fra">--:--</strong><span class="srt-vindue-ur-pil" aria-hidden="true">→</span><strong id="srt-vindue-til">--:--</strong></span>
+    </div>
+    <div class="srt-blok" id="srt-vindue-blok"></div>
+    <div class="srt-blok" id="srt-sc-blok"></div>
+    <div class="srt-advarsel" role="note" id="srt-advarsel-blok" hidden></div>
+    <button class="btn-primary" id="srt-videre-btn" hidden>Videre til dagbogen</button>
+  </div>
+</div>
+
 <div id="screen-diary-welcome" class="screen">
   <div class="wrap">
     <h1>Din <em>søvndagbog</em></h1>
@@ -388,13 +449,27 @@ import { SKEMAER, SKEMA_ORDER, OFFENTLIGT_KLAR, buildPayload, buildPayloadCSD, b
          CSD_SOEVNDAGBOG, SOEVN_BASELINE, CONTENT_VERSION, SITE_BUILD, kryptoStoettet,
          PINNED_PUBKEY, PINNED_KEY_ID, resolveRecipientKey,
          INSTRUMENTER, instrumentFeltOrden, buildInstrumentMycel,
-         SOEVN_SCREENING, buildPayloadScreening } from './mentem-skema-core.js';
+         SOEVN_SCREENING, buildPayloadScreening,
+         SRT_VINDUE_TEKST, SOEVN_F2 } from './mentem-skema-core.js';
 
 // ── URL-parametre (?s=batteri  ?n=sessionsnummer  ?pk=cross-check) ────────
 const params   = new URLSearchParams(location.search);
 const sParam   = params.get('s');
 const sessionN = params.get('n') ? parseInt(params.get('n'), 10) : null;
 const dParam   = params.get('d') ? parseInt(params.get('d'), 10) : null;   // dagbog-periode (dage)
+
+// ── M1.6 · SRT-leverance-params (tib/wake/adv/tn/mode) ────────────────────
+// Mapping = SRTOrdinationURLCodec (OrdinationLeverandoer.swift:62, Code-confirmet
+// 3/7): tib = minutter i seng (int) · wake = fast opvågning HH:MM · adv = 1/0
+// kørsels-advarsel · tn = titrerings-nr (0 = uge 1) · mode = fuldSRT|kompression.
+// Til stede => ordinations-vinduet vises FØRST (egen visning) og dagbogen kører
+// dailyDiary-mode (F1/F2). Fraværende => ALT nyt no-op'er (baseline-stien urørt).
+const srtTibParam  = params.get('tib');
+const srtWakeParam = params.get('wake');
+const srtAdvAktiv  = params.get('adv') === '1';
+const srtTn        = params.get('tn') != null ? parseInt(params.get('tn'), 10) : null;
+const srtMode      = params.get('mode');
+const srtAktiv     = srtTibParam != null && srtWakeParam != null;
 
 // ── Server draft-store (Mulighed A) ───────────────────────────────────────
 // token = forløbs-id (128-bit, fra Mentem). {BASE} er KONFIGURERBAR (ikke
@@ -601,6 +676,12 @@ const ICONS = {
   laas:        SVG('<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>'),
   hoejttaler:  SVG('<path d="M4 9.5v5h3.5L12 18V6L7.5 9.5z"/><path d="M15.5 9.7a3.2 3.2 0 0 1 0 4.6"/><path d="M18 7.6a6 6 0 0 1 0 8.8"/>'),
   maane:       SVG('<path d="M19 14.2A7 7 0 1 1 9.8 5a5.6 5.6 0 0 0 9.2 9.2z"/>'),
+  // M1.6 SRT-vindue + safety (egne house-style line-ikoner, ikke emoji/lånte glyffer):
+  // seng = søvnvindue · ur = klokkeslæt · skjold = sikkerhed · soevnighed = F1 drowsy-eye.
+  soevnighed:  SVG('<path d="M3.5 11.5c2.4 3 5.4 4.5 8.5 4.5s6.1-1.5 8.5-4.5"/><line x1="7.5" y1="15.2" x2="6.5" y2="17.4"/><line x1="12" y1="16.4" x2="12" y2="18.8"/><line x1="16.5" y1="15.2" x2="17.5" y2="17.4"/>'),
+  seng:        SVG('<path d="M3 18v-5"/><path d="M21 18v-3a3 3 0 0 0-3-3H3"/><line x1="3" y1="15" x2="21" y2="15"/><path d="M7 12V9.5A1.5 1.5 0 0 1 8.5 8h2.5A1.5 1.5 0 0 1 12.5 9.5V12"/>'),
+  ur:          SVG('<circle cx="12" cy="12" r="8"/><path d="M12 7.5V12l3 2"/>'),
+  skjold:      SVG('<path d="M12 3l7 3v5c0 4.2-2.8 7.2-7 8.5-4.2-1.3-7-4.3-7-8.5V6z"/><path d="M9 12l2 2 4-4"/>'),
   lup:         SVG('<circle cx="11" cy="11" r="6"/><line x1="15.5" y1="15.5" x2="20" y2="20"/>'),
   check:       SVG('<path d="M5 12.5l4.5 4.5L19 7"/>'),
   // Substans-ikoner (Q10) — egne house-style line-ikoner, ikke emoji/lånte glyffer.
@@ -973,7 +1054,144 @@ function diaryHasToday() {
   return !!(diaryState && diaryState.entries.find(e => e.date === todayISO()));
 }
 
+// ── M1.6 · SRT ordinations-vindue: render + helpers ────────────────────────
+function srtHhmmToMin(t) {
+  var p = String(t).split(':');
+  if (p.length !== 2) return null;
+  var h = parseInt(p[0], 10), m = parseInt(p[1], 10);
+  if (isNaN(h) || isNaN(m) || h < 0 || h > 23 || m < 0 || m > 59) return null;
+  return h * 60 + m;
+}
+function srtMinToHhmm(min) {
+  min = ((min % 1440) + 1440) % 1440;
+  var h = Math.floor(min / 60), m = min % 60;
+  return ('0' + h).slice(-2) + ':' + ('0' + m).slice(-2);
+}
+function srtEsc(x) { return String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+function srtInlineBold(x) { return srtEsc(x).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>'); }
+// Minimal markdown (fed førstelinje = heading · "- " punktliste · **fed**) → sikker
+// HTML. .srt-aloud på hvert element så "Få læst op" rammer ALT verbatim i visuel
+// rækkefølge (safety-advarslen SKAL læses op). headIcon = ikon foran heading.
+function srtBlokHtml(md, opts) {
+  opts = opts || {};
+  var lines = String(md).split('\n'), html = '', inList = false;
+  for (var i = 0; i < lines.length; i++) {
+    var ln = lines[i];
+    if (ln.indexOf('- ') === 0) {
+      if (!inList) { html += '<ul>'; inList = true; }
+      html += '<li class="srt-aloud">' + srtInlineBold(ln.slice(2)) + '</li>';
+    } else {
+      if (inList) { html += '</ul>'; inList = false; }
+      var t = ln.trim();
+      if (!t.length) continue;
+      if (/^\*\*[^*]+\*\*$/.test(t)) {
+        var head = srtEsc(t.replace(/\*\*/g, ''));
+        html += opts.headIcon
+          ? '<div class="srt-advarsel-head"><span class="srt-advarsel-ikon" aria-hidden="true">' + iconSVG(opts.headIcon) + '</span><h2 class="srt-aloud">' + head + '</h2></div>'
+          : '<h2 class="srt-aloud">' + head + '</h2>';
+      } else {
+        html += '<p class="srt-aloud">' + srtInlineBold(ln) + '</p>';
+      }
+    }
+  }
+  if (inList) html += '</ul>';
+  return html;
+}
+// Ordinations-vinduet (M1.6 §2): vindue (Tekst 1 / GK4 v. kompression) + SC-regler
+// (Tekst 2) + kørsels-advarsel (Tekst 3, KUN adv=1) + videre-til-dagbog.
+function renderSoevnvindue() {
+  var tekst = SRT_VINDUE_TEKST;
+  var tib = (srtTibParam != null) ? parseInt(srtTibParam, 10) : NaN;
+  var wakeMin = srtHhmmToMin(srtWakeParam);
+  var ugeEt = srtTn === 0;
+
+  if (ugeEt) {
+    var badge = document.getElementById('srt-uge1-badge');
+    badge.querySelector('.srt-uge1-ikon').innerHTML = iconSVG('seng');
+    badge.hidden = false;
+  }
+
+  // Klokkeslæt-vindue (sengetid = wake minus tib): KUN klokkeslæt, ALDRIG SE-tal.
+  var sengetid = (!isNaN(tib) && wakeMin != null) ? srtMinToHhmm(wakeMin - tib) : null;
+  if (sengetid != null) {
+    var urEl = document.getElementById('srt-vindue-ur');
+    urEl.querySelector('.srt-vindue-ur-ikon').innerHTML = iconSVG('ur');
+    document.getElementById('srt-vindue-fra').textContent = sengetid;
+    document.getElementById('srt-vindue-til').textContent = srtWakeParam;
+    urEl.hidden = false;
+  }
+
+  // Vinduestekst: fuldSRT = Tekst 1 (klokkeslæt indsat) · kompression = GK4 blød
+  // (låst, uden klokkeslæt-pladsholdere). Defensiv fallback hvis params mangler.
+  var blok = document.getElementById('srt-vindue-blok');
+  if (srtMode === 'kompression') {
+    blok.innerHTML = srtBlokHtml(tekst.gk4);
+  } else if (sengetid != null) {
+    var vindueMd = String(tekst.vindue)
+      .split('{sengetid}').join(sengetid)
+      .split('{opvågning}').join(srtWakeParam);
+    blok.innerHTML = srtBlokHtml(vindueMd);
+  } else {
+    blok.innerHTML = '<h2 class="srt-aloud">Dit søvnvindue</h2>'
+      + '<p class="srt-aloud">Vinduet kunne ikke vises her. Åbn linket fra din psykolog igen, eller kontakt din psykolog.</p>';
+  }
+
+  document.getElementById('srt-sc-blok').innerHTML = srtBlokHtml(tekst.scRegler);
+
+  if (srtAdvAktiv) {
+    var advEl = document.getElementById('srt-advarsel-blok');
+    advEl.innerHTML = srtBlokHtml(tekst.koerselsAdvarsel, { headIcon: 'skjold' });
+    advEl.hidden = false;
+  }
+
+  // Videre-til-dagbog (samme forløb, ingen ny URL-kontekst).
+  var videre = document.getElementById('srt-videre-btn');
+  if (diaryId) {
+    videre.hidden = false;
+    if (!videre.dataset.wired) {
+      videre.dataset.wired = '1';
+      videre.addEventListener('click', function () { runDiary(diaryId); });
+    }
+  }
+
+  showScreen('screen-soevnvindue');
+  window.scrollTo(0, 0);
+}
+// Dag-index i dagbogs-perioden (0 = første dag) for den dato der udfyldes.
+function diaryDayIndex() {
+  if (!diaryState || !diaryState.startedAt) return 0;
+  var a = new Date(diaryState.startedAt + 'T00:00:00');
+  var b = new Date((diaryFillDate || todayISO()) + 'T00:00:00');
+  if (isNaN(a) || isNaN(b)) return 0;
+  return Math.max(0, Math.round((b - a) / 86400000));
+}
+// M1.6-synlighed: srtOnly-felter (F1/F2) findes KUN i SRT-mode (baseline urørt).
+// F1-kadence: dagligt i uge 1 (tn=0), derefter ugentligt (safety-spec §2/SM1).
+function diaryFieldVisible(f) {
+  if (f.srtOnly && !srtAktiv) return false;
+  if (!f.weekOneDaily) return true;
+  if (srtTn === 0) return true;
+  var di = diaryDayIndex();
+  return di < 7 || (di % 7 === 0);
+}
+
 async function runDiary(id) {
+  // M1.6: kompakt vindue-reminder øverst i dagbogen (SRT-mode; link tilbage til vinduet).
+  if (srtAktiv && !document.getElementById('srt-diary-reminder')) {
+    const dWrap = document.querySelector('#screen-diary-form .wrap');
+    const tibV = parseInt(srtTibParam, 10);
+    const wm = srtHhmmToMin(srtWakeParam);
+    const fraTid = (!isNaN(tibV) && wm != null) ? srtMinToHhmm(wm - tibV) : null;
+    if (fraTid != null && dWrap) {
+      const el = document.createElement('div');
+      el.className = 'srt-diary-reminder'; el.id = 'srt-diary-reminder';
+      el.innerHTML = `<span class="srt-uge1-ikon" aria-hidden="true">${iconSVG('seng')}</span>`
+        + `<span>Dit søvnvindue: <strong>${fraTid}-${srtWakeParam}</strong> · <a href="#" id="srt-reminder-link">Se det igen</a></span>`;
+      dWrap.insertBefore(el, dWrap.firstElementChild);
+      el.querySelector('#srt-reminder-link').addEventListener('click', (e) => { e.preventDefault(); renderSoevnvindue(); });
+    }
+  }
+
   diarySkema = SKEMAER[id];
   // Eksisterende periode bevares; plannedDays + contentVersion låses ved første
   // åbning (et senere ?d=/ny site-version ændrer ikke en igangværende periode, G2).
@@ -1423,6 +1641,9 @@ function renderDiaryFields() {
   const root = document.getElementById('diary-fields');
   root.innerHTML = '';
   diarySkema.fields.forEach((f, i) => {
+    // M1.6: skjulte felter (srtOnly uden SRT-mode · F1 uden for kadencen ·
+    // safetyNote der renderes af safety-sektionen) hverken vises eller tælles.
+    if (!diaryFieldVisible(f) || f.kind === 'safetyNote') return;
     const inputId = `dfield-${f.key}`;
     const optTag = f.optional ? '<span class="diary-optional">valgfrit</span>' : '';
     // Nummeret er KUN en visuel ordinal — skjult for skærmlæser (aria-hidden) så
@@ -1430,6 +1651,94 @@ function renderDiaryFields() {
     // (oplæsnings-venlig tilstand), så et oplæst "8." foran ville være redundant.
     const qHtml = `<span class="question-num" aria-hidden="true">${i + 1}.</span>${f.text}${optTag}`;
     const val = diaryDraft[f.key];
+
+    // M1.6 F1: 0-10 NRS m. ord-ankre KUN i enderne; INGEN score-feedback.
+    if (f.kind === 'nrs') {
+      const fs = document.createElement('fieldset');
+      fs.className = 'diary-field nrs-field';
+      const legend = document.createElement('legend');
+      legend.className = 'diary-q';
+      legend.innerHTML = `<span class="question-num" aria-hidden="true">${i + 1}.</span>`
+        + (f.titel ? `<span class="nrs-titel"><span class="nrs-titel-ikon" aria-hidden="true">${iconSVG('soevnighed')}</span>${f.titel}</span>` : '') + f.text;
+      fs.appendChild(legend);
+      const group = document.createElement('div'); group.className = 'nrs-scale'; group.setAttribute('role', 'radiogroup');
+      for (let v = f.min; v <= f.max; v++) {
+        const rid = `${inputId}-${v}`;
+        const opt = document.createElement('label');
+        opt.className = 'nrs-option' + (val === v ? ' checked' : '');
+        opt.setAttribute('for', rid);
+        const aria = v === f.min ? `${v}, ${f.anker0}` : v === f.max ? `${v}, ${f.anker10}` : `${v}`;
+        opt.innerHTML = `<input type="radio" id="${rid}" name="${f.key}" value="${v}" aria-label="${aria}" ${val === v ? 'checked' : ''}><span aria-hidden="true">${v}</span>`;
+        opt.querySelector('input').addEventListener('change', () => {
+          diaryDraft[f.key] = v;
+          group.querySelectorAll('.nrs-option').forEach(o => o.classList.remove('checked'));
+          opt.classList.add('checked'); markDiaryField(fs, f); updateDiaryProgress();
+        });
+        group.appendChild(opt);
+      }
+      fs.appendChild(group);
+      const ankre = document.createElement('div'); ankre.className = 'nrs-ankre';
+      const a0 = document.createElement('span'); a0.textContent = f.anker0;
+      const a10 = document.createElement('span'); a10.textContent = f.anker10;
+      ankre.appendChild(a0); ankre.appendChild(a10);
+      fs.appendChild(ankre);
+      markDiaryField(fs, f);
+      root.appendChild(fs);
+      return;
+    }
+
+    // M1.6 F2 "Sikkerhed i dag" (LÅST copy): Nej/Ja + valgfri fritekst ved Ja +
+    // SM3-failsafe (Tekst 4) reveal + "Skriv til Viktor". Styrer incidentFlag
+    // (bool) + incidentNote (fritekst) i draftet.
+    if (f.kind === 'safety') {
+      const fs = document.createElement('fieldset');
+      fs.className = 'diary-field safety-field';
+      const legend = document.createElement('legend');
+      legend.className = 'diary-q';
+      legend.innerHTML = `<span class="question-num" aria-hidden="true">${i + 1}.</span>`
+        + `<span class="nrs-titel"><span class="nrs-titel-ikon" aria-hidden="true">${iconSVG('skjold')}</span>${f.titel}</span>` + f.text;
+      fs.appendChild(legend);
+
+      const group = document.createElement('div'); group.className = 'radio-group'; group.setAttribute('role', 'radiogroup');
+      const detaljer = document.createElement('div'); detaljer.hidden = (val !== true);
+      const failsafe = document.createElement('div');
+      failsafe.className = 'srt-advarsel'; failsafe.setAttribute('role', 'alert');
+      failsafe.innerHTML = srtBlokHtml(SOEVN_F2.failsafe, { headIcon: 'skjold' })
+        + `<a class="sik-sms-btn" href="${smsLink('+4553537585', 'Hej Viktor. Jeg har markeret Sikkerhed i dag i min søvndagbog.')}">${srtEsc(SOEVN_F2.knap)}</a>`;
+      const note = document.createElement('textarea');
+      note.className = 'sik-note';
+      note.placeholder = SOEVN_F2.placeholder;
+      note.setAttribute('aria-label', 'Valgfri beskrivelse');
+      if (typeof diaryDraft.incidentNote === 'string') note.value = diaryDraft.incidentNote;
+      note.addEventListener('input', () => { diaryDraft.incidentNote = note.value; });
+      detaljer.appendChild(note);
+      detaljer.appendChild(failsafe);
+
+      [{ label: 'Nej', v: false }, { label: 'Ja', v: true }].forEach(({ label, v }) => {
+        const rid = `${inputId}-${v}`;
+        const opt = document.createElement('label');
+        opt.className = 'radio-option' + (val === v ? ' checked' : '');
+        opt.setAttribute('for', rid);
+        opt.innerHTML = `<input type="radio" id="${rid}" name="${f.key}" ${val === v ? 'checked' : ''}><span>${label}</span>`;
+        opt.querySelector('input').addEventListener('change', () => {
+          diaryDraft[f.key] = v;
+          if (v !== true) { diaryDraft.incidentNote = ''; note.value = ''; }
+          detaljer.hidden = (v !== true);
+          group.querySelectorAll('.radio-option').forEach(o => o.classList.remove('checked'));
+          opt.classList.add('checked'); markDiaryField(fs, f); updateDiaryProgress();
+        });
+        group.appendChild(opt);
+      });
+      fs.appendChild(group);
+      const mikro = document.createElement('p');
+      mikro.className = 'sik-mikro';
+      mikro.textContent = SOEVN_F2.mikro;
+      fs.appendChild(mikro);
+      fs.appendChild(detaljer);
+      markDiaryField(fs, f);
+      root.appendChild(fs);
+      return;
+    }
 
     // Scale → <fieldset>/<legend> om radioknapperne (semantisk gruppe, A11Y).
     if (f.kind === 'scale') {
@@ -1516,7 +1825,7 @@ function renderDiaryFields() {
 }
 
 function updateDiaryProgress() {
-  const req = diarySkema.fields.filter(f => !f.optional);
+  const req = diarySkema.fields.filter(f => !f.optional && diaryFieldVisible(f) && f.kind !== 'safetyNote');
   const filled = req.filter(f => { const v = diaryDraft[f.key]; return v != null && v !== ''; }).length;
   const pct = req.length ? Math.round(filled / req.length * 100) : 100;
   document.getElementById('diary-form-fill').style.width = pct + '%';
@@ -2276,12 +2585,14 @@ function substansHasContent(v) {
 }
 
 function saveDiaryEntry() {
-  const req = diarySkema.fields.filter(f => !f.optional);
+  const req = diarySkema.fields.filter(f => !f.optional && diaryFieldVisible(f) && f.kind !== 'safetyNote');
   if (req.some(f => { const v = diaryDraft[f.key]; return v == null || v === ''; })) return;
 
   const date = diaryFillDate || todayISO();    // i dag ELLER i går-backfill
   const entry = { date, savedAt: new Date().toISOString() };   // savedAt → newest-wins-merge
   diarySkema.fields.forEach(f => {
+    // M1.6: skjulte felter persisteres ikke (F1 uden for kadence = null/udeladt).
+    if (!diaryFieldVisible(f)) return;
     const v = diaryDraft[f.key];
     if (v == null || v === '') return;
     if (f.kind === 'substans' && !substansHasContent(v)) return;   // urørt valgfrit felt = ubesvaret
@@ -2606,6 +2917,9 @@ if (screeningId) {
   runScreening(screeningId);
 } else if (baselineId) {
   runBaseline(baselineId);
+} else if (diaryId && srtAktiv) {
+  // M1.6: SRT-leverance => ordinations-vinduet er egen visning FØR dagbogen.
+  renderSoevnvindue();
 } else if (diaryId) {
   runDiary(diaryId);
 } else if (instrumentId) {

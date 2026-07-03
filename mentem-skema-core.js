@@ -184,6 +184,39 @@ export const SKEMAER = {
 // SLEEP 35(2):287-302 - "The Consensus Sleep Diary: Standardizing prospective
 // sleep self-monitoring"). Fri klinisk brug. Gengivet uændret med kildeangivelse.
 // Felterne følger CSD-M (morgen-versionen): udfyldes om morgenen for natten der gik.
+// ════════════════════════════════════════════════════════════════════════
+//  M1.6 · SRT-safety-copy (Viktor-låst verbatim)
+// ════════════════════════════════════════════════════════════════════════
+// Single-source-of-truth = SoevnKlientTekstLaas.swift (PsykologInvitation,
+// Viktor-låst verbatim @aa8e47a) + srt-klient-tekst-laas-2026-06-02.md.
+// Gengivet ORDRET her (web kan ikke importere Swift). 0 em-dash, æøå.
+// RØR ALDRIG ordlyden uden at opdatere Swift-single-source + lås-tests FØRST.
+export const SOEVN_F1 = {
+  titel:   'Søvnighed i dag',
+  prompt:  'Hvor søvnig har du følt dig i løbet af dagen i dag? Tænk på, hvor tæt du har været på at døse hen eller falde i søvn, mens du var i gang med noget.',
+  anker0:  'slet ikke søvnig, klar og vågen hele dagen',
+  anker10: 'ekstremt søvnig, kæmpede for at holde mig vågen',
+};
+
+// F2 "Sikkerhed i dag" (LÅST verbatim, Viktor 4/6: 6 beslutninger) + Tekst 4
+// SM3-failsafe (LÅST verbatim, Viktor 2/6). Klient-rejst safety-flag; ved "Ja"
+// vises Tekst 4 uændret + "Skriv til Viktor"-knap. Eksport-nøgler incidentFlag
+// (bool) + incidentNote (valgfri fritekst) = M1.3-kontrakt, additiv/bagudkompat.
+export const SOEVN_F2 = {
+  titel:       'Sikkerhed i dag',
+  prompt:      'Var du i dag tæt på en ulykke på grund af træthed, eller faldt du i søvn et sted, hvor det kunne være farligt (fx bag rattet, ved en maskine)?',
+  placeholder: 'Du behøver ikke skrive noget, men hvis du vil, kan du fortælle kort, hvad der skete.',
+  mikro:       'Det her er ikke noget, du kan svare forkert på. Vælger du "Ja", hører jeg det med det samme, og vi finder ud af det sammen.',
+  failsafe:
+`**Tak fordi du fortæller mig det.**
+Din krop er for søvnig lige nu til, at det er sikkert at fortsætte med det stramme søvnvindue. Det er ikke noget, du har gjort forkert. Vi justerer.
+Gør det her nu:
+- Sov efter dine vante tider i nat. Læg dig, når du plejer, og bliv i sengen, så længe du har brug for.
+- Lad være med at køre bil eller betjene maskiner, før du føler dig udhvilet.
+- Skriv til mig hurtigst muligt, så finder vi den rigtige justering sammen.`,
+  knap:        'Skriv til Viktor',
+};
+
 export const CSD_SOEVNDAGBOG = {
   id: 'soevndagbog', kind: 'diary', title: 'Søvndagbog', short: 'Søvndagbog', icon: 'maane',
   badge: 'én gang om morgenen',
@@ -205,6 +238,21 @@ export const CSD_SOEVNDAGBOG = {
     // data). Tomt = ubesvaret. Det eneste der må forudfylde er "Samme som i går".
     { key: 'naps',            kind: 'text',   text: 'Tog du dig en lur eller blund i løbet af gårsdagen? (antal og samlet varighed, valgfrit)', optional: true },
     { key: 'substans',        kind: 'substans', ramme: 'igaar', text: 'Tog du søvnmedicin, alkohol eller koffein i går?', optional: true },
+    // ── M1.6/M1.3 additive SRT-safety-felter (srtOnly: vises KUN i SRT-mode; ──
+    // baseline-stien uden SRT-params er urørt). Ingen `default` (fantom-default-
+    // reglen). Eksport-nøgler flyder additivt gennem buildPayloadCSD FIELD_KEYS.
+    // F1: 0-10 NRS efter CSD-items (VORES A4-konstrukt, ikke en del af CSD).
+    // Dagligt i uge 1 (tn=0), derefter ugentligt (weekOneDaily; safety-spec §2).
+    // INGEN tal-/score-feedback til klienten (scoren går kun til motor+Viktor).
+    { key: 'daytimeSleepiness_0_10', kind: 'nrs', srtOnly: true, weekOneDaily: true,
+      titel: SOEVN_F1.titel, text: SOEVN_F1.prompt,
+      anker0: SOEVN_F1.anker0, anker10: SOEVN_F1.anker10, min: 0, max: 10 },
+    // F2: klient-rejst safety-flag (SM3-trigger). Ved "Ja": valgfri fritekst +
+    // Tekst 4-failsafe-reveal + "Skriv til Viktor". incidentNote renderes AF
+    // safety-sektionen (kind 'safetyNote' renderer intet selv).
+    { key: 'incidentFlag', kind: 'safety', srtOnly: true,
+      titel: SOEVN_F2.titel, text: SOEVN_F2.prompt },
+    { key: 'incidentNote', kind: 'safetyNote', srtOnly: true, optional: true, text: '' },
   ],
 };
 
@@ -212,6 +260,39 @@ export const CSD_SOEVNDAGBOG = {
 // standalone monitorerings-dagbog, aldrig en del af det booking-koblede
 // spørgeskema-batteri).
 SKEMAER.soevndagbog = CSD_SOEVNDAGBOG;
+
+// ════════════════════════════════════════════════════════════════════════
+//  M1.6 · SRT ordinations-vindue (kind:'srtVindue') · EGEN visning FØR dagbog
+// ════════════════════════════════════════════════════════════════════════
+// Tekst 1/2/3 (Viktor-låst verbatim, em-dash-fri re-lås 26/6) + GK4 (blød
+// compression-vinduestekst, låst 3/6, bruges når mode=kompression). Klokkeslæt
+// ({sengetid}/{opvågning}) afledes ved render af tib/wake; INTET SE-tal i copy.
+export const SRT_VINDUE_TEKST = {
+  vindue:
+`**Dit søvnvindue**
+Dit søvnvindue er den periode, du må være i sengen lige nu: fra **{sengetid}** til **{opvågning}**. Det kan føles kortere, end du er vant til. Det er meningen. Ved at samle din søvn i et fast vindue hjælper vi din krop med at sove mere sammenhængende. Stå op på det faste tidspunkt hver morgen, også i weekenden. Vi justerer vinduet undervejs ud fra din dagbog.`,
+  scRegler:
+`**Sådan bruger du sengen**
+- Gå kun i seng, når du er søvnig.
+- Brug kun sengen til søvn (og sex), ikke til at ligge vågen, se skærm eller bekymre dig.
+- **Forlad sengen, hvis du føler dig vågen eller frustreret, uden at kigge på uret.** Gå ind i et andet rum, og gå tilbage til sengen, når du føler dig søvnig nok til at falde i søvn.
+- Stå op på det samme tidspunkt hver morgen.
+- Undgå at sove eller blunde i løbet af dagen.`,
+  koerselsAdvarsel:
+`**Vigtigt om sikkerhed den første uge**
+Den første uge med dit nye søvnvindue kan gøre dig lidt mere træt om dagen, mens din krop vænner sig til det. Hvis du mærker øget træthed, så **undgå aktiviteter, hvor søvnighed kan være farlig for dig, for eksempel at køre langt eller betjene farlige maskiner.** Er du fortsat meget træt i dagtimerne efter den første uge, så sig til, så har vi sandsynligvis sat vinduet for stramt, og vi justerer det.`,
+  gk4:
+`**Introduktion**
+De næste uger justerer vi langsomt den tid, du er i sengen, så den kommer til at passe bedre til den søvn, din krop faktisk bruger. Vi går forsigtigt, et lille skridt ad gangen, så det ikke bliver hårdt undervejs.
+**Det ugentlige vindue**
+Du får et tidsrum at sove i, som vi strammer en lille smule hver uge. Følg det så godt du kan, læg dig og stå op inden for det. Det kan føles uvant i starten, men det er sådan, søvnen samler sig igen.
+Vi finjusterer sammen undervejs ud fra, hvordan det går for dig. Det skal ikke være ubehageligt, mærker du, at det bliver for hårdt, så sig til, så tilpasser vi.`,
+};
+export const SRT_VINDUE = {
+  id: 'soevnvindue', kind: 'srtVindue', title: 'Dit søvnvindue', short: 'Søvnvindue',
+  icon: 'seng', tekst: SRT_VINDUE_TEKST,
+};
+SKEMAER.soevnvindue = SRT_VINDUE;
 
 // ════════════════════════════════════════════════════════════════════════
 //  SØVN-BASELINE - engangs intake-skema (IKKE-akkumulerende)
