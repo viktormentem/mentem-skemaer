@@ -26,7 +26,12 @@ export const SKEMA_ORDER = ['cas', 'mcb', 'gad7', 'phq9', 'who5', 'wsas', 'waisr
 // så vi aldrig navngiver et enkelt instrument på velkomstskærmen (generisk copy fjerner
 // licensnavne-skønnet permanent, Viktor V90). Et fremtidigt licens-pending skema fjernes
 // blot herfra → kan ikke længere rendres offentligt, uden at SKEMA_ORDER røres.
-export const OFFENTLIGT_KLAR = ['cas', 'mcb', 'gad7', 'phq9', 'who5', 'wsas', 'waisr'];
+//
+// CAS-1 ('cas') + MCB ('mcb') FJERNET 2026-07-03 (Viktor-beslutning, Wells-licens):
+// de må IKKE sendes/rendres digitalt → administreres kun på papir og indtastes separat
+// i klient-record. SKEMA_ORDER + SKEMAER-definitionerne bevares (licens-pending-mønster);
+// et stale/manuelt ?s=cas-link filtreres bort her → ufuldstændigt-link-skærm.
+export const OFFENTLIGT_KLAR = ['gad7', 'phq9', 'who5', 'wsas', 'waisr'];
 
 // Frekvens-svarmuligheder (PHQ-9 / GAD-7, 0-3).
 const FREQ_0_3 = [
