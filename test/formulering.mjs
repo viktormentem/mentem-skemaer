@@ -6,7 +6,8 @@
 //  2. parseFormuleringFragment + parseFelter round-tripper GOLDEN_FRAGMENT korrekt
 //     (rækkefølge, fuld tekst uden afkortning, æøå decodet korrekt).
 //  3. Generisk parse (vilkårlige felter, ingen afkortning af lange værdier).
-//  4. BOKS_TITLER + SLOEJFER = 0 em-dash og 0 en-dash.
+//  4. BOKS_TITLER + SLOEJFER + FORMULERING_UI (renderFormulering inline-strenge) =
+//     0 em-dash og 0 en-dash.
 //
 // Kør: node test/formulering.mjs   (exit 0 = alle grønne)
 
@@ -15,6 +16,7 @@ import {
   FORMULERING_BOKS_TITLER,
   FORMULERING_REKKEFOELGE,
   FORMULERING_SLOEJFER,
+  FORMULERING_UI,
   parseFormuleringFragment,
   parseFelter,
   FORMULERING_GOLDEN_FRAGMENT,
@@ -92,6 +94,9 @@ for (const sloejfe of FORMULERING_SLOEJFER) {
   check(`SLOEJFER[${sloejfe.id}] har 0 em-/en-dash`, !/[–—]/.test(sloejfe.tekst), `(got ${JSON.stringify(sloejfe.tekst)})`);
 }
 check('FORMULERING_SLOEJFER har 4 sløjfer', FORMULERING_SLOEJFER.length === 4);
+for (const [navn, streng] of Object.entries(FORMULERING_UI)) {
+  check(`FORMULERING_UI.${navn} har 0 em-/en-dash`, !/[–—]/.test(streng), `(got ${JSON.stringify(streng)})`);
+}
 
 console.log('formulering: NOEGLER reverse-lookup dækker hele REKKEFOELGE:');
 for (const felt of FORMULERING_REKKEFOELGE) {

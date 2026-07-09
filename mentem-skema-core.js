@@ -1404,7 +1404,8 @@ export function parseFelter(params) {
   for (const felt of FORMULERING_REKKEFOELGE) {
     const kort = Object.keys(FORMULERING_NOEGLER).find(k => FORMULERING_NOEGLER[k] === felt);
     const raw = kort != null ? params[kort] : undefined;
-    const vaerdi = (raw == null) ? '' : decodeURIComponent(raw);
+    let vaerdi = '';
+    if (raw != null) { try { vaerdi = decodeURIComponent(raw); } catch (e) { vaerdi = raw; } }
     bokse.push({
       felt,
       titel: FORMULERING_BOKS_TITLER[felt],
@@ -1414,6 +1415,18 @@ export function parseFelter(params) {
   }
   return bokse;
 }
+
+// Formulering-UI-strenge (klient-synlige, inline i renderFormulering). Samlet HER
+// (ikke i index.html) fordi core.js er em-dash-guarded (jf. EMDASH_GUARDED_FILES);
+// test/formulering.mjs dash-checker Object.values(FORMULERING_UI).
+export const FORMULERING_UI = {
+  titel: 'Sådan kan bekymring hænge sammen',
+  hint: 'Dette er et opdigtet eksempel til at vise, hvordan tanker, følelser og adfærd kan '
+    + 'hænge sammen, ikke en beskrivelse af dig eller en diagnose. Læg mærke til pilene mellem boksene: '
+    + 'det er sammenhængen, der er det vigtige, ikke hver boks for sig.',
+  ikkeUdfyldt: 'ikke udfyldt',
+  sloejferOverskrift: 'Hvad pilene betyder',
+};
 
 // Cross-repo parity-anker: EKSAKT byte-lig med Python-siden
 // (journal.formulering_link.GOLDEN_FRAGMENT). Ændres KUN i lockstep begge steder.
@@ -1437,16 +1450,15 @@ export function renderFormulering(params, mount) {
   if (!mount) return;
   mount.innerHTML = '';
 
-  const navn = (params && params.n) ? decodeURIComponent(params.n) : '';
+  let navn = '';
+  if (params && params.n) { try { navn = decodeURIComponent(params.n); } catch (e) { navn = params.n; } }
   const h1 = document.createElement('h1');
-  h1.textContent = 'Sådan kan bekymring hænge sammen' + (navn ? ', ' + navn : '');
+  h1.textContent = FORMULERING_UI.titel + (navn ? ', ' + navn : '');
   mount.appendChild(h1);
 
   const hint = document.createElement('p');
   hint.className = 'gadanim-hint';
-  hint.textContent = 'Dette er et opdigtet eksempel til at vise, hvordan tanker, følelser og adfærd kan '
-    + 'hænge sammen, ikke en beskrivelse af dig eller en diagnose. Læg mærke til pilene mellem boksene: '
-    + 'det er sammenhængen, der er det vigtige, ikke hver boks for sig.';
+  hint.textContent = FORMULERING_UI.hint;
   mount.appendChild(hint);
 
   const nodesWrap = document.createElement('div');
@@ -1467,7 +1479,7 @@ export function renderFormulering(params, mount) {
     sec.appendChild(h2);
 
     const p = document.createElement('p');
-    p.textContent = b.vaerdi || 'ikke udfyldt';
+    p.textContent = b.vaerdi || FORMULERING_UI.ikkeUdfyldt;
     sec.appendChild(p);
 
     nodesWrap.appendChild(sec);
@@ -1476,7 +1488,7 @@ export function renderFormulering(params, mount) {
   const sloejferSec = document.createElement('section');
   sloejferSec.className = 'gadanim-sloejfer';
   const sloejferH2 = document.createElement('h2');
-  sloejferH2.textContent = 'Hvad pilene betyder';
+  sloejferH2.textContent = FORMULERING_UI.sloejferOverskrift;
   sloejferSec.appendChild(sloejferH2);
 
   const ul = document.createElement('ul');
