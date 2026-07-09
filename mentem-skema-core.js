@@ -1446,6 +1446,22 @@ export const FORMULERING_GOLDEN_FRAGMENT = '0123456789abcdef0123456789abcdef;s=f
 //  - Positive/negative metaantagelser i TYDELIGT forskellige dissonans-farver.
 //  - Følelse/symptom er INTERMITTERENDE (refinement 3) — ikke en monoton stigning.
 //  - reduced-motion → samme fulde model, ingen bevægelse (statisk).
+//
+// Flow-pile (klinisk finpuds): hint-teksten lover "pilene mellem boksene" -
+// buildFlowPil() tegner en dekorativ, nedadgående SVG-pil (EGET ikon, ingen emoji,
+// intet unicode-pil-tegn) mellem hvert par af de 9 bokse, så modellens fremadrettede
+// flow (udløser -> ... -> følelse) er visuelt eksplicit, ikke kun impliceret af rækkefølgen.
+function buildFlowPil(delaySekunder) {
+  const wrap = document.createElement('div');
+  wrap.className = 'gadanim-arrow';
+  wrap.setAttribute('aria-hidden', 'true');
+  wrap.style.animationDelay = delaySekunder + 's';
+  wrap.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" '
+    + 'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+    + '<path d="M12 4v13"/><path d="M6 12l6 6 6-6"/></svg>';
+  return wrap;
+}
+
 export function renderFormulering(params, mount) {
   if (!mount) return;
   mount.innerHTML = '';
@@ -1483,6 +1499,10 @@ export function renderFormulering(params, mount) {
     sec.appendChild(p);
 
     nodesWrap.appendChild(sec);
+
+    if (i < bokse.length - 1) {
+      nodesWrap.appendChild(buildFlowPil((i + 0.5) * 0.45));
+    }
   });
 
   const sloejferSec = document.createElement('section');

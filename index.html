@@ -253,6 +253,11 @@
   .gadanim-node.neg { border-left-color:#854810; background:#f7ecdf; }
   .gadanim-node.neg h2 { color:#854810; }
   .gadanim-emotion { animation: gadanim-ind 0.5s ease forwards, gadanim-uro 3.2s ease-in-out infinite; }
+  /* Flow-pil mellem boksene (klinisk finpuds: hint-teksten lover "pilene mellem
+     boksene", jf. buildFlowPil i mentem-skema-core.js). Dekorativ (aria-hidden),
+     samme stagger-reveal som .gadanim-node; muted farve så den ikke konkurrerer
+     med boks-indholdet. */
+  .gadanim-arrow { display:flex; justify-content:center; margin:-3px 0; color:var(--muted); opacity:0; animation:gadanim-ind 0.5s ease forwards; }
   .gadanim-sloejfer { margin-top:26px; padding:16px 18px; background:var(--accent-light); border-radius:10px; }
   .gadanim-sloejfer h2 { font-family:'DM Serif Display',serif; font-size:17px; font-weight:400; color:var(--accent); margin:0 0 10px; }
   .gadanim-sloejfer ul { margin:0; padding-left:20px; }
@@ -262,6 +267,7 @@
   @media (prefers-reduced-motion: reduce) {
     .gadanim-node{opacity:1;transform:none;animation:none}
     .gadanim-emotion{animation:none}
+    .gadanim-arrow{opacity:1;animation:none}
   }
 </style>
 <script>
