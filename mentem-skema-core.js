@@ -1418,3 +1418,73 @@ export function parseFelter(params) {
 // Cross-repo parity-anker: EKSAKT byte-lig med Python-siden
 // (journal.formulering_link.GOLDEN_FRAGMENT). Ændres KUN i lockstep begge steder.
 export const FORMULERING_GOLDEN_FRAGMENT = '0123456789abcdef0123456789abcdef;s=formulering;n=Eksempel;tr=Hvad%20nu%20hvis%20jeg%20har%20glemt%20noget%20vigtigt%3F;t1=tanker%20om%20alt%20det%20der%20kan%20g%C3%A5%20galt%20i%20morgen;em=uro%20i%20maven%2C%20sp%C3%A6ndte%20skuldre%2C%20sv%C3%A6rt%20ved%20at%20slappe%20af;nu=jeg%20kan%20ikke%20stoppe%20bekymringen%2C%20n%C3%A5r%20den%20f%C3%B8rst%20er%20i%20gang;nf=hvis%20jeg%20bliver%20ved%2C%20kan%20jeg%20br%C3%A6nde%20helt%20sammen;po=hvis%20jeg%20bekymrer%20mig%20nok%2C%20er%20jeg%20forberedt%20og%20undg%C3%A5r%20problemer;t2=det%20er%20farligt%20at%20min%20bekymring%20bare%20k%C3%B8rer%20af%20sig%20selv;ad=tjekker%20ting%20flere%20gange%3B%20s%C3%B8ger%20beroligelse%20hos%20andre;tk=pr%C3%B8ver%20at%20skubbe%20tankerne%20v%C3%A6k%3B%20sk%C3%A6lder%20mig%20selv%20ud%20for%20at%20t%C3%A6nke%20s%C3%A5dan';
+
+// ════════════════════════════════════════════════════════════════════════
+//  FORMULERING — animeret DOM-builder (Task 9). Rent browser-only (document.*),
+//  ingen node-DOM-test (verificeres via See-it). Krypto UBERØRT (PINNED_KEY_ID/
+//  PINNED_PUBKEY ovenfor). ALLE klient-synlige danske strenge bor HER (core.js
+//  er em-dash-guarded, jf. EMDASH_GUARDED_FILES) — index.html må ikke bære
+//  ny klient-copy for denne flade.
+// ════════════════════════════════════════════════════════════════════════
+//
+// Fidelitets-invarianter (LÅST, fra klinisk kilde):
+//  - Rækkefølge = FORMULERING_REKKEFOELGE (G1: ukontrollerbarhed FØR fare).
+//  - Fuld tekst, INGEN afkortning (ingen "…").
+//  - Positive/negative metaantagelser i TYDELIGT forskellige dissonans-farver.
+//  - Følelse/symptom er INTERMITTERENDE (refinement 3) — ikke en monoton stigning.
+//  - reduced-motion → samme fulde model, ingen bevægelse (statisk).
+export function renderFormulering(params, mount) {
+  if (!mount) return;
+  mount.innerHTML = '';
+
+  const navn = (params && params.n) ? decodeURIComponent(params.n) : '';
+  const h1 = document.createElement('h1');
+  h1.textContent = 'Sådan kan bekymring hænge sammen' + (navn ? ', ' + navn : '');
+  mount.appendChild(h1);
+
+  const hint = document.createElement('p');
+  hint.className = 'gadanim-hint';
+  hint.textContent = 'Dette er et opdigtet eksempel til at vise, hvordan tanker, følelser og adfærd kan '
+    + 'hænge sammen, ikke en beskrivelse af dig eller en diagnose. Læg mærke til pilene mellem boksene: '
+    + 'det er sammenhængen, der er det vigtige, ikke hver boks for sig.';
+  mount.appendChild(hint);
+
+  const nodesWrap = document.createElement('div');
+  nodesWrap.className = 'gadanim-nodes';
+  mount.appendChild(nodesWrap);
+
+  const bokse = parseFelter(params || {});
+  bokse.forEach((b, i) => {
+    const sec = document.createElement('section');
+    sec.className = 'gadanim-node';
+    if (b.felt === 'positive_metabeliefs') sec.classList.add('pos');
+    if (b.felt === 'neg_metabeliefs_ukontrollerbarhed' || b.felt === 'neg_metabeliefs_fare') sec.classList.add('neg');
+    if (b.felt === 'emotion_symptomer') sec.classList.add('gadanim-emotion');
+    sec.style.animationDelay = (i * 0.45) + 's';
+
+    const h2 = document.createElement('h2');
+    h2.textContent = b.titel;
+    sec.appendChild(h2);
+
+    const p = document.createElement('p');
+    p.textContent = b.vaerdi || 'ikke udfyldt';
+    sec.appendChild(p);
+
+    nodesWrap.appendChild(sec);
+  });
+
+  const sloejferSec = document.createElement('section');
+  sloejferSec.className = 'gadanim-sloejfer';
+  const sloejferH2 = document.createElement('h2');
+  sloejferH2.textContent = 'Hvad pilene betyder';
+  sloejferSec.appendChild(sloejferH2);
+
+  const ul = document.createElement('ul');
+  FORMULERING_SLOEJFER.forEach((s) => {
+    const li = document.createElement('li');
+    li.textContent = s.tekst;
+    ul.appendChild(li);
+  });
+  sloejferSec.appendChild(ul);
+  mount.appendChild(sloejferSec);
+}

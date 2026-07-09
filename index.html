@@ -238,6 +238,31 @@
   .a11y-stepnav button { flex:1; margin-top:0; }
   /* I tilstanden erstatter den læste "Spørgsmål X af Y" den visuelle bjælke. */
   html[data-a11y="1"] #screen-diary-form .form-progress { display:none; }
+
+  /* ── Formulering (Wells-model, animeret) — renderFormulering bygger indholdet ──
+     (mentem-skema-core.js). Stagger-mønster matcher srtRo (:170-171); reveal-
+     mønster matcher fadeIn (:119). Dissonans: pos=grøn (accent), neg=varm brun,
+     tydeligt forskellige. Følelse/symptom = intermitterende (gadanim-uro), ikke
+     en monoton stigning. reduced-motion → statisk fuld model, ingen bevægelse. */
+  .gadanim-hint { font-size:14px; color:var(--muted); line-height:1.55; margin:10px 0 22px; }
+  .gadanim-nodes { display:flex; flex-direction:column; gap:14px; }
+  .gadanim-node { background:var(--card); border:1.5px solid var(--border); border-left:4px solid var(--accent); border-radius:10px; padding:16px 18px; opacity:0; transform:translateY(6px); animation:gadanim-ind 0.5s ease forwards; }
+  .gadanim-node h2 { font-family:'DM Serif Display',serif; font-size:17px; font-weight:400; color:var(--accent); margin:0 0 6px; }
+  .gadanim-node p { font-size:15px; line-height:1.55; color:var(--ink); margin:0; }
+  .gadanim-node.pos { border-left-color:var(--accent); background:var(--accent-light); }
+  .gadanim-node.neg { border-left-color:#854810; background:#f7ecdf; }
+  .gadanim-node.neg h2 { color:#854810; }
+  .gadanim-emotion { animation:gadanim-uro 3.2s ease-in-out infinite; }
+  .gadanim-sloejfer { margin-top:26px; padding:16px 18px; background:var(--accent-light); border-radius:10px; }
+  .gadanim-sloejfer h2 { font-family:'DM Serif Display',serif; font-size:17px; font-weight:400; color:var(--accent); margin:0 0 10px; }
+  .gadanim-sloejfer ul { margin:0; padding-left:20px; }
+  .gadanim-sloejfer li { margin:0 0 9px; line-height:1.55; font-size:14px; color:var(--ink); }
+  @keyframes gadanim-ind { to{opacity:1;transform:none} }
+  @keyframes gadanim-uro { 0%{opacity:.75} 30%{opacity:.45} 60%{opacity:1} 100%{opacity:.75} }
+  @media (prefers-reduced-motion: reduce) {
+    .gadanim-node{opacity:1;transform:none;animation:none}
+    .gadanim-emotion{animation:none}
+  }
 </style>
 <script>
   /* A11Y: gendan tekststørrelse FØR render (ingen flash). Non-PII UI-præference. */
@@ -447,13 +472,37 @@
   </div>
 </div>
 
+<!-- FORMULERING (Wells-model, fragment-dispatch #<token>;s=formulering;..) — renderFormulering
+     bygger hele indholdet af .wrap i denne skærm dynamisk (mentem-skema-core.js). -->
+<div id="screen-formulering" class="screen">
+  <div class="wrap"></div>
+</div>
+
 <script type="module">
 import { SKEMAER, SKEMA_ORDER, OFFENTLIGT_KLAR, buildPayload, buildPayloadCSD, buildPayloadBaseline, mentemEncrypt,
          CSD_SOEVNDAGBOG, SOEVN_BASELINE, CONTENT_VERSION, SITE_BUILD, kryptoStoettet,
          PINNED_PUBKEY, PINNED_KEY_ID, resolveRecipientKey,
          INSTRUMENTER, instrumentFeltOrden, buildInstrumentMycel,
          SOEVN_SCREENING, buildPayloadScreening,
-         SRT_VINDUE_TEKST, SOEVN_F2 } from './mentem-skema-core.js';
+         SRT_VINDUE_TEKST, SOEVN_F2,
+         parseFormuleringFragment, renderFormulering } from './mentem-skema-core.js';
+
+// ── FORMULERING fragment-dispatch (Wells-model, s=formulering) ────────────
+// Linket bæres i URL-FRAGMENTET (#<32hex-token>;s=formulering;n=..;tr=..;..),
+// IKKE query-strengen (payload rører aldrig serveren, GDPR). Tjekkes FØR den
+// eksisterende ?s=-query-dispatch (kernebeslutning, retarget-mentem-skemaer.md
+// §"Kernebeslutning"): matcher intet (almindeligt tomt/andet hash) → no-op,
+// resten af boot/dispatchen kører helt uændret. Modulet-top-level har intet
+// `return` (ES-moduler tillader det ikke) → styres i stedet via
+// `formuleringAktiv`-flaget, der gater KUN den endelige skærm-dispatch nedenfor
+// (bootstrap-blokken, ~"screen-formulering"). Ingen render-token-gate her:
+// makeren bager altid et 32hex-token ind i linket, men der er intet hårdt
+// token-krav i denne app (jf. retarget-brief §Task 9).
+const _fFrag = parseFormuleringFragment(location.hash || '');
+const formuleringAktiv = !!(_fFrag.params && _fFrag.params.s === 'formulering');
+if (formuleringAktiv) {
+  renderFormulering(_fFrag.params, document.querySelector('#screen-formulering .wrap'));
+}
 
 // ── URL-parametre (?s=batteri  ?n=sessionsnummer  ?pk=cross-check) ────────
 const params   = new URLSearchParams(location.search);
@@ -2917,9 +2966,14 @@ async function shareBaselineEncrypted() {
   if (r === 'delt') { status.style.color = 'var(--accent)'; status.textContent = 'Filen er klar til at sende. Tak!'; }
 }
 
-// ── BOOTSTRAP: baseline-flow ELLER dagbog-flow ELLER spørgeskema-flow ──────
+// ── BOOTSTRAP: formulering-flow ELLER baseline-flow ELLER dagbog-flow ELLER spørgeskema-flow ──
 injectAkutHjaelp();   // patientsikkerhed: Akut hjælp-boks i bunden af hver skærm (alle flows)
-if (screeningId) {
+if (formuleringAktiv) {
+  // renderFormulering() har allerede bygget indholdet af #screen-formulering .wrap
+  // (fragment-dispatch øverst i modulet); resten af den eksisterende ?s=-query-
+  // dispatch-kæde springes helt over (urørt for alle andre flows).
+  showScreen('screen-formulering');
+} else if (screeningId) {
   runScreening(screeningId);
 } else if (baselineId) {
   runBaseline(baselineId);
