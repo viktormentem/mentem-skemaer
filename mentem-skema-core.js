@@ -1320,3 +1320,101 @@ export const INSTRUMENTER = {};
 for (const modul of INSTRUMENT_MODULER) {
   if (modul.KLAR) INSTRUMENTER[modul.skabelon] = modul;   // maskinel licens-gate
 }
+
+// ════════════════════════════════════════════════════════════════════════
+//  FORMULERING (Wells-model, s=formulering) - katalog + fragment-parser
+// ════════════════════════════════════════════════════════════════════════
+// Linket bygges Python-side (journal.formulering_link) som et URL-FRAGMENT
+// (#<32hex-token>;s=formulering;n=..;tr=..;..), IKKE et query-param - payload
+// rører aldrig serveren (GDPR). Denne sektion er parse + katalog ONLY; den
+// animerede DOM-builder (renderFormulering) + index.html-dispatch er en
+// separat, senere opgave. Krypto (PINNED_KEY_ID/PINNED_PUBKEY ovenfor)
+// røres ikke af formulering-modus.
+
+// Kort URL-nøgle → kanonisk feltnavn.
+export const FORMULERING_NOEGLER = {
+  tr: 'trigger',
+  t1: 'type1_worry',
+  em: 'emotion_symptomer',
+  nu: 'neg_metabeliefs_ukontrollerbarhed',
+  nf: 'neg_metabeliefs_fare',
+  po: 'positive_metabeliefs',
+  t2: 'type2_worry',
+  ad: 'adfaerd',
+  tk: 'tankekontrol',
+};
+
+// Klient-synlige danske bokstitler (G1: ukontrollerbarhed før fare).
+export const FORMULERING_BOKS_TITLER = {
+  trigger: 'Udløser',
+  positive_metabeliefs: 'Positive metaantagelser (strategivalg)',
+  type1_worry: 'Type 1-bekymring',
+  neg_metabeliefs_ukontrollerbarhed: 'Negative metaantagelser: ukontrollerbarhed',
+  neg_metabeliefs_fare: 'Negative metaantagelser: fare',
+  type2_worry: 'Type 2-bekymring (metabekymring)',
+  adfaerd: 'Adfærd',
+  tankekontrol: 'Tankekontrol',
+  emotion_symptomer: 'Følelse og symptom',
+};
+
+// Visnings-rækkefølge for de 9 bokse.
+export const FORMULERING_REKKEFOELGE = [
+  'trigger',
+  'positive_metabeliefs',
+  'type1_worry',
+  'neg_metabeliefs_ukontrollerbarhed',
+  'neg_metabeliefs_fare',
+  'type2_worry',
+  'adfaerd',
+  'tankekontrol',
+  'emotion_symptomer',
+];
+
+// 4 navngivne vedligeholdelses-sløjfer (verbatim dansk gloss).
+export const FORMULERING_SLOEJFER = [
+  { id: 1, tekst: 'Jo mere du bekymrer dig, jo flere ting begynder at ligne noget at bekymre sig om, så bekymringen giver næring til sig selv.' },
+  { id: 2, tekst: 'Når du bliver bange for selve bekymringen, stiger uroen i kroppen, og de kropslige tegn tolkes som bevis på at bekymringen er farlig. Det bekræfter frygten.' },
+  { id: 3, tekst: 'Fordi katastrofen udebliver, tænker du at det var fordi du passede på, ikke fordi faren aldrig var reel. Så antagelsen om at bekymring beskytter dig, får aldrig lov at blive modbevist.' },
+  { id: 4, tekst: 'Når du prøver at skubbe bekymringen væk eller diskutere med den, dukker den bare op igen, og det føles som bevis på at du ikke kan styre den.' },
+];
+
+/// Strip leading '#', split token fra params. Værdier forbliver RAW
+/// (stadig percent-encoded) - decodeURIComponent sker i parseFelter.
+export function parseFormuleringFragment(hash) {
+  const raad = (hash || '').replace(/^#/, '');
+  const dele = raad.split(';');
+  const token = dele[0] || '';
+  const params = {};
+  for (let i = 1; i < dele.length; i++) {
+    const del = dele[i];
+    if (!del) continue;
+    const idx = del.indexOf('=');
+    if (idx === -1) { params[del] = ''; continue; }
+    const key = del.slice(0, idx);
+    const val = del.slice(idx + 1);
+    params[key] = val;
+  }
+  return { token, params };
+}
+
+/// Byg de 9 bokse i FORMULERING_REKKEFOELGE-orden fra rå params
+/// (kort URL-nøgler → decodeURIComponent, FULD tekst, ingen afkortning).
+export function parseFelter(params) {
+  const bokse = [];
+  for (const felt of FORMULERING_REKKEFOELGE) {
+    const kort = Object.keys(FORMULERING_NOEGLER).find(k => FORMULERING_NOEGLER[k] === felt);
+    const raw = kort != null ? params[kort] : undefined;
+    const vaerdi = (raw == null) ? '' : decodeURIComponent(raw);
+    bokse.push({
+      felt,
+      titel: FORMULERING_BOKS_TITLER[felt],
+      vaerdi,
+      liste: felt === 'adfaerd' || felt === 'tankekontrol',
+    });
+  }
+  return bokse;
+}
+
+// Cross-repo parity-anker: EKSAKT byte-lig med Python-siden
+// (journal.formulering_link.GOLDEN_FRAGMENT). Ændres KUN i lockstep begge steder.
+export const FORMULERING_GOLDEN_FRAGMENT = '0123456789abcdef0123456789abcdef;s=formulering;n=Eksempel;tr=Hvad%20nu%20hvis%20jeg%20har%20glemt%20noget%20vigtigt%3F;t1=tanker%20om%20alt%20det%20der%20kan%20g%C3%A5%20galt%20i%20morgen;em=uro%20i%20maven%2C%20sp%C3%A6ndte%20skuldre%2C%20sv%C3%A6rt%20ved%20at%20slappe%20af;nu=jeg%20kan%20ikke%20stoppe%20bekymringen%2C%20n%C3%A5r%20den%20f%C3%B8rst%20er%20i%20gang;nf=hvis%20jeg%20bliver%20ved%2C%20kan%20jeg%20br%C3%A6nde%20helt%20sammen;po=hvis%20jeg%20bekymrer%20mig%20nok%2C%20er%20jeg%20forberedt%20og%20undg%C3%A5r%20problemer;t2=det%20er%20farligt%20at%20min%20bekymring%20bare%20k%C3%B8rer%20af%20sig%20selv;ad=tjekker%20ting%20flere%20gange%3B%20s%C3%B8ger%20beroligelse%20hos%20andre;tk=pr%C3%B8ver%20at%20skubbe%20tankerne%20v%C3%A6k%3B%20sk%C3%A6lder%20mig%20selv%20ud%20for%20at%20t%C3%A6nke%20s%C3%A5dan';
