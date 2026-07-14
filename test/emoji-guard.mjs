@@ -26,7 +26,7 @@ const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 // anmod.html = forløbs-anmodnings-formular (ANMOD-V1, klient-facing prod-flade).
 // inbox-enroll.html + mentem-inbox-enroll.js = sikker klient-inbox enroll-flade + custody-kerne
 // (Batch 1B, klient-facing prod-flade; strenge + fejlbeskeder renderer i DOM).
-export const GUARDED_FILES = ['index.html', 'mentem-skema-core.js', 'anmod.html', 'inbox-enroll.html', 'mentem-inbox-enroll.js'];
+export const GUARDED_FILES = ['index.html', 'mentem-skema-core.js', 'anmod.html', 'inbox-enroll.html', 'mentem-inbox-enroll.js', 'inbox-view.html'];
 
 // ── EM-DASH-SCOPE — kun de C4-navngivne filer (anmod-batch v2.1, 2026-06-19) ──
 // Em-dash-direktivet er globalt ("ALT vi skriver"), men C4-sweepen i denne batch
@@ -34,7 +34,7 @@ export const GUARDED_FILES = ['index.html', 'mentem-skema-core.js', 'anmod.html'
 // host) bærer p.t. ~26 em-dashes i shippet klient-copy → en SEPARAT sweep-opgave
 // (flagget til Viktor; må ikke balloone anmod-PR'en). Når index.html er ren,
 // udvid denne liste til GUARDED_FILES så em-dash-guarden dækker hele fladen.
-export const EMDASH_GUARDED_FILES = ['mentem-skema-core.js', 'anmod.html', 'inbox-enroll.html', 'mentem-inbox-enroll.js'];
+export const EMDASH_GUARDED_FILES = ['mentem-skema-core.js', 'anmod.html', 'inbox-enroll.html', 'mentem-inbox-enroll.js', 'inbox-view.html'];
 
 // ── DETEKTÉR — emoji/dingbat brugt SOM IKON ─────────────────────────────────
 //   1F000–1FAFF  emoji-pictographs (🔊 1F50A · 🔒 1F512 · 🌙 1F319 · 🔎 1F50E · 💊🍷☕ …)

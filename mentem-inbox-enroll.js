@@ -199,3 +199,39 @@ export function opretIndexedDBStore() {
 
 export async function gemCustody(store, record) { await store.put(record); }
 export async function hentCustody(store) { return store.get(); }
+
+// ── Fase 2: dekrypt af den UDGAAENDE konvolut (behandler -> klient) ───────────────────────────
+// GENBRUG, ikke nyt format: den byte-identiske Export-v1-konvolut som (a) klientens egen
+// mentemEncrypt (mentem-skema-core.js, klient->ingest) og (b) Swift E2EKryptering.krypter
+// (behandler-side) allerede producerer. dekrypterKonvolut er det rene SPEJL af mentemEncrypt:
+//   X25519 ECDH(enheds-privat, konvolut.ephemeralPublicKey) -> HKDF-SHA256 (salt fra konvolut,
+//   info KONVOLUT_INFO) -> AES-256-GCM open(nonce, ciphertext||tag).
+// ECDH via ren-JS x25519 (byte-eksakt mod den raa custody-skalar; samme sti som pub-afledningen
+// i genererEnhedsNoegle, saa lagret privat + registreret pub garanteret hoerer sammen).
+// Forkert enheds-privat ELLER pillet ciphertext => AEAD-auth fejler => kaster (fitness §10.4:
+// klienten kan ALDRIG laese en konvolut krypteret til en fremmed/ikke-registreret enheds-noegle).
+export const KONVOLUT_INFO = 'TherapyCopilot-E2E-Export-v1';
+
+export async function dekrypterKonvolut(konvolut, enhedsPrivatBytes) {
+  if (!subtleTilgaengelig()) throw kryptoUnsupported('WebCrypto (subtle) er ikke tilgaengelig i denne browser');
+  const subtle = globalThis.crypto.subtle;
+  // Export-v1-felter er STANDARD base64 (mentemEncrypt bytesToB64 / Swift base64EncodedString).
+  // b64urlToBytes dekoder standard-base64 korrekt (base64url er et superset af alfabetet + padding).
+  const ephPub = b64urlToBytes(konvolut.ephemeralPublicKey);
+  const ct = b64urlToBytes(konvolut.encryptedData);
+  const nonce = b64urlToBytes(konvolut.nonce);
+  const tag = b64urlToBytes(konvolut.tag);
+  const salt = b64urlToBytes(konvolut.salt);
+  // Shared secret (symmetrisk med afsenderens ECDH: X25519(priv, ephPub) == X25519(ephPriv, pub)).
+  const shared = x25519.getSharedSecret(new Uint8Array(enhedsPrivatBytes), ephPub);
+  const ikm = await subtle.importKey('raw', shared, 'HKDF', false, ['deriveBits']);
+  const keyBits = await subtle.deriveBits(
+    { name: 'HKDF', hash: 'SHA-256', salt, info: new TextEncoder().encode(KONVOLUT_INFO) },
+    ikm, 256);
+  const aesKey = await subtle.importKey('raw', new Uint8Array(keyBits), { name: 'AES-GCM' }, false, ['decrypt']);
+  // mentemEncrypt splittede ct||tag ved kryptering; WebCrypto AES-GCM-open forventer dem samlet igen.
+  const combined = new Uint8Array(ct.length + tag.length);
+  combined.set(ct, 0); combined.set(tag, ct.length);
+  const pt = new Uint8Array(await subtle.decrypt({ name: 'AES-GCM', iv: nonce }, aesKey, combined));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
