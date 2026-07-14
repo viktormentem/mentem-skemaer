@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Tilknyt din enhed til din sikre inbox hos Psykolog Viktor Nielsen. Din nøgle laves og gemmes lokalt i din browser.">
+<meta name="robots" content="noindex">
+<title>Sikker inbox · tilknyt din enhed · Mycel</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
+  :root {
+    --ink:#1a1a2e; --paper:#f8f6f1; --muted:#62626d; --accent:#2d6a4f;
+    --accent-light:#e8f5e1; --border:#e0ddd6; --card:#ffffff; --danger:#9b2226; --warn-bg:#fff4d6; --warn-line:#e6c200; --warn-ink:#5c4a00;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:'DM Sans',sans-serif; background:var(--paper); color:var(--ink); min-height:100vh; }
+
+  .header { background:var(--ink); color:white; padding:24px 28px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+  .header-logo { font-family:'DM Serif Display',serif; font-size:24px; letter-spacing:-0.5px; }
+  .header-sub { font-size:13px; opacity:0.55; margin-top:2px; }
+  .header-secure { font-size:12px; opacity:0.6; max-width:240px; text-align:right; display:flex; align-items:center; gap:6px; justify-content:flex-end; }
+  .header-secure svg { width:14px; height:14px; flex-shrink:0; }
+
+  .wrap { max-width:600px; margin:44px auto; padding:0 24px 80px; }
+  h1 { font-family:'DM Serif Display',serif; font-size:36px; line-height:1.12; margin-bottom:16px; }
+  h1 em { font-style:italic; color:var(--accent); }
+  .intro { font-size:17px; color:var(--muted); line-height:1.6; margin-bottom:28px; }
+
+  .screen { display:none; }
+  .screen.active { display:block; animation:fadeIn 0.3s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(14px);} to{opacity:1;transform:translateY(0);} }
+
+  /* Altid-synligt akut-banner (spec §8) */
+  .akut-banner { display:flex; gap:12px; align-items:flex-start; background:#fbeaea; border:1px solid #e6bcbc; border-radius:10px; padding:14px 16px; font-size:14px; line-height:1.5; color:#5c1a1c; margin-bottom:24px; }
+  .akut-banner svg { width:20px; height:20px; flex-shrink:0; color:var(--danger); margin-top:1px; }
+
+  .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:24px; margin-bottom:16px; }
+  .card-head { display:flex; align-items:center; gap:14px; margin-bottom:14px; }
+  .card-icon { width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; background:var(--accent-light); color:var(--accent); }
+  .card-icon svg { width:22px; height:22px; display:block; }
+  .card-title { font-size:16px; font-weight:600; }
+  .card-body { font-size:15px; color:var(--muted); line-height:1.6; }
+
+  .step-list { list-style:none; display:grid; gap:14px; margin:8px 0 4px; }
+  .step-list li { display:flex; gap:12px; align-items:flex-start; font-size:15px; line-height:1.5; }
+  .step-num { width:24px; height:24px; border-radius:50%; background:var(--accent-light); color:var(--accent); font-weight:600; font-size:13px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+
+  label.field-label { display:block; font-size:15px; font-weight:600; margin-bottom:8px; }
+  input[type=text] { width:100%; padding:14px 16px; border:1.5px solid var(--border); border-radius:8px; font-family:'DM Sans',sans-serif; font-size:20px; letter-spacing:0.18em; text-align:center; background:white; outline:none; min-height:44px; }
+  input[type=text]:focus { border-color:var(--accent); }
+  .field-hint { font-size:13px; color:var(--muted); line-height:1.5; margin-top:10px; }
+
+  .btn-primary { background:var(--accent); color:white; border:none; padding:16px 32px; border-radius:10px; font-family:'DM Sans',sans-serif; font-size:16px; font-weight:600; cursor:pointer; transition:all 0.15s; width:100%; min-height:44px; margin-top:20px; }
+  .btn-primary:hover { background:#1e4d38; }
+  .btn-primary:disabled { background:var(--muted); cursor:not-allowed; }
+
+  .form-error { color:var(--danger); font-size:14px; margin-top:14px; min-height:20px; line-height:1.5; }
+  .info-banner { background:var(--warn-bg); border:1px solid var(--warn-line); border-radius:8px; padding:12px 16px; font-size:13px; color:var(--warn-ink); margin-bottom:22px; line-height:1.5; }
+  .disclaimer { background:var(--border); border-radius:8px; padding:12px 16px; font-size:12px; color:var(--muted); margin-top:22px; line-height:1.5; }
+  .disclaimer .lockicon { display:inline-flex; width:1em; height:1em; vertical-align:-2px; margin-right:5px; }
+
+  .busy { display:flex; align-items:center; gap:12px; font-size:15px; color:var(--muted); }
+  .spinner { width:20px; height:20px; border:2.5px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 0.8s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  .done-mark { display:inline-flex; width:56px; height:56px; color:#34c759; margin-bottom:16px; }
+  .done-wrap { text-align:center; }
+  .done-wrap h2 { font-family:'DM Serif Display',serif; font-size:30px; margin-bottom:12px; }
+  .done-wrap p { color:var(--muted); font-size:16px; line-height:1.6; margin-bottom:10px; }
+
+  :focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="header-logo">Mycel</div>
+    <div class="header-sub">Sikker inbox · Viktor Nielsen, autoriseret psykolog</div>
+  </div>
+  <div class="header-secure"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Nøglen laves og bliver i din browser</div>
+</div>
+
+<div class="wrap">
+
+  <div class="akut-banner" aria-label="Vigtigt om akutte henvendelser">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg>
+    <div>Inboxen er ikke til akutte henvendelser. Ved akut behov ring 112 eller lægevagten 1813.</div>
+  </div>
+
+  <!-- 0: IKKE-UNDERSTOETTET (feature-gate) -->
+  <div id="screen-unsupported" class="screen">
+    <div class="info-banner" id="unsupported-tekst"></div>
+    <div class="card">
+      <div class="card-head">
+        <span class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg></span>
+        <span class="card-title">Åbn i en anden browser</span>
+      </div>
+      <div class="card-body">Din browser understøtter ikke den sikre nøgle, inboxen bruger. Åbn linket igen i <strong>Chrome</strong> eller <strong>Safari</strong>, så kan du tilknytte din enhed.</div>
+    </div>
+  </div>
+
+  <!-- 1: INTRO -->
+  <div id="screen-intro" class="screen">
+    <h1>Tilknyt din <em>enhed</em></h1>
+    <p class="intro">Du er ved at åbne din sikre inbox hos psykologen. Vi laver en nøgle her på din enhed, så kun du kan læse dine beskeder. Det tager under et minut.</p>
+    <div class="card">
+      <div class="card-body">
+        <ol class="step-list">
+          <li><span class="step-num">1</span><span>Indtast den kode, psykologen har givet dig.</span></li>
+          <li><span class="step-num">2</span><span>Godkend med Face-ID, Touch-ID eller din skærmlås.</span></li>
+          <li><span class="step-num">3</span><span>Din enhed er tilknyttet. Du kan læse og skrive sikkert.</span></li>
+        </ol>
+      </div>
+    </div>
+    <button type="button" class="btn-primary" id="btn-start">Kom i gang</button>
+  </div>
+
+  <!-- 2: OOB-KODE -->
+  <div id="screen-oob" class="screen">
+    <h1>Indtast din <em>kode</em></h1>
+    <p class="intro">Psykologen har læst en engangskode op for dig, eller sendt den til dig. Den binder tilknytningen til netop dig.</p>
+    <div class="card">
+      <label class="field-label" for="in-oob">Engangskode</label>
+      <input type="text" id="in-oob" inputmode="text" autocomplete="one-time-code" placeholder="Fx 7K4P2" aria-label="Engangskode fra psykologen">
+      <p class="field-hint">Koden gælder én gang og udløber efter kort tid. Har du ikke en kode, så kontakt psykologen.</p>
+    </div>
+    <button type="button" class="btn-primary" id="btn-oob">Fortsæt</button>
+    <div class="form-error" id="oob-error" role="alert"></div>
+  </div>
+
+  <!-- 3: ARBEJDER (passkey + noegle) -->
+  <div id="screen-working" class="screen">
+    <h1>Tilknytter din <em>enhed</em></h1>
+    <div id="uwrap-banner" class="info-banner" style="display:none">Din enhed understøtter ikke ekstra hardware-låsning af nøglen. Nøglen gemmes sikkert bag din skærmlås i denne browser.</div>
+    <div class="card">
+      <div class="card-head">
+        <span class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="M11 12l7-7 3 3-2 2 2 2-3 3-2-2-2 2"/></svg></span>
+        <span class="card-title" id="working-title">Laver din sikre nøgle</span>
+      </div>
+      <div class="card-body">
+        <div class="busy" id="working-busy"><span class="spinner" aria-hidden="true"></span><span id="working-status">Følg din enheds anvisning for Face-ID, Touch-ID eller skærmlås.</span></div>
+      </div>
+    </div>
+    <div class="form-error" id="working-error" role="alert"></div>
+    <button type="button" class="btn-primary" id="btn-retry" style="display:none">Prøv igen</button>
+  </div>
+
+  <!-- 4: KVITTERING -->
+  <div id="screen-done" class="screen">
+    <div class="done-wrap">
+      <span class="done-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.3l2.7 2.7L16 9"/></svg></span>
+      <h2>Din enhed er tilknyttet</h2>
+      <p>Tak. Din sikre inbox er klar på denne enhed.</p>
+      <p style="font-size:14px">Du kan nu læse og skrive beskeder sikkert med psykologen. Beskederne er ikke til akutte henvendelser.</p>
+    </div>
+    <div class="disclaimer" style="text-align:left"><span class="lockicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span>Din nøgle blev lavet og gemt lokalt i din browser. Den forlader aldrig din enhed. Skifter du enhed, tilknytter du blot den nye enhed på samme måde.</div>
+  </div>
+
+</div>
+
+<script type="module">
+import {
+  genererEnhedsNoegle, wrapPrivat, wrapKeyFraPRF, kryptoStoettetInbox,
+  opretIndexedDBStore, gemCustody,
+} from './mentem-inbox-enroll.js';
+
+// ── Konfiguration ────────────────────────────────────────────────────────────
+// Enrollment-token fra MJ-mintet link (?t=). Worker-API default = ingest.mycel.dk; test-host maa
+// override'e (?ingestapi=) mod en lokal `wrangler dev`. RP-origin = SIDENS egen origin (WebAuthn
+// binder challenge til origin) - saettes ikke af klienten.
+const params = new URLSearchParams(location.search);
+const ENROLL_TOKEN = params.get('t') || '';
+const TEST_HOST = /localhost|127\.0\.0\.1|\.loca\.lt|\.trycloudflare\.com|\.pages\.dev|mentem-skemaer-preview/
+  .test(location.host + location.pathname);
+const DEFAULT_API = 'https://ingest.mycel.dk';
+const apiOverride = TEST_HOST ? params.get('ingestapi') : null;
+function apiBase() { return (apiOverride || DEFAULT_API).replace(/\/+$/, ''); }
+// PRF-salt: fast per-app kontekst (enheds-lokalt PRF-output er alligevel per-enhed).
+const PRF_SALT = new TextEncoder().encode('Mycel-inbox-custody-prf-v1');
+
+// ── base64url <-> ArrayBuffer (WebAuthn-serialisering) ───────────────────────
+function b64urlToBuf(s) {
+  let t = String(s).replace(/-/g, '+').replace(/_/g, '/'); while (t.length % 4) t += '=';
+  const bin = atob(t); const u = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u.buffer;
+}
+function bufToB64url(buf) {
+  const u = new Uint8Array(buf); let bin = '';
+  for (let i = 0; i < u.length; i++) bin += String.fromCharCode(u[i]);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function vis(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+function api(path, body) {
+  return fetch(apiBase() + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+    .then(async (r) => ({ status: r.status, data: await r.json().catch(() => ({})) }));
+}
+
+let oobKode = '';
+
+// ── Feature-gate (typet, ikke generisk krypto-fejl) ──────────────────────────
+async function featureGate() {
+  const harWebAuthn = typeof window.PublicKeyCredential !== 'undefined' && !!(navigator.credentials && navigator.credentials.create);
+  const harKrypto = await kryptoStoettetInbox();
+  if (!harWebAuthn || !harKrypto) {
+    document.getElementById('unsupported-tekst').textContent = !harWebAuthn
+      ? 'Din browser understøtter ikke sikre nøgler (passkeys).'
+      : 'Din browser understøtter ikke den kryptering, inboxen kræver.';
+    vis('screen-unsupported');
+    return false;
+  }
+  return true;
+}
+
+// ── Trin: passkey-oprettelse + enheds-noegle + custody + registrering ────────
+async function tilknytEnhed() {
+  const err = document.getElementById('working-error');
+  const retry = document.getElementById('btn-retry');
+  const busy = document.getElementById('working-busy');
+  err.textContent = ''; retry.style.display = 'none'; busy.style.display = '';
+  document.getElementById('working-status').textContent = 'Følg din enheds anvisning for Face-ID, Touch-ID eller skærmlås.';
+  try {
+    if (!ENROLL_TOKEN) throw Object.assign(new Error('mangler-token'), { dansk: 'Linket mangler en gyldig adgangskode. Åbn linket fra psykologen igen.' });
+
+    // 1) Server-genererede registrerings-options -> WebAuthn create()
+    const opt = await api('/webauthn/register/options', { token: ENROLL_TOKEN });
+    if (opt.status !== 200 || !opt.data.options) throw Object.assign(new Error('options'), { dansk: opt.data.err === 'not_enroll_scope' ? 'Linket kan ikke bruges til tilknytning.' : 'Kunne ikke starte tilknytningen. Prøv igen.' });
+    const o = opt.data.options;
+    const createOpts = {
+      challenge: b64urlToBuf(o.challenge),
+      rp: o.rp,
+      user: { id: b64urlToBuf(o.user.id), name: o.user.name, displayName: o.user.displayName },
+      pubKeyCredParams: o.pubKeyCredParams,
+      timeout: o.timeout,
+      attestation: o.attestation,
+      authenticatorSelection: o.authenticatorSelection,
+      excludeCredentials: (o.excludeCredentials || []).map((c) => ({ id: b64urlToBuf(c.id), type: c.type, transports: c.transports })),
+      extensions: { prf: { eval: { first: PRF_SALT } } },   // opportunistisk PRF (per-enhed at-rest-wrap)
+    };
+    const cred = await navigator.credentials.create({ publicKey: createOpts });
+    if (!cred) throw Object.assign(new Error('create-null'), { dansk: 'Tilknytningen blev afbrudt. Prøv igen.' });
+
+    document.getElementById('working-status').textContent = 'Laver og gemmer din nøgle lokalt.';
+    const resp = cred.response;
+    const attestationResponse = {
+      id: cred.id, rawId: bufToB64url(cred.rawId), type: cred.type,
+      response: {
+        clientDataJSON: bufToB64url(resp.clientDataJSON),
+        attestationObject: bufToB64url(resp.attestationObject),
+        transports: resp.getTransports ? resp.getTransports() : [],
+      },
+      clientExtensionResults: cred.getClientExtensionResults ? cred.getClientExtensionResults() : {},
+    };
+
+    // 2) Enheds-noeglepar (X25519) + custody-wrap
+    const dev = await genererEnhedsNoegle();
+    let tier, record;
+    const prfOut = attestationResponse.clientExtensionResults?.prf?.results?.first;
+    if (prfOut) {
+      const wrapKey = await wrapKeyFraPRF(new Uint8Array(prfOut));
+      const wrapped = await wrapPrivat(dev.priv, wrapKey);
+      tier = 'prf';
+      record = { deviceId: dev.deviceId, keyId: dev.keyId, x25519_pub: dev.x25519_pub, tier, wrapped, createdAt: new Date().toISOString() };
+    } else {
+      // Svageste spec-accepterede fallback: uwrappet bag passkey-gate + banner (§3.2).
+      tier = 'uwrapped';
+      document.getElementById('uwrap-banner').style.display = '';
+      record = { deviceId: dev.deviceId, keyId: dev.keyId, x25519_pub: dev.x25519_pub, tier, rawPriv: bufToB64url(dev.priv), createdAt: new Date().toISOString() };
+    }
+    await gemCustody(opretIndexedDBStore(), record);
+
+    // 3) Registrér PUBLIC enheds-noegle + credential paa workeren (privat forbliver lokalt)
+    const ver = await api('/webauthn/register/verify', {
+      token: ENROLL_TOKEN,
+      attestationResponse,
+      devicePubKey: { x25519_pub: dev.x25519_pub, key_id: dev.keyId, device_id: dev.deviceId },
+      oob_code: oobKode,   // OOB-binding: workeren ignorerer feltet i dag; server-haandhaevelse = Fase 2-seam.
+    });
+    if (ver.status !== 200 || ver.data.verified !== true) throw Object.assign(new Error('verify'), { dansk: 'Tilknytningen kunne ikke fuldføres. Prøv igen.' });
+
+    vis('screen-done');
+  } catch (e) {
+    busy.style.display = 'none';
+    err.textContent = e.dansk || 'Noget gik galt under tilknytningen. Prøv igen.';
+    retry.style.display = '';
+  }
+}
+
+// ── Flow-styring ─────────────────────────────────────────────────────────────
+document.getElementById('btn-start').addEventListener('click', () => vis('screen-oob'));
+document.getElementById('btn-oob').addEventListener('click', () => {
+  const v = document.getElementById('in-oob').value.trim();
+  const e = document.getElementById('oob-error');
+  if (v.length < 4) { e.textContent = 'Indtast venligst koden fra psykologen.'; return; }
+  e.textContent = ''; oobKode = v;
+  vis('screen-working');
+  tilknytEnhed();
+});
+document.getElementById('btn-retry').addEventListener('click', tilknytEnhed);
+
+(async function init() {
+  if (await featureGate()) vis('screen-intro');
+})();
+</script>
+</body>
+</html>
