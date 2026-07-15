@@ -299,8 +299,17 @@ check('bl bevarer felter', bl.baseline.alder === 67 && bl.baseline.vanligOpvaagn
 check('bl substans struktureret bevaret', bl.baseline.substans && bl.baseline.substans.koffein[0].antalEnheder === 2 && bl.baseline.substans.koffein[0].tidspunkt === 'Morgen');
 check('bl substans natFlag bevaret', bl.baseline.substans.natFlag === false);
 check('bl INGEN scoring (nul-score)', bl.questionnaireScores === undefined && bl.baseline.score === undefined);
+// P1 (K1 FASE A, besked-track): Art.9(2)(a)-samtykke INDE i ciphertext (spejler dagbog:
+// buildPayloadCSD consent: meta.consent || null). Fravær => null (additivt, ingen migration).
+check('bl consent null uden meta.consent', bl.consent === null);
+const blConsent = { accepted: true, timestamp: '2026-07-15T09:00:00Z', version: '2026-07-15' };
+const blMedSamtykke = buildPayloadBaseline(blAnswers, { name: 'Baseline Klient', consent: blConsent });
+check('bl consent baaret naar givet', blMedSamtykke.consent && blMedSamtykke.consent.accepted === true);
+check('bl consent version baaret', blMedSamtykke.consent.version === '2026-07-15');
 const blRT = await nodeDecrypt(await mentemEncrypt(recipientPubB64, bl), recipient.privateKey);
 check('bl round-trip baseline bevaret', blRT.baseline.alder === 67 && blRT.baseline.koen === 'Kvinde');
+const blRTc = await nodeDecrypt(await mentemEncrypt(recipientPubB64, blMedSamtykke), recipient.privateKey);
+check('bl consent overlever decode (Journal Audit)', blRTc.consent && blRTc.consent.accepted === true);
 
 // ── Forløbs-anmodning (ANMOD v2.1, adaptiv-grundlags-betinget) — kontrakt §1–§3 ───────────
 // Maskinel drift-vagt på web-fladen (1:1 m. Swift ForloebsAnmodningKonvolutTests).
