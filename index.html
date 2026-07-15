@@ -375,17 +375,18 @@
     <p class="intro" id="baseline-intro"></p>
     <!-- P1 (K1 FASE A, besked-track): Art.9(2)(a)-samtykke fanget i selve skemaet, FOER svar
          indtastes. PINNET UDKAST (V-4, afventer Viktor-ord-for-ord). Em-dash-fri, aeoeaa-korrekt,
-         "behandler". Consent baeres inde i ciphertext (buildPayloadBaseline consent). -->
+         "psykolog" (term-harmoniseret V-6-runde 15/7, surface-konsistent). Consent baeres inde i
+         ciphertext (buildPayloadBaseline consent). -->
     <div class="diary-consent" id="baseline-consent">
       <h3>Samtykke til at bruge dine svar</h3>
-      <p>Dine svar om søvn er helbredsoplysninger. For at din behandler kan bruge dem i dit forløb, opbevares de krypteret, så kun din behandler kan åbne dem.</p>
+      <p>Dine svar om søvn er helbredsoplysninger. For at din psykolog kan bruge dem i dit forløb, opbevares de krypteret, så kun din psykolog kan åbne dem.</p>
       <ul>
-        <li>Svarene kan kun læses af din behandler.</li>
+        <li>Svarene kan kun læses af din psykolog.</li>
         <li>Du kan når som helst trække dit samtykke tilbage og bede om, at svarene bliver slettet.</li>
       </ul>
       <label class="diary-consent-label">
         <input type="checkbox" id="baseline-consent-cb">
-        <span><strong>Jeg giver samtykke til, at mine svar om søvn opbevares krypteret og kun kan læses af min behandler.</strong> Jeg ved, at det er helbredsoplysninger, og at jeg kan trække mit samtykke tilbage når som helst.</span>
+        <span><strong>Jeg giver samtykke til, at mine svar om søvn opbevares krypteret og kun kan læses af min psykolog.</strong> Jeg ved, at det er helbredsoplysninger, og at jeg kan trække mit samtykke tilbage når som helst.</span>
       </label>
       <p class="diary-consent-status" id="baseline-consent-status">Du kan gå videre, når du har givet samtykke.</p>
     </div>
@@ -469,6 +470,7 @@ import { SKEMAER, SKEMA_ORDER, OFFENTLIGT_KLAR, buildPayload, buildPayloadCSD, b
          PINNED_PUBKEY, PINNED_KEY_ID, resolveRecipientKey,
          INSTRUMENTER, instrumentFeltOrden, buildInstrumentMycel,
          SOEVN_SCREENING, buildPayloadScreening,
+         SENDT_KVITTERING_PRIMAER, sendtKvitteringSekundaer, SEND_SIKKERT_CTA,
          SRT_VINDUE_TEKST, SOEVN_F2 } from './mentem-skema-core.js';
 
 // ── URL-parametre (?s=batteri  ?n=sessionsnummer  ?pk=cross-check) ────────
@@ -568,6 +570,37 @@ async function sendTilIngest(payload, schemaType) {
     return (r.ok && (j.status === 'received' || j.duplicate)) ? 'sendt' : null;
   } catch (e) { console.error('[mentem] auto-send fejlede -> fallback', e); return null; }
 }
+// K3 (FASE B): én genbrugelig send-kvittering. Afløser de spredte
+// `status.textContent = 'Dine svar er sendt ...'`-strenge i hvert flow, så klienten
+// ser SAMME kvittering overalt (nordstjerne). Én fælles PRIMÆR linje + valgfri
+// flow-specifik SEKUNDÆR forsikring (V-6). SVG-checkmarket i .done-wrap er allerede
+// i markuppen; her sætter vi kun status-teksten (ingen tal, ingen emoji).
+function visSendtKvittering(statusEl, flow) {
+  if (!statusEl) return;
+  statusEl.style.color = 'var(--accent)';
+  statusEl.textContent = '';
+  const primaer = document.createElement('div');
+  primaer.className = 'kvittering-primaer';
+  primaer.textContent = SENDT_KVITTERING_PRIMAER;
+  statusEl.appendChild(primaer);
+  const sek = sendtKvitteringSekundaer(flow);
+  if (sek) {
+    const sekEl = document.createElement('div');
+    sekEl.className = 'kvittering-sekundaer';
+    sekEl.style.cssText = 'margin-top:6px;font-size:13px;opacity:0.85';
+    sekEl.textContent = sek;
+    statusEl.appendChild(sekEl);
+  }
+}
+
+// K4 (FASE B): sæt den primære send-knap til "Send sikkert" KUN når linket faktisk
+// auto-sender krypteret (autoSendEnabled). Ellers præcis, beskrivende fallback-tekst
+// (token-løst/manuelt fil-flow). "Send sikkert" er en sikkerheds-påstand → skal være sand.
+function saetSikkerSendLabel(btn, fallbackTekst) {
+  if (!btn) return;
+  btn.textContent = autoSendEnabled() ? SEND_SIKKERT_CTA : fallbackTekst;
+}
+
 // #F privatlivstekst: når auto-send er aktiv, lover vi "sendes direkte" i st.f.
 // "intet gemmes / du sender selv". Gated på autoSendEnabled → prod-tekst uændret uden it=.
 function gatePrivacyTekst() {
@@ -896,7 +929,10 @@ function startForm() {
 }
 
 // ── AFSLUTNING + KRYPTERET DELING (nul-score) ───────────────────────────────
-function goDone() { showScreen('screen-done'); window.scrollTo(0, 0); }
+function goDone() {
+  saetSikkerSendLabel(document.getElementById('share-btn'), 'Send filen til din psykolog');
+  showScreen('screen-done'); window.scrollTo(0, 0);
+}
 
 // ════════════════════════════════════════════════════════════════════════
 //  ROBUST FIL-LEVERING (fælles for ALLE send-flows)
@@ -998,7 +1034,7 @@ async function shareEncrypted() {
   // AUTO-SEND (#1/#2): kun it=-links. Lykkes → færdig; ellers fald til download/del.
   if (autoSendEnabled()) {
     const ok = await sendTilIngest(payload, 'batteri');
-    if (ok) { status.style.color = 'var(--accent)'; status.textContent = 'Dine svar er sendt sikkert og krypteret til din psykolog. Tak!'; return; }
+    if (ok) { visSendtKvittering(status, 'batteri'); return; }
   }
   // TRIN 2 — levering (deling el. robust download/kopiér-fallback; aldrig fastlås).
   const filename = `mentem-skema-${new Date().toISOString().slice(0, 10)}.json`;
@@ -2550,7 +2586,7 @@ function runScreening(id) {
       ? 'Dine svar er klar. Tryk nedenfor for at sende dem sikkert og krypteret til din psykolog.'
       : 'Dine svar er nu samlet i én krypteret fil. Tryk nedenfor for at sende filen til din psykolog i den samme SMS-tråd, hvor du fik linket.';
     const btn = document.getElementById('share-btn');
-    if (btn) btn.textContent = autoSendEnabled() ? 'Send til din psykolog' : 'Send filen til din psykolog';
+    saetSikkerSendLabel(btn, 'Send filen til din psykolog');
     showScreen('screen-done');
     window.scrollTo(0, 0);
   });
@@ -2585,8 +2621,7 @@ function runScreening(id) {
     if (autoSendEnabled()) {
       const ok = await sendTilIngest(payload, 'soevn-screening');
       if (ok) {
-        status.style.color = 'var(--accent)';
-        status.textContent = 'Dine svar er sendt sikkert og krypteret til din psykolog. Du kan roligt gå i gang med din søvndagbog med det samme. Tak!';
+        visSendtKvittering(status, 'soevn-screening');
         return;
       }
     }
@@ -2644,6 +2679,7 @@ function finishDiary() {
   if (!ok) return;
   const p = document.querySelector('#screen-done p');
   if (p) p.textContent = 'Dine søvndage er nu samlet i én krypteret fil. Tryk nedenfor for at sende filen til din psykolog i den samme SMS-tråd, hvor du fik linket.';
+  saetSikkerSendLabel(document.getElementById('share-btn'), 'Send filen til din psykolog');
   showScreen('screen-done');
   window.scrollTo(0, 0);
 }
@@ -2694,8 +2730,7 @@ async function shareDiaryEncrypted() {
   if (autoSendEnabled() && diaryState.entries.length > 0) {
     const ok = await sendTilIngest(byggDiaryPayload(true), 'soevndagbog');
     if (ok) {
-      status.style.color = 'var(--accent)';
-      status.textContent = 'Dine svar er sendt sikkert og krypteret til din psykolog. Tak!';
+      visSendtKvittering(status, 'soevndagbog');
       try { await deleteDraft(); } catch (e) { /* server-kladde-sletning er best-effort */ }
       clearCSDState();
       recoveredBlob = null;
@@ -2742,8 +2777,7 @@ async function sendDiaryOpdatering() {
   if (autoSendEnabled() && diaryState.entries.length > 0) {
     const ok = await sendTilIngest(byggDiaryPayload(false), 'soevndagbog');
     if (ok) {
-      status.style.color = 'var(--accent)';
-      status.textContent = 'Opdateringen er sendt sikkert og krypteret til din psykolog. Tak! Du kan roligt fortsætte dagbogen.';
+      visSendtKvittering(status, 'soevndagbog-opdatering');
       btn.disabled = false;
       return;
     }
@@ -2919,6 +2953,7 @@ function finishBaseline() {
   if (req.some(f => { const v = baselineDraft[f.key]; return v == null || v === ''; })) return;
   const p = document.querySelector('#screen-done p');
   if (p) p.textContent = 'Dine svar er nu samlet i én krypteret fil. Tryk nedenfor for at sende filen til din psykolog i den samme SMS-tråd, hvor du fik linket.';
+  saetSikkerSendLabel(document.getElementById('share-btn'), 'Send filen til din psykolog');
   showScreen('screen-done');
   window.scrollTo(0, 0);
 }
@@ -2956,7 +2991,7 @@ async function shareBaselineEncrypted() {
   // AUTO-SEND (#1/#2): kun it=-links. Lykkes → færdig; ellers fald til download/del.
   if (autoSendEnabled()) {
     const ok = await sendTilIngest(payload, 'soevn-baseline');
-    if (ok) { status.style.color = 'var(--accent)'; status.textContent = 'Dine svar er sendt sikkert og krypteret til din psykolog. Tak!'; return; }
+    if (ok) { visSendtKvittering(status, 'soevn-baseline'); return; }
   }
   // TRIN 2 — levering (deling el. robust download/kopiér-fallback; aldrig fastlås).
   const filename = `mentem-soevn-baseline-${new Date().toISOString().slice(0, 10)}.json`;

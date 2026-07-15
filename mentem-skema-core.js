@@ -1325,3 +1325,33 @@ export const INSTRUMENTER = {};
 for (const modul of INSTRUMENT_MODULER) {
   if (modul.KLAR) INSTRUMENTER[modul.skabelon] = modul;   // maskinel licens-gate
 }
+
+// ════════════════════════════════════════════════════════════════════════
+//  SEND-KVITTERING + "Send sikkert"-CTA (besked-track K1P1 FASE B, K3+K4)
+// ════════════════════════════════════════════════════════════════════════
+// Nordstjerne: klienten ser samme kvittering overalt, aldrig tal. Én fælles
+// PRIMÆR kvittering for alle auto-send-flows (batteri/screening/dagbog/baseline);
+// de to FLOW-SPECIFIKKE kliniske forsikringer bevares som SEKUNDÆR linje kun på
+// deres eget flow (Viktor-beslutning V-6, 15/7: "behold som sekundær linje").
+// Term = "din psykolog" (Viktor 15/7, surface-konsistent — hele fladen bruger
+// "psykolog", ikke "behandler"). Kun ren copy her; DOM-render lever i index.html
+// (visSendtKvittering) så samme komponent bruges alle steder (K3 = én genbrugelig).
+export const SENDT_KVITTERING_PRIMAER = 'Dine svar er sendt sikkert og krypteret til din psykolog. Tak!';
+export const SENDT_KVITTERING_VERSION = '2026-07-15';
+
+// K4: den ene primære sikker-send-knap. Vises KUN når linket faktisk auto-sender
+// krypteret (autoSendEnabled) — ellers præcis, beskrivende fallback-tekst i
+// index.html. "Send sikkert" er en sikkerheds-påstand: den skal være sand.
+export const SEND_SIKKERT_CTA = 'Send sikkert';
+
+// Flow-specifik SEKUNDÆR forsikringslinje (V-6). Kendte flow-nøgler:
+//   'soevn-screening'        → beroliger håndoff til søvndagbogen
+//   'soevndagbog-opdatering' → ikke-terminal ugentlig opdatering, forløbet fortsætter
+// Alle andre flows (batteri, soevndagbog terminal, soevn-baseline, ukendt) → null.
+export function sendtKvitteringSekundaer(flow) {
+  switch (flow) {
+    case 'soevn-screening':        return 'Du kan roligt gå i gang med din søvndagbog med det samme.';
+    case 'soevndagbog-opdatering': return 'Du kan roligt fortsætte dagbogen.';
+    default:                       return null;
+  }
+}
