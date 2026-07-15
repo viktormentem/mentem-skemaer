@@ -36,6 +36,10 @@ import {
   ANMOD_FORLOEB_TILBUDT,
   ANMOD_TID_DAGE,
   ANMOD_TID_TIDER,
+  SENDT_KVITTERING_PRIMAER,
+  SENDT_KVITTERING_VERSION,
+  sendtKvitteringSekundaer,
+  SEND_SIKKERT_CTA,
 } from '../mentem-skema-core.js';
 import { scanText, runGuard, scanEmDash, runEmDashGuard, GUARDED_FILES, EMDASH_GUARDED_FILES } from './emoji-guard.mjs';
 
@@ -426,6 +430,27 @@ eq('anmod round-trip data.tid_praeference', anmodRT.data.tid_praeference, { dage
 // ── VERA-guard #1: emoji/glyf-detektor (regressions-lås) ───────────────────
 // Unit-tests af scanText() (deterministisk — uafhængig af repo-tilstand) + en
 // run mod de FAKTISKE klient-facing filer (fanger en ægte regression i CI).
+// ── K3+K4: samlet send-kvittering + "Send sikkert"-CTA (besked-track FASE B) ──
+// V-6 (Viktor 15/7): én fælles primær kvittering overalt; de 2 flow-specifikke
+// kliniske forsikringer bevares som sekundær linje kun på deres flow.
+// Term (Viktor 15/7): "din psykolog" (surface-konsistent). Klient ser ALDRIG tal.
+console.log('K3+K4 send-kvittering (FASE B):');
+check('primær kvittering = én fælles streng (din psykolog)',
+  SENDT_KVITTERING_PRIMAER === 'Dine svar er sendt sikkert og krypteret til din psykolog. Tak!');
+check('primær kvittering nævner ingen tal (klient ser aldrig tal)', !/[0-9]/.test(SENDT_KVITTERING_PRIMAER));
+check('primær kvittering bruger "psykolog", ikke "behandler"',
+  SENDT_KVITTERING_PRIMAER.includes('psykolog') && !SENDT_KVITTERING_PRIMAER.includes('behandler'));
+eq('screening beholder flow-forsikring som sekundær (V-6)',
+  sendtKvitteringSekundaer('soevn-screening'), 'Du kan roligt gå i gang med din søvndagbog med det samme.');
+eq('dagbog-opdatering beholder flow-forsikring som sekundær (V-6)',
+  sendtKvitteringSekundaer('soevndagbog-opdatering'), 'Du kan roligt fortsætte dagbogen.');
+eq('batteri har ingen sekundær linje', sendtKvitteringSekundaer('batteri'), null);
+eq('dagbog-send (terminal) har ingen sekundær linje', sendtKvitteringSekundaer('soevndagbog'), null);
+eq('baseline har ingen sekundær linje', sendtKvitteringSekundaer('soevn-baseline'), null);
+eq('ukendt flow → ingen sekundær linje (fail-safe)', sendtKvitteringSekundaer('ukendt'), null);
+check('K4 primær CTA = "Send sikkert"', SEND_SIKKERT_CTA === 'Send sikkert');
+check('kvittering-copy versions-stemplet', SENDT_KVITTERING_VERSION === '2026-07-15');
+
 console.log('emoji-guard (VERA #1):');
 const G = (t) => scanText(t, 't').length;
 // catch: emoji-som-ikon i renderet flade
