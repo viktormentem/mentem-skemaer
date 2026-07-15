@@ -97,6 +97,13 @@ const SITE = `http://127.0.0.1:${PORT}`;
 
 // Fælles baseline-udfyldning (generisk over felt-typerne; substans = valgfri → springes).
 async function udfyldBaselineOgSend(page) {
+  // P1 (K1 FASE A, besked-track): Art.9(2)(a)-samtykke-gate på baseline-welcome. E2E BEVISER
+  // gaten: Start er spærret FØR afkrydsning, aabnes EFTER. (Uden dette hang'er click'et under P1.)
+  await page.waitForSelector('#baseline-consent-cb');
+  check(await page.$eval('#baseline-start-btn', (b) => b.disabled),
+    'P1: Start spærret FØR samtykke er givet', 'baseline-start-btn.disabled');
+  await page.check('#baseline-consent-cb');
+  await page.waitForSelector('#baseline-start-btn:not([disabled])');
   await page.click('#baseline-start-btn');
   await page.waitForSelector('#baseline-fields input, #baseline-fields .radio-option');
   await page.evaluate(() => {
@@ -188,7 +195,10 @@ let plain = null;
 if (rec) {
   try {
     const container = JSON.parse(rec.ciphertext);
-    check(container.keyId === 'cce9b373', 'DECRYPT: container stemplet med INGEST-keyId (cce9b373)', container.keyId);
+    // INGEST_KEY_ID = 2af28306 (index.html:537 / anmod.html:257 / soevn-screening-smoke.mjs:137):
+    // foerste 8 hex af SHA-256(raa ingest-pubkey). Var 'cce9b373' da denne E2E blev skrevet (83aa7ad,
+    // 2026-06-18); ingest-pubkey blev siden roteret -> stale fixture opdateret til den kanoniske vaerdi.
+    check(container.keyId === '2af28306', 'DECRYPT: container stemplet med INGEST-keyId (2af28306)', container.keyId);
     check(container.keyId !== '8aa536a1', 'DECRYPT: IKKE journal-nøglen 8aa536a1 (separat-ingest-nøgle-kontrakt)', container.keyId);
     plain = decryptContainer(container, ingestKp.privateKey);
   } catch (e) { check(false, 'DECRYPT: konvolut dekrypterbar m. syntetisk ingest-priv', e.message); }
