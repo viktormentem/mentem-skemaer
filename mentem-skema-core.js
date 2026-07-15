@@ -635,6 +635,11 @@ export function buildPayloadBaseline(answers, meta = {}) {
     therapistName: 'Viktor Nielsen',
     categories: ['soevn-baseline'],
     baselineType: 'soevn-intake',
+    // P1 (K1 FASE A, besked-track): Art.9(2)(a)-samtykke (helbredsoplysninger) INDE i ciphertext
+    // - data-minimalt, spejler buildPayloadCSD (soevndagbog). Additivt: aeldre/localstorage-
+    // varianter mangler feltet (=> null), ingen krypto-/format-aendring, ingen migration.
+    // Consent-objektet baeres uaendret gennem konvolutten -> Journal Audit (MJ-mapping = Fase 2.5c).
+    consent: meta.consent || null,
     baseline,
   };
 }
