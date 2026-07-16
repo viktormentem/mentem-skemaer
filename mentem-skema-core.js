@@ -635,11 +635,12 @@ export function buildPayloadBaseline(answers, meta = {}) {
     therapistName: 'Viktor Nielsen',
     categories: ['soevn-baseline'],
     baselineType: 'soevn-intake',
-    // P1 (K1 FASE A, besked-track): Art.9(2)(a)-samtykke (helbredsoplysninger) INDE i ciphertext
-    // - data-minimalt, spejler buildPayloadCSD (soevndagbog). Additivt: aeldre/localstorage-
-    // varianter mangler feltet (=> null), ingen krypto-/format-aendring, ingen migration.
-    // Consent-objektet baeres uaendret gennem konvolutten -> Journal Audit (MJ-mapping = Fase 2.5c).
-    consent: meta.consent || null,
+    // INTET consent-felt (GDPR-register 1.6, Viktor 16/7): en soevn-baseline fra en klient i
+    // forloeb er BEHANDLINGSDATA. Retsgrundlaget er art. 9(2)(h) jf. 9(3) + databeskyttelseslovens
+    // §7 stk. 3 — IKKE samtykke (register 1.3: aldrig samtykke-checkbox for selve databehandlingen).
+    // Oplysningspligten (art. 13) loeftes af oplysningsteksten paa baseline-welcome (register 1.4).
+    // Et samtykke-felt her ville vaere et FORKERT retsgrundlag i journalen: derfor udeladt, og
+    // meta.consent ignoreres bevidst (data-minimering). Soevndagbogen = separat, uafklaret sag.
     baseline,
   };
 }

@@ -56,9 +56,18 @@ const PORT = server.address().port;
 const SITE = `http://127.0.0.1:${PORT}`;
 
 async function udfyldBaseline(page) {
-  await page.waitForSelector('#baseline-consent-cb');
-  await page.check('#baseline-consent-cb');
-  await page.waitForSelector('#baseline-start-btn:not([disabled])');
+  // GDPR-register 1.6 (16/7): INGEN samtykke-gate på baseline (grundlag 9(2)(h), ikke 9(2)(a)).
+  // E2E beviser at Start er åben UDEN nogen samtykke-handling, og at oplysningsteksten (art. 13)
+  // står på welcome-skærmen med link til privatlivspolitikken.
+  await page.waitForSelector('#baseline-start-btn');
+  check(!(await page.$eval('#baseline-start-btn', (b) => b.disabled)),
+    'register 1.6: Start er ÅBEN uden nogen samtykke-handling', 'baseline-start-btn.disabled');
+  check(await page.$('#baseline-consent-cb') === null,
+    'register 1.3: INGEN samtykke-checkbox på baseline');
+  const oplysning = await page.$('#baseline-oplysning');
+  check(oplysning !== null, 'art. 13: oplysnings-blok renderet på baseline-welcome');
+  check(await page.$eval('#baseline-oplysning a[href*="privatlivspolitik"]', (a) => !!a.href).catch(() => false),
+    'art. 13: oplysning linker til privatlivspolitikken');
   await page.click('#baseline-start-btn');
   await page.waitForSelector('#baseline-fields input, #baseline-fields .radio-option');
   await page.evaluate(() => {

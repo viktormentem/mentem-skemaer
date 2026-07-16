@@ -42,6 +42,10 @@ import {
   SEND_SIKKERT_CTA,
 } from '../mentem-skema-core.js';
 import { scanText, runGuard, scanEmDash, runEmDashGuard, GUARDED_FILES, EMDASH_GUARDED_FILES } from './emoji-guard.mjs';
+import { readFileSync } from 'node:fs';
+
+// Live v2-privatlivspolitik (samme URL som anmod.html bruger — én adresse på hele fladen).
+const PRIVATLIV_URL = 'https://psykologviktornielsen.dk/privatlivspolitik.html';
 
 let failures = 0;
 function check(name, cond, detail = '') {
@@ -303,17 +307,35 @@ check('bl bevarer felter', bl.baseline.alder === 67 && bl.baseline.vanligOpvaagn
 check('bl substans struktureret bevaret', bl.baseline.substans && bl.baseline.substans.koffein[0].antalEnheder === 2 && bl.baseline.substans.koffein[0].tidspunkt === 'Morgen');
 check('bl substans natFlag bevaret', bl.baseline.substans.natFlag === false);
 check('bl INGEN scoring (nul-score)', bl.questionnaireScores === undefined && bl.baseline.score === undefined);
-// P1 (K1 FASE A, besked-track): Art.9(2)(a)-samtykke INDE i ciphertext (spejler dagbog:
-// buildPayloadCSD consent: meta.consent || null). Fravær => null (additivt, ingen migration).
-check('bl consent null uden meta.consent', bl.consent === null);
-const blConsent = { accepted: true, timestamp: '2026-07-15T09:00:00Z', version: '2026-07-15' };
-const blMedSamtykke = buildPayloadBaseline(blAnswers, { name: 'Baseline Klient', consent: blConsent });
-check('bl consent baaret naar givet', blMedSamtykke.consent && blMedSamtykke.consent.accepted === true);
-check('bl consent version baaret', blMedSamtykke.consent.version === '2026-07-15');
+// GDPR-register 1.6 (Viktor 16/7): baseline fra en klient I FORLOEB er BEHANDLINGSDATA.
+// Grundlag = art. 9(2)(h) jf. 9(3) + databeskyttelseslovens §7 stk. 3 — IKKE samtykke
+// (register 1.3: lav ALDRIG samtykke-checkbox for selve databehandlingen). Oplysningspligten
+// (art. 13) opfyldes med en transparens-tekst paa indsamlingstidspunktet (register 1.4).
+// => payload er data-minimal: INTET consent-felt, uanset hvad kalderen sender med.
+check('bl har INTET consent-felt (register 1.6: 9(2)(h), ikke samtykke)', !('consent' in bl));
+const blConsentForsoeg = { accepted: true, timestamp: '2026-07-15T09:00:00Z', version: '2026-07-15' };
+const blMedMetaConsent = buildPayloadBaseline(blAnswers, { name: 'Baseline Klient', consent: blConsentForsoeg });
+check('bl ignorerer meta.consent (samtykke er ikke retsgrundlag her)', !('consent' in blMedMetaConsent));
 const blRT = await nodeDecrypt(await mentemEncrypt(recipientPubB64, bl), recipient.privateKey);
 check('bl round-trip baseline bevaret', blRT.baseline.alder === 67 && blRT.baseline.koen === 'Kvinde');
-const blRTc = await nodeDecrypt(await mentemEncrypt(recipientPubB64, blMedSamtykke), recipient.privateKey);
-check('bl consent overlever decode (Journal Audit)', blRTc.consent && blRTc.consent.accepted === true);
+const blRTc = await nodeDecrypt(await mentemEncrypt(recipientPubB64, blMedMetaConsent), recipient.privateKey);
+check('bl INTET consent efter decode (Journal Audit ser intet samtykke)', !('consent' in blRTc));
+
+// ── Baseline-oplysningstekst (art. 13) paa welcome-skaermen — statisk kontrakt mod index.html ──
+// Erstatter P1-samtykke-blokken. INGEN checkbox, INGEN blokering af Start/send.
+console.log('baseline-oplysning (art. 13, register 1.4):');
+const INDEX_HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+check('baseline-oplysning-blok findes paa welcome', /id="baseline-oplysning"/.test(INDEX_HTML));
+const oplysningBlok = (INDEX_HTML.match(/<div class="diary-oplysning" id="baseline-oplysning">[\s\S]*?<\/div>/) || [''])[0];
+check('oplysning linker til privatlivspolitikken', oplysningBlok.includes(PRIVATLIV_URL) && /privatlivspolitik/i.test(oplysningBlok));
+check('oplysning siger "din psykolog" (term-lås)', /din psykolog/.test(oplysningBlok));
+check('oplysning em-dash-fri', !oplysningBlok.includes('—'));
+check('oplysning har INGEN checkbox', !/type="checkbox"/.test(oplysningBlok));
+// Samtykke-DOM/-state/-gate er FJERNET fra baseline (kun dagbogen beholder sit consent — separat beslutning).
+check('INGEN baseline-samtykke-checkbox tilbage i index.html', !INDEX_HTML.includes('baseline-consent-cb'));
+check('INGEN baselineConsentAccepted-gate tilbage i index.html', !INDEX_HTML.includes('baselineConsentAccepted'));
+check('INGEN baseline-consent-blok tilbage i index.html', !/id="baseline-consent"/.test(INDEX_HTML));
+check('dagbogens consent er URØRT (separat beslutning)', INDEX_HTML.includes('diary-consent-cb') && INDEX_HTML.includes('consentAccepted()'));
 
 // ── Forløbs-anmodning (ANMOD v2.1, adaptiv-grundlags-betinget) — kontrakt §1–§3 ───────────
 // Maskinel drift-vagt på web-fladen (1:1 m. Swift ForloebsAnmodningKonvolutTests).
