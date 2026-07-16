@@ -25,18 +25,81 @@
 // Kør standalone:  node test/copy-guard.mjs        (exit 0 = grøn, 1 = regression)
 // Tester:          node test/copy-guard-test.mjs
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-// ── SCOPE — hele den faktiske klient-facing prod-flade ───────────────────────
+// ── SCOPE — de filer guarden SCANNER ────────────────────────────────────────
 // index.html = søvndagbog/skema-host (STØRST, tidligere uguardet for em-dash).
 // mentem-skema-core.js = skema-render-motoren (labels/options -> DOM).
-// anmod.html = forløbs-anmodnings-formular. Bevidst UDE: *-preview.html / *-mock.html
-// (ikke prod-klient-UI), *.json (data, ikke UI-streng).
+// anmod.html = forløbs-anmodnings-formular. *.json er data, ikke UI-streng.
+//
+// NB: overskriften her sagde tidligere "hele den faktiske klient-facing prod-flade"
+// og begrundede fravalget af preview/mock med "ikke prod-klient-UI". Begge dele var
+// forkerte (målt 16/7: filerne ER live-nåbare). Guarden lovede altså mere end den
+// scannede. Se COPY_UNDTAGET nedenfor: fravalg skal nu bæres af en NAVNGIVEN grund,
+// og scopet afledes af rod-mappen frem for af denne liste alene.
 export const COPY_GUARDED_FILES = ['index.html', 'mentem-skema-core.js', 'anmod.html'];
+
+// ── O-5: scopet er AFLEDT, ikke håndholdt ───────────────────────────────────
+// Listen ovenfor var hele sandheden om hvad guarden så. En ny klientflade var derfor
+// uguardet indtil nogen HUSKEDE at tilføje den, og guardens tavshed lignede et grønt
+// svar. Default'en vendte forkert.
+//
+// Nu: hver .html/.js i repo-roden er enten GUARDET eller står her med en NAVNGIVEN
+// grund. En ny fil hører ingen af stederne ⇒ rød guard ⇒ nogen skal AFGØRE den.
+// Det er samme princip som PENDING_VIKTOR_GO's stale-tjek: en liste må ikke kunne
+// rådne til en allowlist i forklædning.
+//
+// 🔴 GRUNDENE SKAL VÆRE SANDE. Den oprindelige lød "ikke prod-klient-UI" om preview/mock.
+// MÅLT 16/7 mod live: BEGGE er offentligt nåbare på klientdomænet
+// (skemaer.mycel.dk/soevn-forloeb-preview + /soevn-hub-mock, begge HTTP 200), fordi
+// `wrangler pages deploy .` uploader hele rod-mappen. De bærer 59 + 15 em-dash og
+// "Mentem"-brandet på en klient-vendt flade. Grunden var altså falsk, og guarden
+// meldte grønt om en flade den ikke kiggede på. Se noter/copy-guard-scope-fund-2026-07-16.md.
+export const COPY_UNDTAGET = {
+  'mentem-x25519-fallback.js':
+    'Krypto-bibliotek: ren algoritme-kode uden klient-copy. Ingen synlig streng at guarde.',
+  'soevn-forloeb-preview.html':
+    'ULISTET preview (syntetisk, 0 PII). NB: grunden er IKKE "ikke prod" — filen ER live-nåbar ' +
+    'på skemaer.mycel.dk og bryder em-dash- + brand-split-reglen der. Undtaget FORELØBIGT så ' +
+    'fundet står dokumenteret frem for skjult; afventer Viktors valg (slet · udelad fra deploy · ret copy).',
+  'soevn-hub-mock.html':
+    'ULISTET mock (syntetisk, 0 PII). Samme forbehold som soevn-forloeb-preview.html: ' +
+    'live-nåbar, 15 em-dash + Mentem-brand på klientdomænet. Afventer samme beslutning.',
+};
+
+/** Alle klient-relevante filer i repo-roden (kilden til scopet, ikke en hukommelse). */
+export function rodFiler(root = REPO_ROOT) {
+  return readdirSync(root)
+    .filter((f) => /\.(html|js)$/.test(f))
+    .sort();
+}
+
+/**
+ * Scope-tjek: er hver rod-fil enten guardet eller navngivet undtaget?
+ * Returnerer de filer der er HVERKEN — dvs. dem ingen har taget stilling til.
+ */
+export function uafklaredeFiler(root = REPO_ROOT) {
+  return rodFiler(root).filter(
+    (f) => !COPY_GUARDED_FILES.includes(f) && !Object.prototype.hasOwnProperty.call(COPY_UNDTAGET, f),
+  );
+}
+
+/** En undtagelse uden reel begrundelse er en allowlist i forklædning. */
+export function undtagelserUdenGrund() {
+  return Object.entries(COPY_UNDTAGET)
+    .filter(([, grund]) => !grund || grund.trim().length < 25)
+    .map(([f]) => f);
+}
+
+/** Stale undtagelse: filen findes ikke længere ⇒ posten skal dø med den. */
+export function staleUndtagelser(root = REPO_ROOT) {
+  const findes = new Set(rodFiler(root));
+  return Object.keys(COPY_UNDTAGET).filter((f) => !findes.has(f));
+}
 
 // ── REGEL 1+2: em-dash og en-dash i synlig copy ──────────────────────────────
 // Em-dash "—" (U+2014) = tydeligt AI-tegn, forbudt i AL klient-copy (Viktor 19/6).
@@ -424,6 +487,32 @@ if (isMain()) {
     process.exit(1);
   }
   const { nye, stale, pendingFundet } = triageCopy(violations);
+
+  // ── O-5: SCOPE-TJEK — kører FØR fund-rapporten ────────────────────────────
+  // Rækkefølgen er meningen: et "0 fund"-svar er kun sandt hvis vi først ved HVAD
+  // der blev kigget på. Er der en klientflade ingen har taget stilling til, er
+  // guardens grønne svar tavshed, ikke bevis.
+  const uafklarede = uafklaredeFiler();
+  if (uafklarede.length) {
+    console.error(`copy-guard ✗ - ${uafklarede.length} fil(er) i rod-mappen er HVERKEN guardet eller undtaget:`);
+    for (const f of uafklarede) console.error(`  ${f}`);
+    console.error('\nEn ny klientflade er ikke dækket af at nogen huskede den. Afgør den:');
+    console.error('  · klient-vendt copy?  -> tilføj til COPY_GUARDED_FILES');
+    console.error('  · ikke klient-copy?   -> tilføj til COPY_UNDTAGET med en SAND, navngiven grund');
+    process.exit(1);
+  }
+  const udenGrund = undtagelserUdenGrund();
+  if (udenGrund.length) {
+    console.error(`copy-guard ✗ - ${udenGrund.length} undtagelse(r) uden reel begrundelse:`);
+    for (const f of udenGrund) console.error(`  ${f} — en undtagelse uden grund er en allowlist i forklædning.`);
+    process.exit(1);
+  }
+  const staleUndt = staleUndtagelser();
+  if (staleUndt.length) {
+    console.error(`copy-guard ✗ - ${staleUndt.length} STALE undtagelse(r) (filen findes ikke længere):`);
+    for (const f of staleUndt) console.error(`  ${f} — slettet? SLET posten fra COPY_UNDTAGET.`);
+    process.exit(1);
+  }
 
   if (stale.length) {
     console.error(`copy-guard ✗ - ${stale.length} STALE post(er) i PENDING_VIKTOR_GO (findes ikke længere i fladen):`);
