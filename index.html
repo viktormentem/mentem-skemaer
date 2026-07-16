@@ -95,9 +95,34 @@
   .done-wrap h2 { font-family:'DM Serif Display',serif; font-size:32px; margin-bottom:12px; }
   .done-wrap p { color:var(--muted); font-size:16px; line-height:1.6; margin-bottom:28px; }
   .done-status { font-size:14px; color:var(--accent); margin-top:16px; min-height:20px; }
+  /* K3-animation: kvitteringen skal VISE at noget er sendt OG modtaget, ikke bare
+     paastaa det. To slag: cirklen tegner sig selv (afsendelsen er undervejs), saa
+     slaar fluebenet ind (den er modtaget). Egen SVG, ingen emoji. */
+  /* FAIL-VISIBLE: standard-tilstanden er FAERDIG og synlig. Animationen skjuler kun
+     midlertidigt via `both` (backwards fill), inde i no-preference-blokken. Saetter man
+     omvendt opacity:0 som standard og lader animationen bringe frem, staar kvitteringen
+     USYNLIG hvis ingen media query matcher (aeldre/headless browsere) -> klienten sender
+     og faar ingen bekraeftelse. En kvittering maa aldrig kunne forsvinde. */
+  .kvittering-mark { display:flex; justify-content:center; margin-bottom:10px; }
+  .kvittering-mark svg { width:44px; height:44px; color:var(--accent); }
+  .kvittering-mark .kv-ring { stroke-dasharray:57; stroke-dashoffset:0; }
+  .kvittering-mark .kv-hak  { stroke-dasharray:14; stroke-dashoffset:0; }
+  @media (prefers-reduced-motion: no-preference) {
+    .kvittering-mark .kv-ring { animation: kvRing .5s ease-out both; }
+    .kvittering-mark .kv-hak  { animation: kvHak .3s ease-out .45s both; }
+    .kvittering-primaer  { animation: kvTekst .35s ease-out .6s both; }
+    .kvittering-sekundaer{ animation: kvTekst .35s ease-out .75s both; }
+    @keyframes kvRing  { from { stroke-dashoffset:57; } to { stroke-dashoffset:0; } }
+    @keyframes kvHak   { from { stroke-dashoffset:14; } to { stroke-dashoffset:0; } }
+    @keyframes kvTekst { from { opacity:0; transform:translateY(4px);} to { opacity:1; transform:none;} }
+  }
   .disclaimer { background:var(--border); border-radius:8px; padding:12px 16px; font-size:12px; color:var(--muted); margin-top:24px; line-height:1.5; }
   .start-note { text-align:center; font-size:14px; color:var(--muted); margin-top:14px; line-height:1.5; }
-  /* §1 privatliv + §2 Art.9-samtykke (server-opbevaring) — vist FØR dagbogs-start */
+  /* LAG 2 — §1 privatliv + §2 Art.9-samtykke. Dækker KUN server-kladden (register 1.7).
+     Blokken sidder på dagbogs-welcome, som klienten lander på efter HVER gemt dag, så
+     samtykket er nåbart og kan slås fra UNDERVEJS i forløbet (art. 7(3)). Flyt den ikke
+     til en ren opstarts-skærm: så bliver tilbagetrækning sværere end at give. */
+  .diary-consent-ramme { margin:0 0 12px; padding-bottom:10px; border-bottom:1px solid var(--border); color:var(--muted); }
   .diary-consent { background:var(--accent-light); border:1.5px solid var(--accent); border-radius:10px; padding:16px 18px; margin-bottom:18px; text-align:left; font-size:14px; line-height:1.55; color:var(--ink); }
   .diary-consent h3 { font-size:15px; margin:0 0 8px; font-weight:700; }
   .diary-consent p { margin:0 0 10px; }
@@ -344,6 +369,19 @@
       <div class="diary-progress-big" id="diary-progress-text">Dag 1</div>
       <div class="diary-dots" id="diary-dots"></div>
     </div>
+    <!-- LAG 1 (BEHANDLINGEN) — art. 13-oplysningstekst, INGEN checkbox. GDPR-register 1.7
+         (Viktor 16/7): selve behandlingen af dagbogs-svarene hviler på journalføringspligten
+         (9(2)(h) jf. 9(3) + databeskyttelseslovens §7 stk. 3), IKKE på samtykke. Register 1.3
+         forbyder en samtykke-checkbox for databehandlingen; oplysningspligten løftes i stedet
+         her, på indsamlingstidspunktet. Spejler #baseline-oplysning så fladen er konsistent.
+         LAG 2 (server-kladden) er den SEPARATE #diary-consent-blok nedenfor: den dækker KUN
+         det fravælgelige bekvemmeligheds-lag, og kun den er et samtykke (9(2)(a) jf. §7 stk. 1).
+         ORDLYD = UDKAST, afventer Viktor-godkendelse ord-for-ord (som V-4 for baseline).
+         Em-dash-fri, æøå-korrekt, term = "din psykolog". -->
+    <div class="diary-oplysning" id="diary-oplysning">
+      <p>Når du sender din søvndagbog, indgår dine svar i din journal som en del af din behandling. Det følger af den journalføringspligt, din psykolog har som autoriseret psykolog, og det hviler ikke på dit samtykke. Kun din psykolog kan åbne dem.</p>
+      <p class="diary-oplysning-link">Sådan behandler vi dine oplysninger: <a href="https://psykologviktornielsen.dk/privatlivspolitik.html" target="_blank" rel="noopener">privatlivspolitik</a>.</p>
+    </div>
     <div class="diary-consent" id="diary-consent" style="display:none"></div>
     <button class="btn-primary" id="diary-start-btn">Udfyld for i nat</button>
     <button class="btn-secondary" id="diary-backfill-btn" style="display:none">Udfyld for i går</button>
@@ -578,6 +616,18 @@ function visSendtKvittering(statusEl, flow) {
   if (!statusEl) return;
   statusEl.style.color = 'var(--accent)';
   statusEl.textContent = '';
+  // Animeret mark FOERST: cirklen tegner (sendt) -> hakket slaar ind (modtaget).
+  // Bygges pr. visning, saa animationen faktisk fyrer hver gang (en genbrugt node
+  // ville staa faerdig-tegnet og fortaelle ingenting).
+  const mark = document.createElement('div');
+  mark.className = 'kvittering-mark';
+  mark.setAttribute('aria-hidden', 'true');
+  mark.innerHTML =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" ' +
+    'stroke-linecap="round" stroke-linejoin="round">' +
+    '<circle class="kv-ring" cx="12" cy="12" r="9" transform="rotate(-90 12 12)"/>' +
+    '<path class="kv-hak" d="M8 12.3l2.7 2.7L16 9"/></svg>';
+  statusEl.appendChild(mark);
   const primaer = document.createElement('div');
   primaer.className = 'kvittering-primaer';
   primaer.textContent = SENDT_KVITTERING_PRIMAER;
@@ -1084,6 +1134,11 @@ function clearCSDState() {
 // PUT'es (buildPayloadCSD meta.consent). Persisteres i diaryState (saveCSDState)
 // → overlever reload. Afkrydsning fjernet = samtykke trukket tilbage → sync FRA.
 const CONSENT_TEXT_VERSION = '2026-06-03';   // = låst doc server-privatlivstekst-samtykke
+// Ren UI-tilstand (bevidst IKKE persisteret): skelner "har endnu ikke sagt ja" fra "har
+// trukket tilbage", så status-linjen kan sige sandheden om hvad der lige skete med kladden.
+// Et reload nulstiller den korrekt til "ikke givet" — der er intet at fortælle om da.
+let harTrukketTilbage = false;
+let kladdeSletFejl = false;
 function consentAccepted() { return !!(diaryState && diaryState.consent && diaryState.consent.accepted); }
 function recordConsent(accepted) {
   if (!diaryState) return;
@@ -1303,9 +1358,14 @@ async function syncDraftOnLoad() {
   } catch (e) { /* offline → kør videre på lokal kladde */ }
 }
 
+// Returnerer true når serveren bekræftede sletningen. Kaldere der bare rydder op (afslut/
+// send) ignorerer returværdien uændret; tilbagetrækningen BRUGER den, fordi vi kun må love
+// klienten at kladden er slettet hvis den faktisk blev det.
+// draftEnabled()=false → der er ingen server-kladde at slette → intet at fortryde = true.
 async function deleteDraft() {
-  if (!draftEnabled()) return;
-  try { await fetch(draftUrl(), { method: 'DELETE' }); } catch (e) { /* best-effort */ }
+  if (!draftEnabled()) return true;
+  try { const res = await fetch(draftUrl(), { method: 'DELETE' }); return !!res.ok; }
+  catch (e) { return false; }   /* offline → kladden ligger der stadig; sig det ærligt */
 }
 
 function renderDiaryWelcome() {
@@ -1399,19 +1459,35 @@ function renderDiaryWelcome() {
   if (fp) fp.textContent = 'Krypteret til din psykologs nøgle · ID ' + aktivKeyId();
 }
 
-// §1 (privatliv, verbatim) + §2 (Art.9-samtykke, verbatim checkbox) — server-path.
-// Ordlyd LÅST i soevn/server-privatlivstekst-samtykke-2026-06-03.md (§1+§2). MÅ
-// IKKE ændres. Samtykket gater pushDraft(); afkrydset = server-opbevaring til.
+// LAG 2 (SERVER-KLADDEN) — §1 (privatliv, verbatim) + §2 (Art.9-samtykke, verbatim checkbox).
+// Ordlyd LÅST i soevn/server-privatlivstekst-samtykke-2026-06-03.md (§1+§2). MÅ IKKE ændres.
+//
+// HVAD SAMTYKKET DÆKKER (GDPR-register 1.7, Viktor 16/7): KUN server-kladden — et
+// FRAVÆLGELIGT bekvemmeligheds-lag (kontinuitet på tværs af enheder) oven på en behandling
+// der kører uændret. Grundlag = 9(2)(a) jf. §7 stk. 1. Selve behandlingen hviler IKKE herpå;
+// den oplyses i LAG 1 (#diary-oplysning) og beror på journalføringspligten.
+// 9(2)(h) kan ikke bære kladden: den fejler nødvendighedstesten, fordi localStorage-varianten
+// ER det mindre indgribende middel og findes allerede (LOCAL_ONLY).
+//
+// GYLDIGHEDEN HVILER PÅ ÉN EGENSKAB: saveCSDState() er UAFHÆNGIG af samtykket, så et fravalg
+// koster klienten NUL indtastede dage — kun fordelen (EDPB 05/2020 Eksempel 9 = frit samtykke).
+// Kobles lokal lagring nogensinde til consentAccepted(), nedgraderes tjenesten ved fravalg og
+// samtykket bliver UGYLDIGT med tilbagevirkende kraft (Eksempel 8). Vagt: e2e-dagbog-samtykke.mjs.
 function renderDiaryConsent() {
   const el = document.getElementById('diary-consent');
   if (!el) return;
   // Vises kun i server-pathen (ikke localStorage-variant) og kun ved gyldig nøgle.
+  // NB: prod kører LOCAL_ONLY=true → hele blokken renderer INTET i dag (der er ingen
+  // server-kladde at samtykke til). Blokken er den server-wirede v2-stis samtykke.
   if (LOCAL_ONLY || !keyCheck.ok) { el.style.display = 'none'; el.innerHTML = ''; return; }
   el.style.display = 'block';
   const accepted = consentAccepted();
-  // §1 — VERBATIM. §2 — VERBATIM (☐ → ægte checkbox). Status-linjen er supplerende
-  // UI (ikke låst tekst): viser at server-PUT er blokeret til samtykke er givet.
+  // §1 — VERBATIM. §2 — VERBATIM (☐ → ægte checkbox). Ramme-linjen + status-linjen er
+  // supplerende UI (IKKE låst tekst): de rammer samtykket ind som noget der kun angår
+  // kladden, og fortæller ærligt hvad et fravalg reelt gør i koden.
+  // RAMME/STATUS-ORDLYD = UDKAST, afventer Viktor-godkendelse ord-for-ord.
   el.innerHTML = `
+    <p class="diary-consent-ramme">Det næste er <strong>valgfrit</strong> og handler kun om, hvor din kladde ligger, mens du udfylder dagbogen. Din behandling er den samme, uanset hvad du vælger.</p>
     <h3>Sådan opbevares dine svar</h3>
     <p>Dine svar gemmes <strong>krypteret</strong>, så du kan vende tilbage til dem fra det samme link, også hvis du skifter telefon eller rydder din browser. Det betyder, at du ikke mister de dage, du allerede har udfyldt.</p>
     <ul>
@@ -1426,13 +1502,35 @@ function renderDiaryConsent() {
     </label>
     <p class="diary-consent-status">${accepted
       ? 'Tak. Dine svar gemmes nu krypteret, så du kan fortsætte på tværs af enheder.'
-      : 'Indtil du sætter flueben, gemmes dine svar kun på denne enhed. De sendes ikke til serveren.'}</p>`;
+      : (harTrukketTilbage ? tilbagetraekningsStatus()
+        : 'Indtil du sætter flueben, gemmes dine svar kun på denne enhed. De sendes ikke til serveren.')}</p>`;
   const cb = document.getElementById('diary-consent-cb');
-  cb.addEventListener('change', () => {
+  cb.addEventListener('change', async () => {
     recordConsent(cb.checked);
-    if (cb.checked) pushDraft();   // samtykke givet → flush evt. lokal buffer til server
-    renderDiaryConsent();          // opdatér status-linje (ingen fuld re-render nødvendig)
+    if (cb.checked) {
+      harTrukketTilbage = false; kladdeSletFejl = false;
+      renderDiaryConsent();        // opdatér status-linje (ingen fuld re-render nødvendig)
+      pushDraft();                 // samtykke givet → flush evt. lokal buffer til server
+      return;
+    }
+    // TILBAGETRÆKNING (art. 7(3)) — ét klik, samme vej som samtykket blev givet.
+    // recordConsent(false) har allerede slået fremtidige PUT fra (pushDraft er gatet).
+    // Art. 17(1)(b): grundlaget for den ALLEREDE PUT'ede kladde er nu væk, så den skal
+    // SLETTES, ikke bare holde op med at blive opdateret. Klientens dage ligger uberørt
+    // i localStorage → sletningen koster ingen data (dét er hvad der holder samtykket frit).
+    harTrukketTilbage = true; kladdeSletFejl = false;
+    renderDiaryConsent();          // vis tilstanden STRAKS, uden at vente på netværket
+    kladdeSletFejl = !(await deleteDraft());
+    renderDiaryConsent();          // ...og korrigér ærligt hvis sletningen ikke lykkedes
   });
+}
+
+// Status efter en tilbagetrækning. Vi lover KUN det koden faktisk gjorde: lykkedes DELETE
+// ikke (offline/server nede), siger vi det i stedet for at påstå at kladden er slettet.
+function tilbagetraekningsStatus() {
+  return kladdeSletFejl
+    ? 'Dit samtykke er trukket tilbage, og dine svar gemmes nu kun på denne enhed. Vi kunne ikke få fat i serveren for at slette din gemte kladde lige nu. Den slettes automatisk efter 45 dage, og du kan bede din psykolog om at slette den med det samme.'
+    : 'Dit samtykke er trukket tilbage. Din gemte kladde på serveren er slettet, og dine svar gemmes nu kun på denne enhed. De dage, du allerede har udfyldt, er der stadig, og du kan fortsætte dagbogen som før.';
 }
 
 function lastEntryBefore(dateStr) {

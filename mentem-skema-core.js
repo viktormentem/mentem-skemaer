@@ -316,7 +316,7 @@ SKEMAER.soevnvindue = SRT_VINDUE;
 export const SOEVN_BASELINE = {
   id: 'soevn-baseline', kind: 'baseline', title: 'Kort baseline om din søvn', short: 'Baseline', icon: 'maane',
   badge: 'udfyldes én gang',
-  instruction: 'Et kort engangs-skema om din søvn og dine vaner. Det hjælper din psykolog med at tilpasse forløbet til dig. Der er ingen rigtige eller forkerte svar.',
+  instruction: 'Et kort engangsskema om din søvn og dine vaner. Det hjælper din psykolog med at tilpasse forløbet til dig. Der er ingen rigtige eller forkerte svar.',
   fields: [
     { key: 'alder',            kind: 'number', text: 'Hvor gammel er du?', unit: 'år', min: 0, max: 120 },
     { key: 'koen',             kind: 'radio',  text: 'Køn',

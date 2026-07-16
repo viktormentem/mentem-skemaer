@@ -335,7 +335,41 @@ check('oplysning har INGEN checkbox', !/type="checkbox"/.test(oplysningBlok));
 check('INGEN baseline-samtykke-checkbox tilbage i index.html', !INDEX_HTML.includes('baseline-consent-cb'));
 check('INGEN baselineConsentAccepted-gate tilbage i index.html', !INDEX_HTML.includes('baselineConsentAccepted'));
 check('INGEN baseline-consent-blok tilbage i index.html', !/id="baseline-consent"/.test(INDEX_HTML));
-check('dagbogens consent er URØRT (separat beslutning)', INDEX_HTML.includes('diary-consent-cb') && INDEX_HTML.includes('consentAccepted()'));
+check('dagbogens consent BEVARES (register 1.7: 9(2)(a) jf. §7 stk. 1 for server-kladden)',
+  INDEX_HTML.includes('diary-consent-cb') && INDEX_HTML.includes('consentAccepted()'));
+
+// ── Dagbogen: TO ADSKILTE LAG i samme flade (GDPR-register 1.7, Viktor 16/7) ──────────
+// Lag 1 = BEHANDLINGEN: art. 13-oplysningstekst, INGEN checkbox. Grundlaget er journal-
+//   føringspligten (9(2)(h) jf. 9(3) + §7 stk. 3), IKKE samtykke — register 1.3 forbyder
+//   eksplicit en samtykke-checkbox for selve databehandlingen.
+// Lag 2 = SERVER-KLADDEN: den eksisterende samtykke-blok, indrammet så den KUN dækker det
+//   fravælgelige bekvemmeligheds-lag (kontinuitet på tværs af enheder) = 9(2)(a).
+console.log('dagbog: lag 1 oplysning (art. 13) + lag 2 samtykke (kun server-kladden):');
+check('lag 1: dagbog-oplysning-blok findes paa dagbogs-welcome', /id="diary-oplysning"/.test(INDEX_HTML));
+const dagbogOpl = (INDEX_HTML.match(/<div class="diary-oplysning" id="diary-oplysning">[\s\S]*?<\/div>/) || [''])[0];
+check('lag 1: linker til privatlivspolitikken', dagbogOpl.includes(PRIVATLIV_URL) && /privatlivspolitik/i.test(dagbogOpl));
+check('lag 1: siger "din psykolog" (term-lås)', /din psykolog/.test(dagbogOpl));
+check('lag 1: INGEN checkbox (behandlingen beror IKKE paa samtykke — register 1.3)',
+  dagbogOpl.length > 0 && !/type="checkbox"/.test(dagbogOpl));
+check('lag 1: nævner journalfoeringspligten som grundlag (art. 13 stk. 1 litra c)', /journalf/i.test(dagbogOpl));
+check('lag 1: em-dash/en-dash-fri', dagbogOpl.length > 0 && !dagbogOpl.includes('—') && !dagbogOpl.includes('–'));
+check('lag 1: klienten ser ingen tal/scores', !/\d+\s*(point|score)/i.test(dagbogOpl));
+
+// OPGAVE 3 — em-dash i den LÅSTE §2-tekst (låst 3/6; em-dash-direktivet er fra 19/6 og havde
+// aldrig efterset den). index.html er IKKE i EMDASH_GUARDED_FILES (~26 em-dash i shippet copy
+// = separat sweep), så denne mål-rettede kontrakt guarder netop samtykke-regionen.
+const samtykkeRegion = (INDEX_HTML.match(/function renderDiaryConsent\(\)\s*\{[\s\S]*?\n\}/) || [''])[0];
+check('OPGAVE 3: 0 em-dash i dagbogs-samtykket (renderet copy, kommentarer undtaget)',
+  samtykkeRegion.length > 0 && scanEmDash(samtykkeRegion, 'index.html#renderDiaryConsent').length === 0,
+  scanEmDash(samtykkeRegion, 'x').map(v => v.line).join(','));
+check('lag 2: samtykket rammer server-kladden ind (ikke behandlingen)', /kladde/i.test(samtykkeRegion));
+// Tilbagetræknings-status er NY klient-facing copy og lever UDEN FOR renderDiaryConsent
+// → guard den eksplicit, ellers er den em-dash-fri ved held og ikke ved kontrakt.
+const tilbagetraekRegion = (INDEX_HTML.match(/function tilbagetraekningsStatus\(\)\s*\{[\s\S]*?\n\}/) || [''])[0];
+check('tilbagetræknings-status: 0 em-dash', tilbagetraekRegion.length > 0 && scanEmDash(tilbagetraekRegion, 'x').length === 0);
+check('tilbagetræknings-status siger "din psykolog" (term-lås)', /din psykolog/.test(tilbagetraekRegion));
+check('tilbagetræknings-status lover KUN sletning naar DELETE lykkedes (ærligheds-disciplin)',
+  /kladdeSletFejl/.test(tilbagetraekRegion) && /kunne ikke/i.test(tilbagetraekRegion));
 
 // ── Forløbs-anmodning (ANMOD v2.1, adaptiv-grundlags-betinget) — kontrakt §1–§3 ───────────
 // Maskinel drift-vagt på web-fladen (1:1 m. Swift ForloebsAnmodningKonvolutTests).
