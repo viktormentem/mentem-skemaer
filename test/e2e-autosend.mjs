@@ -97,13 +97,13 @@ const SITE = `http://127.0.0.1:${PORT}`;
 
 // Fælles baseline-udfyldning (generisk over felt-typerne; substans = valgfri → springes).
 async function udfyldBaselineOgSend(page) {
-  // P1 (K1 FASE A, besked-track): Art.9(2)(a)-samtykke-gate på baseline-welcome. E2E BEVISER
-  // gaten: Start er spærret FØR afkrydsning, aabnes EFTER. (Uden dette hang'er click'et under P1.)
-  await page.waitForSelector('#baseline-consent-cb');
-  check(await page.$eval('#baseline-start-btn', (b) => b.disabled),
-    'P1: Start spærret FØR samtykke er givet', 'baseline-start-btn.disabled');
-  await page.check('#baseline-consent-cb');
-  await page.waitForSelector('#baseline-start-btn:not([disabled])');
+  // GDPR-register 1.6 (Viktor 16/7): baseline i forløb = behandlingsdata (grundlag 9(2)(h) jf.
+  // 9(3) + §7 stk. 3). INGEN samtykke-gate. E2E BEVISER at Start er åben uden samtykke-handling.
+  await page.waitForSelector('#baseline-start-btn');
+  check(!(await page.$eval('#baseline-start-btn', (b) => b.disabled)),
+    'register 1.6: Start ÅBEN uden samtykke-handling', 'baseline-start-btn.disabled');
+  check(await page.$('#baseline-consent-cb') === null,
+    'register 1.3: INGEN samtykke-checkbox på baseline');
   await page.click('#baseline-start-btn');
   await page.waitForSelector('#baseline-fields input, #baseline-fields .radio-option');
   await page.evaluate(() => {

@@ -106,6 +106,11 @@
   .diary-consent-label { display:flex; gap:10px; align-items:flex-start; cursor:pointer; padding-top:12px; border-top:1px solid var(--border); }
   .diary-consent-label input { margin-top:3px; width:18px; height:18px; flex:none; cursor:pointer; }
   .diary-consent-status { margin:10px 0 0; font-size:13px; color:var(--muted); }
+  /* Oplysningstekst (art. 13) på baseline-welcome — informerer, gater ikke. Roligere end
+     samtykke-blokken (ingen accent-ramme): det er transparens, ikke en handling klienten skal gøre. */
+  .diary-oplysning { background:var(--accent-light); border-radius:10px; padding:14px 16px; margin-bottom:18px; text-align:left; font-size:14px; line-height:1.55; color:var(--ink); }
+  .diary-oplysning p { margin:0; }
+  .diary-oplysning .diary-oplysning-link { margin-top:8px; color:var(--muted); font-size:13px; }
   .footer-credit { font-size:11px; color:var(--muted); margin-top:20px; line-height:1.5; text-align:center; }
   /* Patientsikkerhed: diskret, ikke-alarmerende "Akut hjælp"-boks — altid findbar i bunden af hver skærm. */
   .akut-hjaelp { background:var(--card); border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:8px; padding:13px 16px; margin-top:26px; text-align:left; font-size:13px; color:var(--ink); line-height:1.55; }
@@ -373,22 +378,16 @@
   <div class="wrap">
     <h1>Kort om <em>din søvn</em></h1>
     <p class="intro" id="baseline-intro"></p>
-    <!-- P1 (K1 FASE A, besked-track): Art.9(2)(a)-samtykke fanget i selve skemaet, FOER svar
-         indtastes. PINNET UDKAST (V-4, afventer Viktor-ord-for-ord). Em-dash-fri, aeoeaa-korrekt,
-         "psykolog" (term-harmoniseret V-6-runde 15/7, surface-konsistent). Consent baeres inde i
-         ciphertext (buildPayloadBaseline consent). -->
-    <div class="diary-consent" id="baseline-consent">
-      <h3>Samtykke til at bruge dine svar</h3>
-      <p>Dine svar om søvn er helbredsoplysninger. For at din psykolog kan bruge dem i dit forløb, opbevares de krypteret, så kun din psykolog kan åbne dem.</p>
-      <ul>
-        <li>Svarene kan kun læses af din psykolog.</li>
-        <li>Du kan når som helst trække dit samtykke tilbage og bede om, at svarene bliver slettet.</li>
-      </ul>
-      <label class="diary-consent-label">
-        <input type="checkbox" id="baseline-consent-cb">
-        <span><strong>Jeg giver samtykke til, at mine svar om søvn opbevares krypteret og kun kan læses af min psykolog.</strong> Jeg ved, at det er helbredsoplysninger, og at jeg kan trække mit samtykke tilbage når som helst.</span>
-      </label>
-      <p class="diary-consent-status" id="baseline-consent-status">Du kan gå videre, når du har givet samtykke.</p>
+    <!-- Oplysningstekst (GDPR art. 13), IKKE samtykke. GDPR-register 1.6 (Viktor 16/7): en
+         soevn-baseline fra en klient i forloeb er behandlingsdata; grundlaget er art. 9(2)(h)
+         jf. 9(3) + §7 stk. 3. Register 1.3 forbyder samtykke-checkbox for selve databehandlingen,
+         og register 1.4 kraever transparens-tekst m. link til privatlivspolitikken PAA
+         indsamlingstidspunktet. Derfor: ingen checkbox, ingen gate paa Start/send.
+         ORDLYD = UDKAST, afventer V-4 (Viktor godkender ord-for-ord).
+         Em-dash-fri, aeoeaa-korrekt, term = "din psykolog" (surface-konsistent). -->
+    <div class="diary-oplysning" id="baseline-oplysning">
+      <p>Dine svar sendes sikkert og krypteret til din psykolog og indgår i din journal som en del af din behandling. Kun din psykolog kan åbne dem.</p>
+      <p class="diary-oplysning-link">Sådan behandler vi dine oplysninger: <a href="https://psykologviktornielsen.dk/privatlivspolitik.html" target="_blank" rel="noopener">privatlivspolitik</a>.</p>
     </div>
     <button class="btn-primary" id="baseline-start-btn">Start</button>
     <p class="start-note">Det tager et par minutter og udfyldes kun denne ene gang.</p>
@@ -2810,16 +2809,9 @@ function runBaseline(id) {
   showScreen('screen-baseline-welcome');
 }
 
-// P1 (K1 FASE A): Art.9(2)(a)-samtykke-tilstand for baseline (spejler dagbogens consentAccepted).
-// Objekt-form spejler buildPayloadCSD-samtykket (Journal decoder eens for begge). null = ikke givet.
-const BASELINE_CONSENT_TEXT_VERSION = '2026-07-15';   // PINNET UDKAST (V-4) — bump ved ordlyds-ratifikation
-let baselineConsent = null;
-function baselineConsentAccepted() { return !!(baselineConsent && baselineConsent.accepted); }
-function setBaselineConsent(accepted) {
-  baselineConsent = accepted
-    ? { accepted: true, timestamp: new Date().toISOString(), version: BASELINE_CONSENT_TEXT_VERSION }
-    : null;
-}
+// INGEN baseline-samtykke-tilstand: GDPR-register 1.6 (Viktor 16/7) => grundlag 9(2)(h) jf. 9(3)
+// + §7 stk. 3, ikke 9(2)(a). Oplysningspligten løftes af #baseline-oplysning (statisk art.13-tekst).
+// Søvndagbogens consentAccepted() er URØRT (separat, endnu ikke truffet beslutning).
 
 function renderBaselineWelcome() {
   const intro = document.getElementById('baseline-intro');
@@ -2830,20 +2822,9 @@ function renderBaselineWelcome() {
     return;
   }
   intro.textContent = baselineSkema.instruction;
-  // P1: samtykke-gate — Start er spærret til klienten har givet Art.9-samtykke i selve skemaet.
-  const cb = document.getElementById('baseline-consent-cb');
-  const status = document.getElementById('baseline-consent-status');
-  const opdaterGate = () => {
-    startBtn.disabled = !baselineConsentAccepted();
-    if (status) status.textContent = baselineConsentAccepted()
-      ? 'Tak. Du kan nu gå videre.'
-      : 'Du kan gå videre, når du har givet samtykke.';
-  };
-  if (cb) {
-    cb.checked = baselineConsentAccepted();
-    cb.onchange = () => { setBaselineConsent(cb.checked); opdaterGate(); };
-  }
-  opdaterGate();
+  // Ingen samtykke-gate: Start må ALDRIG være spærret af samtykke (register 1.6). Eneste gate på
+  // denne skærm er nøgle-pinningen ovenfor (sikkerhed), som fail-closer med sin egen besked.
+  startBtn.disabled = false;
   const fp = document.getElementById('baseline-key-fp');
   if (fp) fp.textContent = 'Krypteret til din psykologs nøgle · ID ' + aktivKeyId();
 }
@@ -2966,13 +2947,8 @@ async function shareBaselineEncrypted() {
     status.textContent = 'Sikkerhedstjek fejlede: linket peger på en ukendt nøgle. Del IKKE dine svar. Kontakt din psykolog for et nyt link.';
     return;
   }
-  // P1 (K1 FASE A): HARD-BLOCK — baseline sendes ALDRIG uden et registreret Art.9(2)(a)-samtykke.
-  // (Start-gaten fanger det normalt; dette er forsvar-i-dybden, spejler dagbogens consent-hardblock.)
-  if (!baselineConsentAccepted()) {
-    status.style.color = '#c0392b';
-    status.textContent = 'Giv samtykke øverst i skemaet, før du sender dine svar.';
-    return;
-  }
+  // INGEN samtykke-blok her (GDPR-register 1.6): baseline i forløb behandles på grundlag
+  // 9(2)(h) jf. 9(3) + §7 stk. 3. Kun nøgletjekket ovenfor må stoppe en afsendelse.
   btn.disabled = true;
   status.style.color = 'var(--accent)';
   status.textContent = 'Krypterer …';
@@ -2981,7 +2957,7 @@ async function shareBaselineEncrypted() {
   try {
     const nameEl = document.getElementById('patient-name');
     const name = ((nameEl && nameEl.value) || '').trim();
-    payload = buildPayloadBaseline(baselineDraft, { name, consent: baselineConsent });
+    payload = buildPayloadBaseline(baselineDraft, { name });   // intet consent-felt (register 1.6)
     containerJSON = JSON.stringify(await mentemEncrypt(keyCheck.key, payload, keyCheck.keyId)); // ALTID pinned key
   } catch (e) {
     console.error('[mentem] kryptering fejlede (baseline)', e && e.name, e && e.message, e);
