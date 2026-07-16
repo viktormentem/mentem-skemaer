@@ -94,15 +94,17 @@ export const BINDESTREG_ALLOWLIST = [
 // Når Viktor godkender rettelsen, SKAL posten slettes, ellers bliver suiten rød. Listen kan
 // derfor kun krympe — den kan ikke blive den skraldespand en ubegrundet allowlist bliver.
 export const PENDING_VIKTOR_GO = [
-  { file: 'index.html', found: 'øvndagbog-opdatering', forslag: 'Søvndagbogsopdatering',
-    note: 'delings-/mailemne klienten ser: "Søvndagbog-opdatering til min psykolog"' },
-  { file: 'anmod.html', found: 'test-visning', forslag: 'testvisning', note: 'forhåndsvisnings-banner (TEST_HOST)' },
-  { file: 'anmod.html', found: 'anmod-formularen', forslag: 'anmodformularen', note: 'forhåndsvisnings-banner (TEST_HOST)' },
-  { file: 'anmod.html', found: 'ingest-worker', forslag: 'ingestworker (eller omskriv: "worker\'en til modtagelse")',
-    note: 'forhåndsvisnings-banner; desuden internt begreb i klient-copy' },
-  { file: 'anmod.html', found: 'sykiater-henvisning', forslag: 'Psykiaterhenvisning',
-    note: 'SHIPPET fejlbesked: "Psykiater-henvisning kan kun vælges, når du er henvist via egen læge."' },
-  { file: 'anmod.html', found: 'server-forbindelse', forslag: 'serverforbindelse', note: 'forhåndsvisnings-kvittering (TEST_HOST)' },
+  // TOM: alle 6 fund fra guardens foerste koersel er RETTET med Viktor-GO 16/7.
+  //   index.html  "Soevndagbog-opdatering" -> "Soevndagbogsopdatering"  (delings-/mailemne)
+  //   anmod.html  "Psykiater-henvisning kan kun vaelges..." -> "Vaelg foerst ... som grundlag."
+  //               Viktor 16/7: fagligt korrekt term = "speciallaege i psykiatri (psykiater)"
+  //               (sundhed.dk bruger "praktiserende speciallaege" + "henvisning"). Fejlen navngav
+  //               desuden valget "Psykiater-henvisning", et ord der IKKE fandtes i fladen; den
+  //               navngiver nu optionen som klienten SER den, og siger hvad man skal goere.
+  //   anmod.html  banner: "test-visning"/"anmod-formularen" -> ét ord; "ingest-worker" FJERNET
+  //               (internt begreb laekket til klientflade).
+  //   anmod.html  "server-forbindelse" -> "serverforbindelse"
+  // Listen skal forblive tom. Ny post = en KENDT fejl der venter paa Viktor, aldrig en allowlist.
 ];
 
 // Per-linje-markør til éngangs-undtagelser der ikke fortjener en global regel.
