@@ -395,7 +395,7 @@ document.getElementById('key-fp').textContent = `Krypteret til nøgle-ID ${INGES
 if (TEST_HOST) {
   const b = document.getElementById('preview-banner');
   b.style.display = '';
-  b.textContent = 'Forhåndsvisning: dette er en test-visning af anmod-formularen. Indsend bygger og krypterer en ÆGTE konvolut, men afsendelse til serveren aktiveres først, når ingest-worker er åbnet for skemaet.';
+  b.textContent = 'Forhåndsvisning: dette er en testvisning af anmodformularen. Indsend bygger og krypterer en ægte konvolut, men afsendelsen til serveren er ikke slået til endnu.';
 }
 
 // ── Fejl-mapping (core-validerings-koder → dansk besked, peg på feltet) ────
@@ -420,7 +420,7 @@ function fejlBesked(e) {
       if (f === 'tid_tider')            return 'Vælg venligst gyldige tidspunkter.';
       return 'Et af felterne har en ugyldig værdi.';
     case 'ugyldig_tid_praeference':      return 'Vælg venligst dage/tidspunkter, eller "Ved ikke endnu".';
-    case 'henvisning_ikke_tilladt':      return 'Psykiater-henvisning kan kun vælges, når du er henvist via egen læge.';
+    case 'henvisning_ikke_tilladt':      return 'Vælg først "Henvist via egen læge til speciallæge i psykiatri (psykiater)" som grundlag.';
     case 'forloeb_tilbudt_ikke_tilladt': return 'Forløbstype kan kun vælges, når du er henvist via egen læge.';
     case 'forloeb_resolved_ikke_tilladt':return 'Forløbet afgøres af psykologen og kan ikke angives her.';
     case 'tid_praeference_ikke_tilladt': return 'Dage/tidspunkter gælder kun et tilbudt gruppeforløb.';
@@ -508,7 +508,7 @@ form.addEventListener('submit', async (ev) => {
     if (TEST_HOST) { visKvittering('Forhåndsvisning: serveren afviste afsendelsen (skema/host endnu ikke åbnet). Konvolutten blev bygget og krypteret korrekt.'); return; }
     document.getElementById('form-error').textContent = 'Din anmodning kunne ikke sendes lige nu. Prøv venligst igen senere.';
   } catch (e) {
-    if (TEST_HOST) { visKvittering('Forhåndsvisning: ingen server-forbindelse. Konvolutten blev bygget og krypteret korrekt.'); return; }
+    if (TEST_HOST) { visKvittering('Forhåndsvisning: ingen serverforbindelse. Konvolutten blev bygget og krypteret korrekt.'); return; }
     document.getElementById('form-error').textContent = 'Din anmodning kunne ikke sendes lige nu. Tjek din forbindelse og prøv igen.';
   } finally {
     sendBtn.disabled = false; sendBtn.textContent = 'Send anmodning';

@@ -2880,7 +2880,7 @@ async function sendDiaryOpdatering() {
     }
   }
   // TRIN 2 — levering (deling el. robust fallback).
-  const r = await leverKrypteretFil(containerJSON, `mentem-soevndagbog-${todayISO()}.json`, 'Søvndagbog-opdatering til min psykolog', status);
+  const r = await leverKrypteretFil(containerJSON, `mentem-soevndagbog-${todayISO()}.json`, 'Søvndagbogsopdatering til min psykolog', status);
   if (r === 'delt') {
     status.style.color = 'var(--accent)';
     status.textContent = 'Opdateringen er klar til at sende. Tak! Du kan roligt fortsætte dagbogen.';

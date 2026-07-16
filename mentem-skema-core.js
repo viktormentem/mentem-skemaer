@@ -748,7 +748,7 @@ export const ANMOD_ART9_DENY = ['cpr', 'helbred', 'diagnose', 'diagnosis', 'medi
 // §2 visningsnavne (korrekt æøå - IKKE wire-værdier). Single source for web + app.
 // Psykiater-klinik: personnavn (Hoff/Westergaard) er display-only (wire = klinik-id).
 export const ANMOD_DISPLAY = {
-  grundlag:            { psykiater: 'Henvist via egen læge til psykiater', forsikring: 'Via forsikring', egenbetaler: 'Egenbetaler' },
+  grundlag:            { psykiater: 'Henvist via egen læge til speciallæge i psykiatri (psykiater)', forsikring: 'Via forsikring', egenbetaler: 'Egenbetaler' },
   henvisning_psykiater:{ vestegnsklinikken: 'Vestegnsklinikken (Andreas Hoff)', westergaard: 'Westergaard Psykiatri (Casper Westergaard)', ved_ikke: 'Ved ikke' },
   forloeb_tilbudt:     { gruppe: 'Gruppeforløb', individuelt: 'Individuelt forløb', ved_ikke: 'Ved ikke' },
   tid_dage:            { tirsdag: 'Tirsdag', onsdag: 'Onsdag', torsdag: 'Torsdag', fredag: 'Fredag' },
