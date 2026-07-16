@@ -1,0 +1,9 @@
+# wrangler-cache fra `wrangler pages deploy` (den ENESTE vej til udgivelse: CF Pages-
+# projektet mycel-skemaer er ikke git-koblet, Git Provider: No). Deployes der fra en
+# klon/worktree, efterlader wrangler .wrangler/cache/ dér, og treet staar permanent
+# "URENT". Et vedvarende falskt drift-signal laerer folk at ignorere signalet, saa vi
+# ignorerer i stedet stoejen. Sporene her er lokal cache + konto-metadata, aldrig kilde.
+.wrangler/
+
+# macOS Finder-detritus.
+.DS_Store
