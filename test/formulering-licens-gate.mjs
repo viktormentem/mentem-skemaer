@@ -106,6 +106,18 @@ function koer({ ekstraTekster = [], stille = false } = {}) {
   ok(korpus.length > 0, `korpuset er ikke tomt (${korpus.length} verbatim-strenge)`);
   ok(tekster.length > 0, `fladen har klient-synlig copy at tjekke (${tekster.length} strenge)`);
 
+  // Kun VÆRDIER, aldrig NØGLER (Journal-audits fund 16/7, adopteret): et korpus afledt
+  // bredt fra et dict kan komme til at baere felt-identifikatorer ('cas1_worry_tid') i
+  // stedet for item-tekst. Ingen taster en identifikator i et formulerings-felt, saa de
+  // ville vaere doed vaegt der samtidig goer MIN_DISTINKT'ens inerthed til et TILFAELDE
+  // frem for et design. Vi laeser kun navngivne tekst-felter (s.instruction, it.text),
+  // aldrig Object.keys() - og her BEVISES det frem for at blive paastaaet.
+  const identifikatorAgtige = korpus.filter((k) => /^[a-z0-9_]+$/.test(k.tekst.trim()));
+  ok(identifikatorAgtige.length === 0, 'korpuset er item-TEKST, ingen felt-noegler sluppet med');
+  for (const k of identifikatorAgtige) {
+    log(`      ↳ ${k.noegle}.${k.felt} ligner en identifikator: ${JSON.stringify(k.tekst)}`);
+  }
+
   // Fail-closed: et korpus-element vi ikke kan matche forsvarligt skal SIGES, ikke skjules.
   const forKorte = korpus.filter((k) => norm(k.tekst).length < MIN_DISTINKT);
   ok(forKorte.length === 0,
@@ -156,10 +168,15 @@ function selvtest() {
   console.log(`  ${b.fejl > 0 ? '✓' : '✗ FAIL'} fanger et item INDLEJRET i en sætning`);
   if (b.fejl === 0) fejlet++;
 
-  // 3) må IKKE fyre på parafrase (ellers er guarden ubrugelig i praksis)
+  // 3) må IKKE fyre på parafrase. Dette er selvtestens VIGTIGSTE case (Journal-audits
+  //    reframe 16/7, adopteret): den beskytter ikke bare mod stoej - den beskytter selve
+  //    GRUNDLAGET. Licens-registrets raekke 1.2 hviler paa at vi gengiver Wells' model i
+  //    egne ord. En guard der fyrede paa vores egen parafrase ville altsaa MODSIGE den
+  //    raekke der giver fladen lov til at findes. Test 1+2 beskytter mod at bryde flip-01;
+  //    test 3 beskytter mod at guarden selv erklaerer 1.2 ugyldig.
   const parafrase = 'hvis jeg bekymrer mig nok, er jeg forberedt og undgår problemer';
   const c = koer({ ekstraTekster: [{ kilde: 'PLANTET.parafrase', tekst: parafrase }], stille: true });
-  console.log(`  ${c.fejl === 0 ? '✓' : '✗ FAIL'} fyrer IKKE på parafrase (samme idé, egne ord = lovligt)`);
+  console.log(`  ${c.fejl === 0 ? '✓' : '✗ FAIL'} fyrer IKKE på parafrase (beskytter register 1.2 selv)`);
   if (c.fejl !== 0) fejlet++;
 
   // 4) grøn på den urørte flade
