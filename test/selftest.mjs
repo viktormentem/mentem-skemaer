@@ -42,6 +42,7 @@ import {
   SEND_SIKKERT_CTA,
 } from '../mentem-skema-core.js';
 import { scanText, runGuard, scanEmDash, runEmDashGuard, GUARDED_FILES, EMDASH_GUARDED_FILES } from './emoji-guard.mjs';
+import { scanCopy, runCopyGuard, triageCopy, COPY_GUARDED_FILES } from './copy-guard.mjs';
 import { readFileSync } from 'node:fs';
 
 // Live v2-privatlivspolitik (samme URL som anmod.html bruger — én adresse på hele fladen).
@@ -548,6 +549,31 @@ check('emdash-guard guardet IGEN efter instrument-region-end',
 const liveEmDash = runEmDashGuard();
 check(`emdash-guard GRØN mod live ${EMDASH_GUARDED_FILES.join('+')} (0 em-dash i renderet copy)`, liveEmDash.length === 0,
   liveEmDash.map(v => `${v.file}:${v.line}`).join(' | '));
+
+// ── VERA-guard #2: synlig-copy-guard (em-dash + en-dash + anglicistisk bindestreg) ──
+// Født 16/7: Viktor fangede SELV samme sprogfejl 3 gange på én dag ("engangs-skema",
+// "søvn-svar") — anglicistisk bindestreg, som Iowan Old Style tegner så lang at den ligner
+// em-dash. Ubevogtet indtil nu. Scanner SYNLIG copy (ikke rå bytes), hvilket er præcis det
+// der endelig gør index.html guardbar: den bærer 69 em-dash i KOMMENTARER (0 i synlig copy),
+// så en rå-scan ville være rød uden en eneste ægte fejl. Fuld test: node test/copy-guard-test.mjs
+console.log('copy-guard (VERA #2 — synlig klient-copy):');
+const C = (t) => scanCopy(t, 't.html').length;
+check('copy-guard fanger "engangs-skema" (Viktor 16/7)', C('<p>et engangs-skema</p>') === 1);
+check('copy-guard fanger "søvn-svar" i JS-streng (Viktor 16/7)', C('<script>x.textContent = "dine søvn-svar";</script>') === 1);
+check('copy-guard fanger em-dash i synlig copy', C('<p>A — B</p>') === 1);
+check('copy-guard fanger en-dash som tankestreg', C('<p>A – B</p>') === 1);
+check('copy-guard tillader "GAD-7"/"uge 1-3" (forkortelse/talinterval)', C('<p>GAD-7 i uge 1-3</p>') === 0);
+check('copy-guard tillader talinterval med en-dash "0–100 %"', C('<p>(0–100 %)</p>') === 0);
+check('copy-guard ignorerer kommentarer (rå-byte-fælden)', C('<!-- engangs-skema — her -->') === 0);
+check('copy-guard ignorerer CSS-selektor/className', C('<script>el.className = "diary-field nrs-field";</script>') === 0);
+const liveCopy = triageCopy(runCopyGuard());
+check(`copy-guard GRØN mod live ${COPY_GUARDED_FILES.join('+')} (0 NYE sprog-regressioner)`, liveCopy.nye.length === 0,
+  liveCopy.nye.map(v => `${v.file}:${v.line} "${v.found}"`).join(' | '));
+check('copy-guard: 0 stale poster i PENDING_VIKTOR_GO (listen skal krympe, ikke rådne)',
+  liveCopy.stale.length === 0, liveCopy.stale.map(p => p.found).join(' | '));
+if (liveCopy.pendingFundet) {
+  console.log(`  i ${liveCopy.pendingFundet} KENDTE nudansk-fund i shippet copy afventer Viktor-GO (PENDING_VIKTOR_GO i test/copy-guard.mjs)`);
+}
 
 console.log('');
 if (failures > 0) { console.error(`SELFTEST FAILED: ${failures} fejl`); process.exit(1); }
