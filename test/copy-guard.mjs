@@ -59,13 +59,29 @@ export const COPY_GUARDED_FILES = ['index.html', 'mentem-skema-core.js', 'anmod.
 // `wrangler pages deploy .` uploader hele rod-mappen. De bærer 59 + 15 em-dash og
 // "Mentem"-brandet på en klient-vendt flade. Grunden var altså falsk, og guarden
 // meldte grønt om en flade den ikke kiggede på. Se noter/copy-guard-scope-fund-2026-07-16.md.
+//
+// 🔴 RETTET 17/7: grundene herunder pegede på en kur der ikke findes. De sagde
+// "afventer Viktors valg (slet · UDELAD FRA DEPLOY · ret copy)". Mellemmuligheden var
+// tænkt som `.assetsignore` — og `wrangler pages deploy` læser ALDRIG den fil.
+// Den er en Workers static-assets-mekanisme (createAssetsIgnoreFunction/buildAssetManifest).
+// Pages har sin EGEN walker med en hårdkodet liste, uden repo-niveau hook:
+//   src/pages/validate.ts: IGNORE_LIST = ["_worker.js", "_redirects", "_headers",
+//     "_routes.json", "functions", "**/.DS_Store", "**/node_modules", "**/.git", ".wrangler"]
+// Målt mod wrangler 4.96 (den version npx faktisk udgiver dette repo med), krydstjekket
+// i 4.98 + 4.111: nul .assetsignore-træf mellem pages/validate.ts og pages/upload.ts.
+// Bekræftet uafhængigt af audit-lanen. En begrundelse der peger på en ikke-eksisterende
+// kur er værre end ingen: den binder den næste læser til noget der ikke virker — og en
+// `.assetsignore` i repoet ville set ud som en løsning mens fladerne blev ved at være live.
 export const COPY_UNDTAGET = {
   'mentem-x25519-fallback.js':
     'Krypto-bibliotek: ren algoritme-kode uden klient-copy. Ingen synlig streng at guarde.',
   'soevn-forloeb-preview.html':
     'ULISTET preview (syntetisk, 0 PII). NB: grunden er IKKE "ikke prod" — filen ER live-nåbar ' +
     'på skemaer.mycel.dk og bryder em-dash- + brand-split-reglen der. Undtaget FORELØBIGT så ' +
-    'fundet står dokumenteret frem for skjult; afventer Viktors valg (slet · udelad fra deploy · ret copy).',
+    'fundet står dokumenteret frem for skjult. Afventer Viktors valg mellem de VERIFICEREDE ' +
+    'muligheder: slet · de-brand copyen · lad ligge ulistet · eller strukturelt: udgiv fra en ' +
+    'kurateret mappe (`pages deploy public/`) frem for repo-roden. Det sidste er det eneste der ' +
+    'fjerner KLASSEN frem for de to instanser: en fil udenfor mappen KAN ikke udgives.',
   'soevn-hub-mock.html':
     'ULISTET mock (syntetisk, 0 PII). Samme forbehold som soevn-forloeb-preview.html: ' +
     'live-nåbar, 15 em-dash + Mentem-brand på klientdomænet. Afventer samme beslutning.',
