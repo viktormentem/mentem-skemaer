@@ -27,10 +27,29 @@ export const SKEMA_ORDER = ['cas', 'mcb', 'gad7', 'phq9', 'who5', 'wsas', 'waisr
 // licensnavne-skønnet permanent, Viktor V90). Et fremtidigt licens-pending skema fjernes
 // blot herfra → kan ikke længere rendres offentligt, uden at SKEMA_ORDER røres.
 //
-// CAS-1 ('cas') + MCB ('mcb') FJERNET 2026-07-03 (Viktor-beslutning, Wells-licens):
+// 'cas' + 'mcb' FJERNET fra offentlig visning 2026-07-03 (Viktor-beslutning, Wells-licens):
 // de må IKKE sendes/rendres digitalt → administreres kun på papir og indtastes separat
 // i klient-record. SKEMA_ORDER + SKEMAER-definitionerne bevares (licens-pending-mønster);
 // et stale/manuelt ?s=cas-link filtreres bort her → ufuldstændigt-link-skærm.
+//
+// 🔴 PRÆCISERING 2026-07-18 (vigtig, læs før du rører noget her):
+// Nøglerne 'cas' og 'mcb' er UHELDIGT NAVNGIVNE. Indholdet under dem er IKKE Wells' CAS-1
+// og IKKE MCQ-30. Det er VIKTORS EGNE formuleringer af de metakognitive konstrukter, skrevet
+// i dagligdags dansk til klienter ("Tid brugt på grublen (at tænke igen og igen over problemer
+// eller fortiden)"). De viste titler er derfor også neutrale: "Ugens mønstre" / "Tanker om
+// bekymring". Wells' faktiske instrument har sin egen, INAKTIVE plads: CAS1_INSTRUMENT_SLOT
+// (KLAR:false) længere nede i filen.
+//
+// Hvorfor præciseringen står her: navnesammenfaldet har allerede fået mindst én læser til at
+// tro, at Viktors egen tekst var Wells' instrument, og dermed til at fejlvurdere licens-status.
+// Nøglen omdøbes IKKE, fordi den er lagringsnøgle (answers.cas / out.cas) og et skifte ville
+// bryde historiske klient-records. Rettelsen hører derfor i navngivningens BETYDNING, ikke i
+// dens bogstaver.
+//
+// Ophavsretligt (vurdering 18/7, noter/vurdering-ophavsret-cas-mcb-2026-07-18.html): egen
+// ordlyd trækker mod ophavsretslovens § 4 stk. 2 (nyt og selvstændigt værk). Wells' RET gælder
+// hans eget udtryk og den digitale gengivelse af det; den gælder IKKE metoden som sådan.
+// Se også instrument-licensregister-kanonisk-2026-07-18.md § 3c og § 3f.
 //
 // WAI-SR ('waisr', alliance-selvrapport) SAFE-FAIL-ekskluderet 2026-07-03: en allowlist
 // må kun bære bekræftet-OK instrumenter. Koden annoterer det "frit/public domain", men det
