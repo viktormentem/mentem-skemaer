@@ -57,6 +57,61 @@ export const SKEMA_ORDER = ['cas', 'mcb', 'gad7', 'phq9', 'who5', 'wsas', 'waisr
 // til Viktor bekræfter (reversibelt: tilføj 'waisr' igen her + genindsæt alliance-checkpoint).
 export const OFFENTLIGT_KLAR = ['gad7', 'phq9', 'who5', 'wsas'];
 
+// ── LICENS-PROFILER (Viktor-beslutning 18/7 + 19/7) ─────────────────────────
+// To forskellige rettigheder på SAMME flade, og de må ikke blandes sammen:
+//
+//   INTERN  = Viktors egen praksis. Han HAR gyldige licenser (fx Mapi Special Terms 140135
+//             til ESS, intern klinisk brug). Alt i OFFENTLIGT_KLAR vises. **Denne profil er
+//             urørt og skal blive ved at være det** — Viktor 19/7: det interne produkt må
+//             ikke komme i vejen, så der altid kan vises en demo der FAKTISK virker.
+//   PRODUKT = det der må følge med i et salg. Kun instrumenter der er frie til kommerciel
+//             videredistribution, verificeret mod primærkilde med dato.
+//
+// 🔴 PORTEN ER IKKE PRIS. WHO-5 er gratis OG spærret (CC BY-NC-SA 3.0 IGO; NC forbyder at
+// den indgår i et solgt produkt). Bygges automatikken på "gratis", ryger WHO-5 med ind ved
+// første kunde og bryder licensen. Kriteriet er `kommercielt === true`, intet andet.
+//
+// 🔴 FAIL-CLOSED GÆLDER PRODUKTET, IKKE INSTALLATIONEN. Uverificeret (`null`) betyder
+// "følger ikke med i et salg", ikke "forsvinder fra Viktors app". Ellers ville hver ny
+// tvivl gøre hans eget værktøj fattigere, og så bliver det dyrt at registrere tvivl.
+//
+// Hvorfor profiler frem for at slette de spærrede: Mapi General Terms §3.1 er ordret
+// "non-transferable, non-assignable, non-sublicensable" ⇒ Viktor kan IKKE købe én licens der
+// dækker kunderne. Samme flade skal derfor kunne vise ESS hos ham og skjule det hos en kunde.
+// Aftaletekst, ikke skøn. (Model A, noter/instrument-licensregister-kanonisk-2026-07-18.md.)
+//
+// NB om ordet "intern": det betyder "drevet af Viktors egen praksis", ikke "ikke på
+// internettet". NC rammer kommerciel udnyttelse, ikke offentlig tilgængelighed — hans
+// klienter må tilgå WHO-5 på et offentligt link; en kunde der har KØBT journalen må ikke.
+export const PROFIL_INTERN = 'intern';
+export const PROFIL_PRODUKT = 'produkt';
+
+// Licens-fakta pr. instrument. `kommercielt`: true = fri til kommerciel videredistribution,
+// false = beviseligt spærret, null = uverificeret (behandles som spærret i produktet).
+// `verificeret` er datoen for opslag mod primærkilden — en påstand uden dato er ikke en
+// verifikation. Kanonisk kilde: noter/instrument-licensregister-kanonisk-2026-07-18.md.
+export const INSTRUMENT_LICENS = {
+  gad7: { kommercielt: true, verificeret: '2026-07-18',
+          kilde: 'Public domain siden 2010 (Pfizer frigav); ingen tilladelse noedvendig' },
+  phq9: { kommercielt: true, verificeret: '2026-07-18',
+          kilde: 'Public domain siden 2010 (Pfizer frigav); ingen tilladelse noedvendig' },
+  who5: { kommercielt: false, verificeret: '2026-07-18',
+          kilde: 'who.int WHO-UCN-MSD-MHE-2024.01: CC BY-NC-SA 3.0 IGO (NC = ingen salg, SA = afledte arver)' },
+  wsas: { kommercielt: null, verificeret: '2026-07-18',
+          kilde: 'I. M. Marks / ePROVIDE+Mapi: kraever tilladelse, kommerciel status uafklaret ved kilden' },
+};
+
+// Allowlist for en given profil. Default er INTERN — en glemt parameter må ALDRIG kunne
+// amputere Viktors egen flade. `licenser` er injicerbar, så gaten kan red-bevises uden at
+// røre det ægte register (og uden delt tilstand mellem kald).
+export function allowlistFor(profil = PROFIL_INTERN, licenser = INSTRUMENT_LICENS) {
+  if (profil !== PROFIL_PRODUKT) return [...OFFENTLIGT_KLAR];
+  // Fail-closed: kun eksplicit `kommercielt === true` slipper igennem. Et uregistreret
+  // instrument har intet opslag ⇒ undefined ⇒ spærret. Derfor er gaten strukturel frem for
+  // en liste nogen skal huske at vedligeholde.
+  return OFFENTLIGT_KLAR.filter(id => licenser[id]?.kommercielt === true);
+}
+
 // Frekvens-svarmuligheder (PHQ-9 / GAD-7, 0-3).
 const FREQ_0_3 = [
   { label: 'Slet ikke', value: 0 },
