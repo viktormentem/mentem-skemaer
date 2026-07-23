@@ -10,8 +10,10 @@ function check(navn, ok, detalje) {
 
 const CTX = { tibOrd: 390, wakeOrd: '06:00', tn: null, nudgeFra: false };
 // vinduesstart = 06:00 minus 390 min = 23:30.
+// quality gemmes af dagbogen som TAL 1-5 (idx+1: 1=Meget dårlig, 2=Dårlig, 3=Nogenlunde,
+// 4=God, 5=Meget god) — testen skal bruge den RIGTIGE form, ellers maskerer den fejl.
 const HOLDT = { bedtime: '23:30', outOfBed: '06:10', sleepLatencyMin: 10,
-                awakeningsMin: 5, quality: 'Nogenlunde', substans: null };
+                awakeningsMin: 5, quality: 3, substans: null };
 
 console.log('Kort A (oppe for sent):');
 check('A fyrer: TIB +70, oppe +60', vaelgNudgeKort(
@@ -35,14 +37,18 @@ check('D over C', vaelgNudgeKort(
   { ...HOLDT, sleepLatencyMin: 40, awakeningsMin: 25 }, CTX)?.id === 'D');
 
 console.log('Kort E (uge 1):');
-check('E fyrer: tn=0 + Daarlig, vindue holdt', vaelgNudgeKort(
+check('E fyrer: tn=0 + Daarlig (tal 2), vindue holdt', vaelgNudgeKort(
+  { ...HOLDT, quality: 2 }, { ...CTX, tn: 0 })?.id === 'E');
+check('E fyrer ved Meget daarlig (tal 1)', vaelgNudgeKort(
+  { ...HOLDT, quality: 1 }, { ...CTX, tn: 0 })?.id === 'E');
+check('E fyrer OGSAA ved streng-form (defensivt/legacy)', vaelgNudgeKort(
   { ...HOLDT, quality: 'Dårlig' }, { ...CTX, tn: 0 })?.id === 'E');
-check('E fyrer ved Meget daarlig', vaelgNudgeKort(
-  { ...HOLDT, quality: 'Meget dårlig' }, { ...CTX, tn: 0 })?.id === 'E');
+check('E fyrer IKKE ved god soevn (tal 4)', vaelgNudgeKort(
+  { ...HOLDT, quality: 4 }, { ...CTX, tn: 0 })?.id !== 'E');
 check('glidning slaar E', vaelgNudgeKort(
-  { ...HOLDT, quality: 'Dårlig', outOfBed: '07:10' }, { ...CTX, tn: 0 })?.id === 'A');
+  { ...HOLDT, quality: 2, outOfBed: '07:10' }, { ...CTX, tn: 0 })?.id === 'A');
 check('E fyrer IKKE uden tn=0', vaelgNudgeKort(
-  { ...HOLDT, quality: 'Dårlig' }, CTX)?.id !== 'E');
+  { ...HOLDT, quality: 2 }, CTX)?.id !== 'E');
 
 console.log('Kort F (alkohol):');
 check('F fyrer: alkohol rapporteret, vindue holdt', vaelgNudgeKort(

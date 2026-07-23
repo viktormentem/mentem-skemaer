@@ -432,8 +432,13 @@ export function vaelgNudgeKort(entry, ctx) {
   if (glidning && bedAfvig < -G) return byg('B');
   if (glidning) return null;                          // glidning uden klar retning: intet kort
 
+  // Dagbogen GEMMER quality som tal 1-5 (idx+1: 1=Meget dårlig, 2=Dårlig, ... index.html scale-felt).
+  // Accepterer BÅDE tal (produktion) og streng (defensivt/legacy) — ellers matcher tal aldrig en streng
+  // og kort E kan aldrig fyre for en rigtig klient.
   const kvalitet = entry.quality;
-  if (ctx.tn === 0 && (kvalitet === 'Meget dårlig' || kvalitet === 'Dårlig')) return byg('E');
+  const daarligSoevn = kvalitet === 1 || kvalitet === 2
+    || kvalitet === 'Meget dårlig' || kvalitet === 'Dårlig';
+  if (ctx.tn === 0 && daarligSoevn) return byg('E');
 
   const sb = entry.substans;
   if (sb && sb.intet !== true && Array.isArray(sb.alkohol) && sb.alkohol.length) return byg('F');
