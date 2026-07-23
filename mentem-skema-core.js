@@ -27,16 +27,90 @@ export const SKEMA_ORDER = ['cas', 'mcb', 'gad7', 'phq9', 'who5', 'wsas', 'waisr
 // licensnavne-skønnet permanent, Viktor V90). Et fremtidigt licens-pending skema fjernes
 // blot herfra → kan ikke længere rendres offentligt, uden at SKEMA_ORDER røres.
 //
-// CAS-1 ('cas') + MCB ('mcb') FJERNET 2026-07-03 (Viktor-beslutning, Wells-licens):
+// 'cas' + 'mcb' FJERNET fra offentlig visning 2026-07-03 (Viktor-beslutning, Wells-licens):
 // de må IKKE sendes/rendres digitalt → administreres kun på papir og indtastes separat
 // i klient-record. SKEMA_ORDER + SKEMAER-definitionerne bevares (licens-pending-mønster);
 // et stale/manuelt ?s=cas-link filtreres bort her → ufuldstændigt-link-skærm.
+//
+// 🔴 PRÆCISERING 2026-07-18 (vigtig, læs før du rører noget her):
+// Nøglerne 'cas' og 'mcb' er UHELDIGT NAVNGIVNE. Indholdet under dem er IKKE Wells' CAS-1
+// og IKKE MCQ-30. Det er VIKTORS EGNE formuleringer af de metakognitive konstrukter, skrevet
+// i dagligdags dansk til klienter ("Tid brugt på grublen (at tænke igen og igen over problemer
+// eller fortiden)"). De viste titler er derfor også neutrale: "Ugens mønstre" / "Tanker om
+// bekymring". Wells' faktiske instrument har sin egen, INAKTIVE plads: CAS1_INSTRUMENT_SLOT
+// (KLAR:false) længere nede i filen.
+//
+// Hvorfor præciseringen står her: navnesammenfaldet har allerede fået mindst én læser til at
+// tro, at Viktors egen tekst var Wells' instrument, og dermed til at fejlvurdere licens-status.
+// Nøglen omdøbes IKKE, fordi den er lagringsnøgle (answers.cas / out.cas) og et skifte ville
+// bryde historiske klient-records. Rettelsen hører derfor i navngivningens BETYDNING, ikke i
+// dens bogstaver.
+//
+// Ophavsretligt (vurdering 18/7, noter/vurdering-ophavsret-cas-mcb-2026-07-18.html): egen
+// ordlyd trækker mod ophavsretslovens § 4 stk. 2 (nyt og selvstændigt værk). Wells' RET gælder
+// hans eget udtryk og den digitale gengivelse af det; den gælder IKKE metoden som sådan.
+// Se også instrument-licensregister-kanonisk-2026-07-18.md § 3c og § 3f.
 //
 // WAI-SR ('waisr', alliance-selvrapport) SAFE-FAIL-ekskluderet 2026-07-03: en allowlist
 // må kun bære bekræftet-OK instrumenter. Koden annoterer det "frit/public domain", men det
 // er en påstand i kilden, ikke en Viktor-ratificeret licens+egnetheds-bekræftelse. Holdes ude
 // til Viktor bekræfter (reversibelt: tilføj 'waisr' igen her + genindsæt alliance-checkpoint).
 export const OFFENTLIGT_KLAR = ['gad7', 'phq9', 'who5', 'wsas'];
+
+// ── LICENS-PROFILER (Viktor-beslutning 18/7 + 19/7) ─────────────────────────
+// To forskellige rettigheder på SAMME flade, og de må ikke blandes sammen:
+//
+//   INTERN  = Viktors egen praksis. Han HAR gyldige licenser (fx Mapi Special Terms 140135
+//             til ESS, intern klinisk brug). Alt i OFFENTLIGT_KLAR vises. **Denne profil er
+//             urørt og skal blive ved at være det** — Viktor 19/7: det interne produkt må
+//             ikke komme i vejen, så der altid kan vises en demo der FAKTISK virker.
+//   PRODUKT = det der må følge med i et salg. Kun instrumenter der er frie til kommerciel
+//             videredistribution, verificeret mod primærkilde med dato.
+//
+// 🔴 PORTEN ER IKKE PRIS. WHO-5 er gratis OG spærret (CC BY-NC-SA 3.0 IGO; NC forbyder at
+// den indgår i et solgt produkt). Bygges automatikken på "gratis", ryger WHO-5 med ind ved
+// første kunde og bryder licensen. Kriteriet er `kommercielt === true`, intet andet.
+//
+// 🔴 FAIL-CLOSED GÆLDER PRODUKTET, IKKE INSTALLATIONEN. Uverificeret (`null`) betyder
+// "følger ikke med i et salg", ikke "forsvinder fra Viktors app". Ellers ville hver ny
+// tvivl gøre hans eget værktøj fattigere, og så bliver det dyrt at registrere tvivl.
+//
+// Hvorfor profiler frem for at slette de spærrede: Mapi General Terms §3.1 er ordret
+// "non-transferable, non-assignable, non-sublicensable" ⇒ Viktor kan IKKE købe én licens der
+// dækker kunderne. Samme flade skal derfor kunne vise ESS hos ham og skjule det hos en kunde.
+// Aftaletekst, ikke skøn. (Model A, noter/instrument-licensregister-kanonisk-2026-07-18.md.)
+//
+// NB om ordet "intern": det betyder "drevet af Viktors egen praksis", ikke "ikke på
+// internettet". NC rammer kommerciel udnyttelse, ikke offentlig tilgængelighed — hans
+// klienter må tilgå WHO-5 på et offentligt link; en kunde der har KØBT journalen må ikke.
+export const PROFIL_INTERN = 'intern';
+export const PROFIL_PRODUKT = 'produkt';
+
+// Licens-fakta pr. instrument. `kommercielt`: true = fri til kommerciel videredistribution,
+// false = beviseligt spærret, null = uverificeret (behandles som spærret i produktet).
+// `verificeret` er datoen for opslag mod primærkilden — en påstand uden dato er ikke en
+// verifikation. Kanonisk kilde: noter/instrument-licensregister-kanonisk-2026-07-18.md.
+export const INSTRUMENT_LICENS = {
+  gad7: { kommercielt: true, verificeret: '2026-07-18',
+          kilde: 'Public domain siden 2010 (Pfizer frigav); ingen tilladelse noedvendig' },
+  phq9: { kommercielt: true, verificeret: '2026-07-18',
+          kilde: 'Public domain siden 2010 (Pfizer frigav); ingen tilladelse noedvendig' },
+  who5: { kommercielt: false, verificeret: '2026-07-18',
+          kilde: 'who.int WHO-UCN-MSD-MHE-2024.01: CC BY-NC-SA 3.0 IGO (NC = ingen salg, SA = afledte arver)' },
+  wsas: { kommercielt: null, verificeret: '2026-07-18',
+          kilde: 'I. M. Marks / ePROVIDE+Mapi: kraever tilladelse, kommerciel status uafklaret ved kilden' },
+};
+
+// Allowlist for en given profil. Default er INTERN — en glemt parameter må ALDRIG kunne
+// amputere Viktors egen flade. `licenser` er injicerbar, så gaten kan red-bevises uden at
+// røre det ægte register (og uden delt tilstand mellem kald).
+export function allowlistFor(profil = PROFIL_INTERN, licenser = INSTRUMENT_LICENS) {
+  if (profil !== PROFIL_PRODUKT) return [...OFFENTLIGT_KLAR];
+  // Fail-closed: kun eksplicit `kommercielt === true` slipper igennem. Et uregistreret
+  // instrument har intet opslag ⇒ undefined ⇒ spærret. Derfor er gaten strukturel frem for
+  // en liste nogen skal huske at vedligeholde.
+  return OFFENTLIGT_KLAR.filter(id => licenser[id]?.kommercielt === true);
+}
 
 // Frekvens-svarmuligheder (PHQ-9 / GAD-7, 0-3).
 const FREQ_0_3 = [
@@ -305,6 +379,150 @@ export const SRT_VINDUE = {
 SKEMAER.soevnvindue = SRT_VINDUE;
 
 // ════════════════════════════════════════════════════════════════════════
+//  Feature B · Nudge-kort i soevndagbogen (spec 2026-07-23, Viktor-godkendt)
+//  Tekster = GODKENDTE UDKAST; Viktor laaser verbatim foer deploy (spec §8).
+//  Max ét kort. Prioritet A/B > E > F > D > C. Aldrig blokere send.
+// ════════════════════════════════════════════════════════════════════════
+export const NUDGE_KORT_VERSION = 'v1';
+export const NUDGE_KORT_TEKST = {
+  A: { titel: 'Et blik på dit søvnvindue',
+    tekst: 'Du blev i sengen lidt længere i morges end dit vindue. Det sker for de fleste undervejs, og en enkelt morgen vælter ingenting. Det faste opståningstidspunkt er det vigtigste enkelte greb i behandlingen, så prøv i morgen at stå op til tiden, også hvis natten var dårlig. Vi justerer vinduet sammen ud fra din dagbog.' },
+  B: { titel: 'Et blik på dit søvnvindue',
+    tekst: 'Du gik i seng lidt før dit vindue åbnede i aftes. Det er helt forståeligt når man er træt. Men tiden i sengen før vinduet gør typisk søvnen mere opbrudt, ikke længere. Vent til vinduet åbner, og gå først i seng når du er søvnig. Det er sådan søvnen samler sig.' },
+  C: { titel: 'Du holdt dit søvnvindue i nat',
+    tekst: 'Flot. Det er præcis sådan din søvn får lov at samle sig. Fortsæt på samme måde, så følger vi udviklingen i din dagbog.' },
+  D: { titel: 'Hvis du ligger vågen',
+    tekst: 'Du lå vågen et stykke tid i nat. Husk at du gerne må forlade sengen når du føler dig vågen eller frustreret, uden at kigge på uret. Gå ind i et andet rum, og gå tilbage når du er søvnig nok til at falde i søvn. Det lyder bagvendt, men det træner hjernen til at forbinde sengen med søvn.' },
+  E: { titel: 'Den første tid er den sværeste',
+    tekst: 'Du vurderede din søvn som dårlig i nat. I den første uge med søvnvinduet er det helt forventeligt, og det betyder ikke at behandlingen ikke virker. Tværtimod er det tit et tegn på at søvntrykket er ved at bygge sig op. For de fleste begynder søvnen at samle sig i løbet af de næste uger. Hold fast, og skriv til mig hvis det føles for hårdt.' },
+  F: { titel: 'Om alkohol og søvn',
+    tekst: 'Du noterede alkohol i går. Det er din dagbog, og ærlige svar er præcis det der gør den nyttig. Bare så du ved det: alkohol kan godt hjælpe med at falde i søvn, men den gør typisk søvnen mere opbrudt senere på natten. Hvis du vil give søvnvinduet de bedste betingelser, gør det en forskel at holde igen, især de sidste timer før sengetid.' },
+};
+
+// "HH:MM" -> minutter siden midnat, ellers null.
+function nudgeMin(t) {
+  if (typeof t !== 'string' || !/^\d{1,2}:\d{2}$/.test(t)) return null;
+  const [h, m] = t.split(':').map(Number);
+  return h * 60 + m;
+}
+
+// Vaelg hoejst ét kort. entry = raa dagbogs-entry, ctx = {tibOrd, wakeOrd, tn, nudgeFra}.
+// Score-laas: daytimeSleepiness_0_10 laeses ALDRIG her (spec §2.4).
+export function vaelgNudgeKort(entry, ctx) {
+  if (!entry || !ctx || ctx.nudgeFra) return null;
+  const tibOrd = (typeof ctx.tibOrd === 'number' && isFinite(ctx.tibOrd)) ? ctx.tibOrd : null;
+  const wakeOrd = nudgeMin(ctx.wakeOrd);
+  const bed = nudgeMin(entry.bedtime);
+  const out = nudgeMin(entry.outOfBed);
+  if (tibOrd == null || wakeOrd == null || bed == null || out == null) return null;
+
+  const G = 30;
+  const outN = out < bed ? out + 1440 : out;         // midnats-kryds
+  const tibFaktisk = outN - bed;
+  const vinduesstart = ((wakeOrd - tibOrd) % 1440 + 1440) % 1440;
+  // Afstande maalt cirkulaert med retning: positiv = senere end referencen.
+  const outAfvig = ((out - wakeOrd + 1440 + 720) % 1440) - 720;      // [-720, 720)
+  const bedAfvig = ((bed - vinduesstart + 1440 + 720) % 1440) - 720;
+
+  const glidning = tibFaktisk > tibOrd + G;
+  const byg = (id) => ({ id, titel: NUDGE_KORT_TEKST[id].titel,
+    tekst: NUDGE_KORT_TEKST[id].tekst, tekstVersion: NUDGE_KORT_VERSION });
+
+  if (glidning && outAfvig > G) return byg('A');
+  if (glidning && bedAfvig < -G) return byg('B');
+  if (glidning) return null;                          // glidning uden klar retning: intet kort
+
+  // Dagbogen GEMMER quality som tal 1-5 (idx+1: 1=Meget dårlig, 2=Dårlig, ... index.html scale-felt).
+  // Accepterer BÅDE tal (produktion) og streng (defensivt/legacy) — ellers matcher tal aldrig en streng
+  // og kort E kan aldrig fyre for en rigtig klient.
+  const kvalitet = entry.quality;
+  const daarligSoevn = kvalitet === 1 || kvalitet === 2
+    || kvalitet === 'Meget dårlig' || kvalitet === 'Dårlig';
+  if (ctx.tn === 0 && daarligSoevn) return byg('E');
+
+  const sb = entry.substans;
+  if (sb && sb.intet !== true && Array.isArray(sb.alkohol) && sb.alkohol.length) return byg('F');
+
+  const lat = entry.sleepLatencyMin, wake = entry.awakeningsMin;
+  const holdt = tibFaktisk <= tibOrd + G && outAfvig <= G;
+  if (holdt && typeof lat === 'number' && typeof wake === 'number' && lat + wake >= 60) return byg('D');
+
+  if (holdt) return byg('C');
+  return null;
+}
+
+// ── Ugentligt refleksions-kort (mønster over ugens 7 nætter) ────────────────
+// Laeser KUN gemte nudgeKort.id (SRT-firewall: daytimeSleepiness roeres ALDRIG).
+// Verbatim godkendt af Viktor 23/7 (spec §5). Em-/en-dash-fri.
+export const UGE_KORT_TEKST = {
+  fejring: {
+    titel: 'Stærk uge',
+    tekst: 'Du holdt dit søvnvindue de fleste nætter i denne uge. Det er præcis sådan søvnen får lov at falde til ro. Bliv ved.',
+  },
+  fokus: {
+    titel: 'Et blik på ugen',
+    // {udfordring} + {n} indsaettes af vaelgUgeKort.
+    tekst: 'Du har fulgt din dagbog i denne uge, og det tæller. Det der fyldte mest var {udfordring}, {n} nætter. Det er et helt almindeligt sted at starte, og det tager vi sammen.',
+  },
+  opmuntring: {
+    titel: 'Du er i gang',
+    tekst: 'Du er godt i gang med at bygge vanen. Bliv ved, så tegner mønsteret sig, og vi ser det sammen.',
+  },
+};
+export const UGE_UDFORDRING_FRASE = {
+  A: 'at komme for sent op af sengen',
+  B: 'at gå tidligt i seng',
+  D: 'at ligge vågen om natten',
+  F: 'alkohol tæt på sengetid',
+};
+
+// ugeEntries = ugens (op til 7) entries. Returnerer ét ugekort eller null.
+export function vaelgUgeKort(ugeEntries) {
+  if (!Array.isArray(ugeEntries)) return null;
+  const entries = ugeEntries.filter(e => e && typeof e === 'object');
+  if (entries.length < 4) return null;                        // defensivt gulv (spec §4.0)
+  const tally = {};
+  for (const e of entries) {
+    const id = e.nudgeKort && e.nudgeKort.id;
+    if (id) tally[id] = (tally[id] || 0) + 1;
+  }
+  const holdt = (tally.C || 0) + (tally.E || 0);              // vindue-troskab (spec §3)
+  const byg = (variant, tekst) => ({
+    id: 'UGE', variant,
+    titel: UGE_KORT_TEKST[variant].titel,
+    tekst: tekst || UGE_KORT_TEKST[variant].tekst,
+    tekstVersion: NUDGE_KORT_VERSION,
+  });
+  // 1. Fejring: holdt-vindue >= 5.
+  if (holdt >= 5) return byg('fejring');
+  // 2. Stoettende fokus: dominerende udfordring >= 3; uafgjort -> prioritet A>B>D>F.
+  const PRIORITET = ['A', 'B', 'D', 'F'];
+  let bedst = null;
+  for (const id of PRIORITET) {
+    const antal = tally[id] || 0;
+    if (antal >= 3 && (bedst === null || antal > bedst.antal)) bedst = { id, antal };
+  }
+  if (bedst) {
+    const tekst = UGE_KORT_TEKST.fokus.tekst
+      .replace('{udfordring}', UGE_UDFORDRING_FRASE[bedst.id])
+      .replace('{n}', String(bedst.antal));
+    return byg('fokus', tekst);
+  }
+  // 3. Blid opmuntring.
+  return byg('opmuntring');
+}
+
+// Mikro-probe (spec §7): vises efter 7. og 21. gemte udfyldning, kun hvis mindst
+// ét kort er set. Valgfri, blokerer aldrig send.
+export const NUDGE_EVAL_MILEPAELE = [7, 21];
+export const NUDGE_EVAL_SVAR = ['Ja, de hjælper mig', 'Både og',
+  'Nej, jeg springer dem over', 'De forstyrrer mig'];
+export const NUDGE_EVAL_TEKST = {
+  spm1: 'Undervejs har du set små kort om dit søvnvindue. Har de været en hjælp?',
+  spm2: 'Er der noget ved kortene vi skal gøre anderledes? (valgfrit)',
+};
+
+// ════════════════════════════════════════════════════════════════════════
 //  SØVN-BASELINE - engangs intake-skema (IKKE-akkumulerende)
 // ════════════════════════════════════════════════════════════════════════
 // Adskilt fra den daglige CSD: sendes ÉN gang ved forløbs-start, udfyldes én
@@ -552,6 +770,7 @@ export function buildPayloadCSD(entries, meta = {}) {
   const sleepDiary = (entries || []).map((e) => {
     const out = { date: e.date };
     for (const k of FIELD_KEYS) if (e[k] != null && e[k] !== '') out[k] = e[k];
+    if (e.nudgeKort !== undefined) out.nudgeKort = e.nudgeKort;   // Feature B: {id, tekstVersion} | null
     return out;
   });
 
@@ -570,6 +789,7 @@ export function buildPayloadCSD(entries, meta = {}) {
     // Additivt: ældre containere mangler feltet (=> null), ingen krypto-/format-
     // ændring, ingen migration. Localstorage-variant => null (intet samtykke krævet).
     consent: meta.consent || null,
+    nudgeEval: meta.nudgeEval || null,   // Feature B mikro-probe-svar (additivt)
     // Versions-blok (§6) - klartekst INDE i ciphertext (serveren ser den aldrig).
     meta: {
       schemaVersion: SCHEMA_VERSION,

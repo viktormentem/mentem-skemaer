@@ -24,7 +24,9 @@ const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 //   soevn-forloeb-preview.html / soevn-hub-mock.html = preview/mock (ikke prod-klient-UI;
 //   må gerne bære illustrative emoji). soevn-medicin-seed.json = data, ikke UI-streng.
 // anmod.html = forløbs-anmodnings-formular (ANMOD-V1, klient-facing prod-flade).
-export const GUARDED_FILES = ['index.html', 'mentem-skema-core.js', 'anmod.html'];
+// inbox-enroll.html + mentem-inbox-enroll.js = sikker klient-inbox enroll-flade + custody-kerne
+// (Batch 1B, klient-facing prod-flade; strenge + fejlbeskeder renderer i DOM).
+export const GUARDED_FILES = ['index.html', 'mentem-skema-core.js', 'anmod.html', 'inbox-enroll.html', 'mentem-inbox-enroll.js', 'inbox-view.html'];
 
 // ── EM-DASH-SCOPE — kun de C4-navngivne filer (anmod-batch v2.1, 2026-06-19) ──
 // Em-dash-direktivet er globalt ("ALT vi skriver"), men C4-sweepen i denne batch
@@ -39,9 +41,14 @@ export const GUARDED_FILES = ['index.html', 'mentem-skema-core.js', 'anmod.html'
 // index.html er derfor IKKE tilføjet nedenfor (en rå-scan ville være rød på 69 kommentarer
 // uden en eneste ægte fejl). Den er i stedet dækket af test/copy-guard.mjs (VERA-guard #2),
 // der ekstraherer SYNLIG copy (HTML-tekstnoder + tekst-attributter + JS-strengliteraler) og
-// scanner kun den — plus en-dash og anglicistisk bindestreg. Denne liste bliver stående som
-// et ekstra, uafhængigt rå-bytes-bevis for de 2 filer der kan bære det.
-export const EMDASH_GUARDED_FILES = ['mentem-skema-core.js', 'anmod.html'];
+// scanner kun den — plus en-dash og anglicistisk bindestreg.
+//
+// MERGE 2026-07-23 (nudge → main): inbox-klientfladerne (inbox-enroll.html,
+// mentem-inbox-enroll.js, inbox-view.html) BEHOLDES i rå-byte-listen. Målt 0 em-dash i dem
+// (også i kommentarer), så rå-scan giver ingen false positives — og copy-guard.mjs's
+// COPY_GUARDED_FILES dækker dem IKKE endnu. Fjern dem herfra KUN hvis de samtidig tilføjes
+// copy-guard, ellers taber inbox-fladen sin em-dash-beskyttelse.
+export const EMDASH_GUARDED_FILES = ['mentem-skema-core.js', 'anmod.html', 'inbox-enroll.html', 'mentem-inbox-enroll.js', 'inbox-view.html'];
 
 // ── DETEKTÉR — emoji/dingbat brugt SOM IKON ─────────────────────────────────
 //   1F000–1FAFF  emoji-pictographs (🔊 1F50A · 🔒 1F512 · 🌙 1F319 · 🔎 1F50E · 💊🍷☕ …)

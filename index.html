@@ -8,6 +8,15 @@
 <meta property="og:title" content="Mycel: Forberedelse til din samtale">
 <meta property="og:description" content="Udfyld dine forberedelses-skemaer sikkert i din browser.">
 <meta property="og:type" content="website">
+<!-- OG-tags er STATISKE by design: ALDRIG skema-/klient-data fra ?s= ind i preview. Statisk hosting kan ikke differentiere, og en dynamisk preview ville lække hvilket skema en klient fik. Se noter/spec-link-previews-og-tags-2026-07-23.md. -->
+<meta property="og:image" content="https://skemaer.mycel.dk/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <title>Mycel: Forberedelse til din samtale</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
@@ -126,6 +135,9 @@
   .diary-consent { background:var(--accent-light); border:1.5px solid var(--accent); border-radius:10px; padding:16px 18px; margin-bottom:18px; text-align:left; font-size:14px; line-height:1.55; color:var(--ink); }
   .diary-consent h3 { font-size:15px; margin:0 0 8px; font-weight:700; }
   .diary-consent p { margin:0 0 10px; }
+  /* Feature B: hoejst ét nudge-kort på welcome-skærmen efter gem */
+  .nudge-kort { border-radius:14px; padding:14px 16px; margin:14px 0; font-size:15px; line-height:1.5; border:1px solid var(--accent); background:var(--accent-light, rgba(45,106,79,0.08)); text-align:left; color:var(--ink); }
+  .nudge-kort .nudge-titel { font-weight:700; font-size:1.15em; color:var(--accent); margin:0 0 6px; line-height:1.3; }
   .diary-consent ul { margin:0 0 14px; padding-left:18px; }
   .diary-consent li { margin-bottom:6px; }
   .diary-consent-label { display:flex; gap:10px; align-items:flex-start; cursor:pointer; padding-top:12px; border-top:1px solid var(--border); }
@@ -414,6 +426,8 @@
       <p class="diary-oplysning-link">Sådan behandler vi dine oplysninger: <a href="https://psykologviktornielsen.dk/privatlivspolitik.html" target="_blank" rel="noopener">privatlivspolitik</a>.</p>
     </div>
     <div class="diary-consent" id="diary-consent" style="display:none"></div>
+    <div id="nudge-kort" style="display:none" role="status"></div>
+    <div id="nudge-eval" style="display:none"></div>
     <button class="btn-primary" id="diary-start-btn">Udfyld for i nat</button>
     <button class="btn-secondary" id="diary-backfill-btn" style="display:none">Udfyld for i går</button>
     <button class="btn-secondary" id="diary-update-btn" style="display:none">Send opdatering til psykolog</button>
@@ -546,7 +560,9 @@ import { SKEMAER, SKEMA_ORDER, OFFENTLIGT_KLAR, buildPayload, buildPayloadCSD, b
          SOEVN_SCREENING, buildPayloadScreening,
          SENDT_KVITTERING_PRIMAER, sendtKvitteringSekundaer, SEND_SIKKERT_CTA,
          SRT_VINDUE_TEKST, SOEVN_F2,
-         parseFormuleringFragment, renderFormulering } from './mentem-skema-core.js';
+         parseFormuleringFragment, renderFormulering,
+         vaelgNudgeKort, vaelgUgeKort,
+         NUDGE_EVAL_MILEPAELE, NUDGE_EVAL_SVAR, NUDGE_EVAL_TEKST } from './mentem-skema-core.js';
 
 // ── FORMULERING fragment-dispatch (Wells-model, s=formulering) ────────────
 // Linket bæres i URL-FRAGMENTET (#<32hex-token>;s=formulering;n=..;tr=..;..),
@@ -583,6 +599,7 @@ const srtAdvAktiv  = params.get('adv') === '1';
 const srtTn        = params.get('tn') != null ? parseInt(params.get('tn'), 10) : null;
 const srtMode      = params.get('mode');
 const srtAktiv     = srtTibParam != null && srtWakeParam != null;
+const nudgeFra     = params.get('nudge') === '0';   // Feature B: Viktor-styret fra-slag pr. klient
 
 // ── Server draft-store (Mulighed A) ───────────────────────────────────────
 // token = forløbs-id (128-bit, fra Mentem). {BASE} er KONFIGURERBAR (ikke
@@ -1203,6 +1220,8 @@ function recordConsent(accepted) {
 }
 
 let diaryState = null;   // { startedAt, plannedDays, contentVersion, dirty, entries:[{date, …felter, savedAt}] }
+let senesteNudgeKort = null;   // Feature B: session-scoped, IKKE persisteret (kun visning på welcome-skærmen)
+let senesteUgeKort = null;   // ugentligt refleksions-kort: session-scoped, IKKE persisteret; erstatter nat-kortet på blok-grænsen
 let diaryDraft = {};     // dagens igangværende svar
 let diarySkema = null;
 let recoveredBlob = null;   // opaque server-kladde efter ITP-wipe (kan IKKE dekrypteres klient-side)
@@ -1424,6 +1443,46 @@ async function deleteDraft() {
 }
 
 function renderDiaryWelcome() {
+  // Feature B: nudge-kort (må aldrig kunne blokere resten af renderet - guard mod manglende felter).
+  const nk = document.getElementById('nudge-kort');
+  if (nk) {
+    const visKort = senesteUgeKort || senesteNudgeKort;   // ugekort erstatter nat-kort (max ét)
+    if (visKort) {
+      nk.style.display = 'block';
+      nk.className = 'nudge-kort nudge-' + visKort.id;
+      nk.innerHTML = '<h3 class="nudge-titel srt-aloud">' + srtEsc(visKort.titel)
+        + '</h3><div class="srt-aloud">' + srtEsc(visKort.tekst) + '</div>';
+    } else { nk.style.display = 'none'; nk.innerHTML = ''; }
+  }
+
+  // Feature B mikro-probe (spec §7): efter 7./21. gemte udfyldning, kun hvis mindst
+  // ét kort er set, og kun indtil den milepæl er besvaret. Valgfri, blokerer aldrig send.
+  const ne = document.getElementById('nudge-eval');
+  if (ne) {
+    const antal = diaryState ? diaryState.entries.length : 0;
+    const besvarede = (diaryState && diaryState.nudgeEval || []).map(s => s.vedEntry);
+    const milepael = NUDGE_EVAL_MILEPAELE.find(m => antal >= m && !besvarede.includes(m));
+    if (diaryState && diaryState.nudgeKortSet && milepael != null && !nudgeFra) {
+      ne.style.display = 'block';
+      ne.className = 'nudge-kort';
+      ne.innerHTML = '<div class="nudge-titel">' + srtEsc(NUDGE_EVAL_TEKST.spm1) + '</div>'
+        + NUDGE_EVAL_SVAR.map(s => '<button type="button" class="btn-secondary nudge-eval-svar" data-svar="'
+            + srtEsc(s) + '">' + srtEsc(s) + '</button>').join('')
+        + '<label class="diary-q" for="nudge-eval-fritekst" style="margin-top:8px">'
+        + srtEsc(NUDGE_EVAL_TEKST.spm2) + '</label>'
+        + '<textarea id="nudge-eval-fritekst" rows="2"></textarea>';
+      ne.querySelectorAll('.nudge-eval-svar').forEach(btn => btn.addEventListener('click', () => {
+        diaryState.nudgeEval = diaryState.nudgeEval || [];
+        diaryState.nudgeEval.push({ vedEntry: milepael, svar: btn.dataset.svar,
+          fritekst: (document.getElementById('nudge-eval-fritekst').value || '').slice(0, 500),
+          date: todayISO() });
+        saveCSDState(diaryState);
+        ne.style.display = 'none'; ne.innerHTML = '';
+        pushDraft();
+      }));
+    } else { ne.style.display = 'none'; ne.innerHTML = ''; }
+  }
+
   const intro = document.getElementById('diary-intro');
   const startBtn = document.getElementById('diary-start-btn');
   const finishNow = document.getElementById('diary-finish-now-btn');
@@ -1850,16 +1909,20 @@ function buildSubstansField(f, draft, afterChange) {
 function renderDiaryFields() {
   const root = document.getElementById('diary-fields');
   root.innerHTML = '';
+  let qNum = 0;   // #5: sekventiel ordinal KUN over talte (påkrævede) felter, så maks == "af N"-nævneren (updateDiaryProgress)
   diarySkema.fields.forEach((f, i) => {
     // M1.6: skjulte felter (srtOnly uden SRT-mode · F1 uden for kadencen ·
     // safetyNote der renderes af safety-sektionen) hverken vises eller tælles.
     if (!diaryFieldVisible(f) || f.kind === 'safetyNote') return;
     const inputId = `dfield-${f.key}`;
     const optTag = f.optional ? '<span class="diary-optional">valgfrit</span>' : '';
+    // #5: valgfrie felter tælles ikke i "af N" og får derfor intet nummer (kun "valgfrit").
+    if (!f.optional) qNum++;
+    const numTag = f.optional ? '' : `<span class="question-num" aria-hidden="true">${qNum}.</span>`;
     // Nummeret er KUN en visuel ordinal — skjult for skærmlæser (aria-hidden) så
     // spørgsmålet læses ordret. "Spørgsmål X af Y" annoncerer allerede positionen
     // (oplæsnings-venlig tilstand), så et oplæst "8." foran ville være redundant.
-    const qHtml = `<span class="question-num" aria-hidden="true">${i + 1}.</span>${f.text}${optTag}`;
+    const qHtml = `${numTag}${f.text}${optTag}`;
     const val = diaryDraft[f.key];
 
     // M1.6 F1: 0-10 NRS m. ord-ankre KUN i enderne; INGEN score-feedback.
@@ -1868,7 +1931,7 @@ function renderDiaryFields() {
       fs.className = 'diary-field nrs-field';
       const legend = document.createElement('legend');
       legend.className = 'diary-q';
-      legend.innerHTML = `<span class="question-num" aria-hidden="true">${i + 1}.</span>`
+      legend.innerHTML = `${numTag}`
         + (f.titel ? `<span class="nrs-titel"><span class="nrs-titel-ikon" aria-hidden="true">${iconSVG('soevnighed')}</span>${f.titel}</span>` : '') + f.text;
       fs.appendChild(legend);
       const group = document.createElement('div'); group.className = 'nrs-scale'; group.setAttribute('role', 'radiogroup');
@@ -1905,7 +1968,7 @@ function renderDiaryFields() {
       fs.className = 'diary-field safety-field';
       const legend = document.createElement('legend');
       legend.className = 'diary-q';
-      legend.innerHTML = `<span class="question-num" aria-hidden="true">${i + 1}.</span>`
+      legend.innerHTML = `${numTag}`
         + `<span class="nrs-titel"><span class="nrs-titel-ikon" aria-hidden="true">${iconSVG('skjold')}</span>${f.titel}</span>` + f.text;
       fs.appendChild(legend);
 
@@ -2808,10 +2871,26 @@ function saveDiaryEntry() {
     entry[f.key] = v;
   });
 
+  // Feature B: vaelg hoejst ét nudge-kort for natten (kun SRT-mode; null ellers).
+  const nudgeCtx = { tibOrd: srtTibParam != null ? parseInt(srtTibParam, 10) : null,
+    wakeOrd: srtWakeParam, tn: srtTn, nudgeFra };
+  const kort = srtAktiv ? vaelgNudgeKort(entry, nudgeCtx) : null;
+  entry.nudgeKort = kort ? { id: kort.id, tekstVersion: kort.tekstVersion } : null;
+  senesteNudgeKort = kort;   // session-scoped visning paa welcome-skaermen
+  if (kort) diaryState.nudgeKortSet = true;   // persisteres af saveCSDState nedenfor
+
   // Dag-dedup: én entry pr. kalenderdag (overskriv hvis samme dag gemmes igen).
   const idx = diaryState.entries.findIndex(e => e.date === date);
   if (idx >= 0) diaryState.entries[idx] = entry; else diaryState.entries.push(entry);
   diaryState.entries.sort((a, b) => a.date.localeCompare(b.date));
+
+  // Ugentligt refleksions-kort: kun ved en NY entry der bringer antallet til et
+  // multiplum af 7 (samme entry-rytme som proben). Erstatter nat-kortet den morgen
+  // (max ét kort). nudge=0 slår det fra. Session-scoped, ikke persisteret.
+  const erNyEntry = idx < 0;
+  senesteUgeKort = (srtAktiv && !nudgeFra && erNyEntry && diaryState.entries.length % 7 === 0)
+    ? vaelgUgeKort(diaryState.entries.slice(-7))
+    : null;
   recoveredBlob = null;     // brugeren udfylder aktivt → lokal kladde er nu autoritativ
   saveCSDState(diaryState);
 
@@ -2844,6 +2923,7 @@ function byggDiaryPayload(afslut) {
     forloebId: draftToken || null, contentVersion: diaryState.contentVersion,
     endedAt: afslut ? new Date().toISOString().replace(/\.\d{3}Z$/, 'Z') : null,
     consent: diaryState.consent || null,   // D2: samtykke-record med i delt fil (= psykologens autoritative kopi)
+    nudgeEval: diaryState.nudgeEval || null,   // Feature B mikro-probe-svar (additivt)
   });
 }
 async function byggDiaryContainerJSON(afslut) {
@@ -3212,7 +3292,7 @@ function a11yVisibleText(el) {
 function visibleScreenText() {
   const scr = document.querySelector('.screen.active');
   if (!scr) return '';
-  const sel = 'h1, h2, .intro, .schema-title, .schema-instruction, .question-text, label.diary-q, legend.diary-q, .radio-option, .done-wrap p';
+  const sel = 'h1, h2, h3, .srt-aloud, .intro, .schema-title, .schema-instruction, .question-text, label.diary-q, legend.diary-q, .radio-option, .done-wrap p';
   const parts = [];
   scr.querySelectorAll(sel).forEach(el => {
     if (el.offsetParent !== null && el.getAttribute('aria-hidden') !== 'true') {

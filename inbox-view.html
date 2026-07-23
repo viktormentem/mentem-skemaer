@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Se din besked sikkert i din browser. Kun du og din behandler kan læse den.">
+<meta name="robots" content="noindex">
+<!-- OG-tags er STATISKE by design (leak-guard). Se noter/spec-link-previews-og-tags-2026-07-23.md. -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="Din Mycel-inbox">
+<meta property="og:description" content="Se din besked sikkert. Kun du og din behandler kan læse den.">
+<meta property="og:image" content="https://skemaer.mycel.dk/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<title>Din Mycel-inbox</title>
+<style>
+  @font-face { font-family:'DM Serif Display'; font-style:normal; font-weight:400; src:local('DM Serif Display'); }
+  :root { --ink:#1a1a2e; --paper:#f8f6f1; --muted:#62626d; --accent:#2d6a4f; --accent-soft:#e8f5e1; --danger:#b3261e; --line:#e7e3d8; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; color:var(--ink); background:var(--paper); line-height:1.55; }
+  .wrap { max-width:560px; margin:0 auto; padding:28px 20px 64px; }
+  header { display:flex; align-items:center; justify-content:space-between; margin-bottom:22px; }
+  .header-logo { font-family:'DM Serif Display',serif; font-size:24px; letter-spacing:-0.5px; color:var(--accent); }
+  .header-secure { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); }
+  .header-secure svg { width:15px; height:15px; }
+  h1 { font-family:'DM Serif Display',serif; font-size:30px; line-height:1.14; margin:0 0 18px; }
+  /* Altid-synligt akut-banner (spec §8) */
+  .akut-banner { display:flex; gap:12px; align-items:flex-start; background:#fbeaea; border:1px solid #e6bcbc; border-radius:10px; padding:14px 16px; font-size:14px; line-height:1.5; color:#5c1a1c; margin-bottom:24px; }
+  .akut-banner svg { width:20px; height:20px; flex-shrink:0; color:var(--danger); margin-top:1px; }
+  .screen { display:none; }
+  .screen.active { display:block; }
+  .info-banner { background:var(--accent-soft); border:1px solid #cfe6c6; border-radius:10px; padding:13px 15px; font-size:14px; color:#274b2c; margin-bottom:18px; }
+  /* Tråd (audience: klient-view - rolig, ingen tal/score) */
+  .traad { display:flex; flex-direction:column; gap:14px; }
+  .besked { background:#fff; border:1px solid var(--line); border-radius:14px; padding:15px 17px; box-shadow:0 1px 2px rgba(0,0,0,0.03); }
+  .besked .afsender { display:flex; align-items:center; gap:7px; font-size:12.5px; color:var(--accent); font-weight:600; margin-bottom:6px; }
+  .besked .afsender svg { width:15px; height:15px; }
+  .besked .tekst { font-size:15.5px; color:var(--ink); white-space:pre-wrap; }
+  .besked .tid { font-size:11.5px; color:var(--muted); margin-top:9px; }
+  .empty-wrap, .busy-wrap { text-align:center; padding:36px 10px; color:var(--muted); }
+  .empty-wrap svg, .busy-wrap svg { width:38px; height:38px; color:#bcb9ad; margin-bottom:12px; }
+  .spinner { width:22px; height:22px; border:2.5px solid #d7d3c7; border-top-color:var(--accent); border-radius:50%; display:inline-block; animation:spin 0.8s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .disclaimer { font-size:12px; color:var(--muted); margin-top:26px; display:flex; gap:7px; align-items:flex-start; }
+  .disclaimer svg { width:14px; height:14px; flex-shrink:0; margin-top:2px; }
+  .form-error { color:var(--danger); font-size:14px; margin-top:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="header-logo">Mycel</div>
+    <div class="header-secure"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Låst op på din enhed</div>
+  </header>
+
+  <div class="akut-banner" aria-label="Vigtigt om akutte henvendelser">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg>
+    <div>Inboxen er ikke til akutte henvendelser. Ved akut behov ring 112 eller lægevagten 1813.</div>
+  </div>
+
+  <!-- IKKE-UNDERSTOETTET / fejl -->
+  <div id="screen-unsupported" class="screen">
+    <div class="info-banner" id="unsupported-tekst"></div>
+    <div class="disclaimer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>Åbn linket i Chrome eller Safari på den enhed, du tilknyttede.</div>
+  </div>
+
+  <!-- HENTER (auth + dekrypt) -->
+  <div id="screen-loading" class="screen active">
+    <div class="busy-wrap"><span class="spinner" aria-hidden="true"></span><div id="loading-status" style="margin-top:14px">Låser din inbox op på din enhed.</div></div>
+  </div>
+
+  <!-- INBOX-TRÅD -->
+  <div id="screen-inbox" class="screen">
+    <h1>Dine beskeder</h1>
+    <div class="traad" id="traad"></div>
+    <div class="disclaimer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Beskederne blev læst op lokalt i din browser. Kun din enhed kan låse dem op.</div>
+  </div>
+
+  <!-- TOM -->
+  <div id="screen-empty" class="screen">
+    <div class="empty-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v14H4z"/><path d="M4 7l8 6 8-6"/></svg><div>Du har ingen nye beskeder lige nu.</div></div>
+  </div>
+
+  <!-- FEJL -->
+  <div id="screen-error" class="screen">
+    <div class="form-error" id="error-tekst" role="alert"></div>
+  </div>
+</div>
+
+<script type="module">
+import {
+  kryptoStoettetInbox, opretIndexedDBStore, hentCustody,
+  unwrapPrivat, wrapKeyFraPRF, dekrypterKonvolut,
+} from './mentem-inbox-enroll.js';
+
+const params = new URLSearchParams(location.search);
+const PSEUDONYM = params.get('p') || '';
+const TEST_HOST = /localhost|127\.0\.0\.1|\.loca\.lt|\.trycloudflare\.com|\.pages\.dev|mentem-skemaer-preview/
+  .test(location.host + location.pathname);
+const DEFAULT_API = 'https://ingest.mycel.dk';
+const apiOverride = TEST_HOST ? params.get('ingestapi') : null;
+function apiBase() { return (apiOverride || DEFAULT_API).replace(/\/+$/, ''); }
+const PRF_SALT = new TextEncoder().encode('Mycel-inbox-custody-prf-v1');
+
+function b64urlToBuf(s) { let t = String(s).replace(/-/g, '+').replace(/_/g, '/'); while (t.length % 4) t += '='; const bin = atob(t); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u.buffer; }
+function bufToU8(buf) { return new Uint8Array(buf); }
+function vis(id) { document.querySelectorAll('.screen').forEach((s) => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+function api(path, body, headers = {}) {
+  return fetch(apiBase() + path, { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(body) })
+    .then(async (r) => ({ status: r.status, data: await r.json().catch(() => ({})) }));
+}
+function fejl(besked) { document.getElementById('error-tekst').textContent = besked; vis('screen-error'); }
+function fmtTid(iso) { try { return new Date(iso).toLocaleString('da-DK', { day:'numeric', month:'long', hour:'2-digit', minute:'2-digit' }); } catch { return ''; } }
+
+const AFSENDER_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>';
+
+// authenticate (passkey-assertion + opportunistisk PRF) -> {session, prfOut}
+async function autentificer() {
+  const opt = await api('/webauthn/authenticate/options', { pseudonym_id: PSEUDONYM });
+  if (opt.status !== 200 || !opt.data.options) throw new Error('auth-options');
+  const o = opt.data.options;
+  const getOpts = {
+    challenge: b64urlToBuf(o.challenge),
+    rpId: o.rpId,
+    timeout: o.timeout,
+    userVerification: o.userVerification,
+    allowCredentials: (o.allowCredentials || []).map((c) => ({ id: b64urlToBuf(c.id), type: c.type, transports: c.transports })),
+    extensions: { prf: { eval: { first: PRF_SALT } } },
+  };
+  const cred = await navigator.credentials.get({ publicKey: getOpts });
+  if (!cred) throw new Error('auth-afbrudt');
+  const r = cred.response;
+  const assertionResponse = {
+    id: cred.id, rawId: (function (b) { const u = new Uint8Array(b); let s = ''; for (let i = 0; i < u.length; i++) s += String.fromCharCode(u[i]); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); })(cred.rawId), type: cred.type,
+    response: {
+      clientDataJSON: (function (b) { const u = new Uint8Array(b); let s = ''; for (let i = 0; i < u.length; i++) s += String.fromCharCode(u[i]); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); })(r.clientDataJSON),
+      authenticatorData: (function (b) { const u = new Uint8Array(b); let s = ''; for (let i = 0; i < u.length; i++) s += String.fromCharCode(u[i]); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); })(r.authenticatorData),
+      signature: (function (b) { const u = new Uint8Array(b); let s = ''; for (let i = 0; i < u.length; i++) s += String.fromCharCode(u[i]); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); })(r.signature),
+      userHandle: r.userHandle ? (function (b) { const u = new Uint8Array(b); let s = ''; for (let i = 0; i < u.length; i++) s += String.fromCharCode(u[i]); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); })(r.userHandle) : null,
+    },
+  };
+  const ver = await api('/webauthn/authenticate/verify', { pseudonym_id: PSEUDONYM, assertionResponse });
+  if (ver.status !== 200 || !ver.data.session) throw new Error('auth-verify');
+  const prfOut = cred.getClientExtensionResults && cred.getClientExtensionResults().prf?.results?.first;
+  return { session: ver.data.session, prfOut: prfOut ? bufToU8(prfOut) : null };
+}
+
+// Custody -> enheds-privatnoegle (tier-afhaengigt: prf-unwrap eller uwrapped rawPriv).
+async function hentEnhedsPrivat(prfOut) {
+  const rec = await hentCustody(opretIndexedDBStore());
+  if (!rec) throw new Error('ingen-custody');
+  if (rec.tier === 'prf') {
+    if (!prfOut) throw new Error('prf-mangler');
+    const wrapKey = await wrapKeyFraPRF(prfOut);
+    return await unwrapPrivat(rec.wrapped, wrapKey);
+  }
+  // uwrapped-tier (svageste spec-accepterede fallback): rawPriv bag passkey-gaten.
+  return bufToU8(b64urlToBuf(rec.rawPriv));
+}
+
+function renderTraad(beskeder) {
+  const el = document.getElementById('traad'); el.innerHTML = '';
+  for (const b of beskeder) {
+    const d = document.createElement('div'); d.className = 'besked';
+    const tekst = document.createElement('div');
+    const afs = document.createElement('div'); afs.className = 'afsender'; afs.innerHTML = AFSENDER_SVG + '<span>Din psykolog</span>';
+    const t = document.createElement('div'); t.className = 'tekst'; t.textContent = b.tekst || '';
+    const tid = document.createElement('div'); tid.className = 'tid'; tid.textContent = fmtTid(b.createdAt);
+    d.appendChild(afs); d.appendChild(t); d.appendChild(tid); el.appendChild(d);
+  }
+}
+
+async function init() {
+  if (!(await kryptoStoettetInbox())) {
+    document.getElementById('unsupported-tekst').textContent = 'Din browser understøtter ikke den kryptering, inboxen kræver.';
+    vis('screen-unsupported'); return;
+  }
+  if (typeof window.PublicKeyCredential === 'undefined' || !(navigator.credentials && navigator.credentials.get)) {
+    document.getElementById('unsupported-tekst').textContent = 'Din browser understøtter ikke sikre nøgler (passkeys).';
+    vis('screen-unsupported'); return;
+  }
+  if (!PSEUDONYM) { fejl('Linket mangler oplysninger. Åbn inbox-linket fra psykologen igen.'); return; }
+  try {
+    const { session, prfOut } = await autentificer();
+    const priv = await hentEnhedsPrivat(prfOut);
+    const bearer = { authorization: 'Bearer ' + session };
+    const r = await fetch(apiBase() + '/inbox', { headers: bearer });
+    const data = await r.json().catch(() => ({}));
+    if (r.status !== 200) throw new Error('inbox-hent');
+    const beskeder = [];
+    for (const rå of (data.beskeder || [])) {
+      try { const ud = await dekrypterKonvolut(JSON.parse(rå.ciphertext), priv); beskeder.push({ ...ud, createdAt: rå.createdAt, besked_uuid: rå.beskedUUID }); }
+      catch (_e) { /* konvolut ikke til denne enhed -> spring over (fitness: fremmed nøgle afvises) */ }
+    }
+    if (beskeder.length === 0) { vis('screen-empty'); return; }
+    renderTraad(beskeder);
+    vis('screen-inbox');
+    // Ack (leverings-tilstandsmaskine hentet -> acked) efter visning.
+    for (const b of beskeder) { try { await api('/inbox/ack', { besked_uuid: b.besked_uuid }, bearer); } catch (_e) {} }
+  } catch (e) {
+    fejl('Vi kunne ikke låse din inbox op lige nu. Prøv at åbne linket igen.');
+  }
+}
+init();
+</script>
+</body>
+</html>

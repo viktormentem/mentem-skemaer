@@ -47,8 +47,16 @@ ok(!OFFENTLIGT_KLAR.includes('mcb'), "MCB ('mcb') er IKKE i OFFENTLIGT_KLAR (kun
 // holdes ude til Viktor bekræfter (reversibelt: tilføjes igen ved GO). Må ikke optræde uden flag.
 ok(!OFFENTLIGT_KLAR.includes('waisr'),
   "WAI-SR ('waisr') er IKKE i OFFENTLIGT_KLAR (safe-fail: afventer Viktor licens+egnetheds-bekræftelse)");
+// 🔴 PROFIL-PRÆCISERING 19/7 — læs før du "retter" denne assert:
+// Linjen låser den INTERNE profil (Viktors egen praksis, hvor WHO-5 og WSAS er lovlige).
+// Den blev 19/7 kl. 12 meldt som en modsigelse mod licensregistret ("WSAS er offentligt
+// live OG markeret afventer-licens"), fordi registret taler om PRODUKTET mens denne
+// assert taler om INSTALLATIONEN. Med licens-profilerne er begge udsagn sande og måler
+// hver sin ting: assert'en var ikke forkert, den var UMÆRKET.
+// Produkt-siden bevogtes af test/licens-profil-gate.mjs (allowlistFor(PROFIL_PRODUKT)
+// === gad7,phq9, fail-closed). Ændrer du denne, amputerer du Viktors egen flade.
 ok(OFFENTLIGT_KLAR.join(',') === 'gad7,phq9,who5,wsas',
-  'det digitale batteri = gad7,phq9,who5,wsas (cas/mcb + waisr-pending fjernet)');
+  'INTERN profil: det digitale batteri = gad7,phq9,who5,wsas (cas/mcb + waisr-pending fjernet)');
 
 // ── 2. index.html-kontrakt (statisk kilde-tjek) ─────────────────────────────
 const here = dirname(fileURLToPath(import.meta.url));
