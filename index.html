@@ -344,6 +344,7 @@
     </div>
     <div class="diary-consent" id="diary-consent" style="display:none"></div>
     <div id="nudge-kort" style="display:none" role="status"></div>
+    <div id="nudge-eval" style="display:none"></div>
     <button class="btn-primary" id="diary-start-btn">Udfyld for i nat</button>
     <button class="btn-secondary" id="diary-backfill-btn" style="display:none">Udfyld for i går</button>
     <button class="btn-secondary" id="diary-update-btn" style="display:none">Send opdatering til psykolog</button>
@@ -457,7 +458,8 @@ import { SKEMAER, SKEMA_ORDER, OFFENTLIGT_KLAR, buildPayload, buildPayloadCSD, b
          PINNED_PUBKEY, PINNED_KEY_ID, resolveRecipientKey,
          INSTRUMENTER, instrumentFeltOrden, buildInstrumentMycel,
          SOEVN_SCREENING, buildPayloadScreening,
-         SRT_VINDUE_TEKST, SOEVN_F2, vaelgNudgeKort } from './mentem-skema-core.js';
+         SRT_VINDUE_TEKST, SOEVN_F2, vaelgNudgeKort,
+         NUDGE_EVAL_MILEPAELE, NUDGE_EVAL_SVAR, NUDGE_EVAL_TEKST } from './mentem-skema-core.js';
 
 // ── URL-parametre (?s=batteri  ?n=sessionsnummer  ?pk=cross-check) ────────
 const params   = new URLSearchParams(location.search);
@@ -1273,6 +1275,34 @@ function renderDiaryWelcome() {
       nk.innerHTML = '<div class="nudge-titel">' + srtEsc(senesteNudgeKort.titel)
         + '</div><div>' + srtEsc(senesteNudgeKort.tekst) + '</div>';
     } else { nk.style.display = 'none'; nk.innerHTML = ''; }
+  }
+
+  // Feature B mikro-probe (spec §7): efter 7./21. gemte udfyldning, kun hvis mindst
+  // ét kort er set, og kun indtil den milepæl er besvaret. Valgfri, blokerer aldrig send.
+  const ne = document.getElementById('nudge-eval');
+  if (ne) {
+    const antal = diaryState ? diaryState.entries.length : 0;
+    const besvarede = (diaryState && diaryState.nudgeEval || []).map(s => s.vedEntry);
+    const milepael = NUDGE_EVAL_MILEPAELE.find(m => antal >= m && !besvarede.includes(m));
+    if (diaryState && diaryState.nudgeKortSet && milepael != null) {
+      ne.style.display = 'block';
+      ne.className = 'nudge-kort';
+      ne.innerHTML = '<div class="nudge-titel">' + srtEsc(NUDGE_EVAL_TEKST.spm1) + '</div>'
+        + NUDGE_EVAL_SVAR.map(s => '<button type="button" class="btn-secondary nudge-eval-svar" data-svar="'
+            + srtEsc(s) + '">' + srtEsc(s) + '</button>').join('')
+        + '<label class="diary-q" for="nudge-eval-fritekst" style="margin-top:8px">'
+        + srtEsc(NUDGE_EVAL_TEKST.spm2) + '</label>'
+        + '<textarea id="nudge-eval-fritekst" rows="2"></textarea>';
+      ne.querySelectorAll('.nudge-eval-svar').forEach(btn => btn.addEventListener('click', () => {
+        diaryState.nudgeEval = diaryState.nudgeEval || [];
+        diaryState.nudgeEval.push({ vedEntry: milepael, svar: btn.dataset.svar,
+          fritekst: (document.getElementById('nudge-eval-fritekst').value || '').slice(0, 500),
+          date: todayISO() });
+        saveCSDState(diaryState);
+        ne.style.display = 'none'; ne.innerHTML = '';
+        pushDraft();
+      }));
+    } else { ne.style.display = 'none'; ne.innerHTML = ''; }
   }
 
   const intro = document.getElementById('diary-intro');
@@ -2628,6 +2658,7 @@ function saveDiaryEntry() {
   const kort = srtAktiv ? vaelgNudgeKort(entry, nudgeCtx) : null;
   entry.nudgeKort = kort ? { id: kort.id, tekstVersion: kort.tekstVersion } : null;
   senesteNudgeKort = kort;   // session-scoped visning paa welcome-skaermen
+  if (kort) diaryState.nudgeKortSet = true;   // persisteres af saveCSDState nedenfor
 
   // Dag-dedup: én entry pr. kalenderdag (overskriv hvis samme dag gemmes igen).
   const idx = diaryState.entries.findIndex(e => e.date === date);
@@ -2664,6 +2695,7 @@ function byggDiaryPayload(afslut) {
     forloebId: draftToken || null, contentVersion: diaryState.contentVersion,
     endedAt: afslut ? new Date().toISOString().replace(/\.\d{3}Z$/, 'Z') : null,
     consent: diaryState.consent || null,   // D2: samtykke-record med i delt fil (= psykologens autoritative kopi)
+    nudgeEval: diaryState.nudgeEval || null,   // Feature B mikro-probe-svar (additivt)
   });
 }
 async function byggDiaryContainerJSON(afslut) {

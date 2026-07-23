@@ -446,6 +446,16 @@ export function vaelgNudgeKort(entry, ctx) {
   return null;
 }
 
+// Mikro-probe (spec §7): vises efter 7. og 21. gemte udfyldning, kun hvis mindst
+// ét kort er set. Valgfri, blokerer aldrig send.
+export const NUDGE_EVAL_MILEPAELE = [7, 21];
+export const NUDGE_EVAL_SVAR = ['Ja, de hjælper mig', 'Både og',
+  'Nej, jeg springer dem over', 'De forstyrrer mig'];
+export const NUDGE_EVAL_TEKST = {
+  spm1: 'Undervejs har du set små kort om dit søvnvindue. Har de været en hjælp?',
+  spm2: 'Er der noget ved kortene vi skal gøre anderledes? (valgfrit)',
+};
+
 // ════════════════════════════════════════════════════════════════════════
 //  SØVN-BASELINE - engangs intake-skema (IKKE-akkumulerende)
 // ════════════════════════════════════════════════════════════════════════
@@ -713,6 +723,7 @@ export function buildPayloadCSD(entries, meta = {}) {
     // Additivt: ældre containere mangler feltet (=> null), ingen krypto-/format-
     // ændring, ingen migration. Localstorage-variant => null (intet samtykke krævet).
     consent: meta.consent || null,
+    nudgeEval: meta.nudgeEval || null,   // Feature B mikro-probe-svar (additivt)
     // Versions-blok (§6) - klartekst INDE i ciphertext (serveren ser den aldrig).
     meta: {
       schemaVersion: SCHEMA_VERSION,
