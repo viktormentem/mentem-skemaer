@@ -379,6 +379,74 @@ export const SRT_VINDUE = {
 SKEMAER.soevnvindue = SRT_VINDUE;
 
 // ════════════════════════════════════════════════════════════════════════
+//  Feature B · Nudge-kort i soevndagbogen (spec 2026-07-23, Viktor-godkendt)
+//  Tekster = GODKENDTE UDKAST; Viktor laaser verbatim foer deploy (spec §8).
+//  Max ét kort. Prioritet A/B > E > F > D > C. Aldrig blokere send.
+// ════════════════════════════════════════════════════════════════════════
+export const NUDGE_KORT_VERSION = 'v1';
+export const NUDGE_KORT_TEKST = {
+  A: { titel: 'Et blik på dit søvnvindue',
+    tekst: 'Du blev i sengen lidt længere i morges end dit vindue. Det sker for de fleste undervejs, og en enkelt morgen vælter ingenting. Det faste opståningstidspunkt er det vigtigste enkelte greb i behandlingen, så prøv i morgen at stå op til tiden, også hvis natten var dårlig. Vi justerer vinduet sammen ud fra din dagbog.' },
+  B: { titel: 'Et blik på dit søvnvindue',
+    tekst: 'Du gik i seng lidt før dit vindue åbnede i aftes. Det er helt forståeligt når man er træt. Men tiden i sengen før vinduet gør typisk søvnen mere opbrudt, ikke længere. Vent til vinduet åbner, og gå først i seng når du er søvnig. Det er sådan søvnen samler sig.' },
+  C: { titel: 'Du holdt dit søvnvindue i nat',
+    tekst: 'Flot. Det er præcis sådan din søvn får lov at samle sig. Fortsæt på samme måde, så følger vi udviklingen i din dagbog.' },
+  D: { titel: 'Hvis du ligger vågen',
+    tekst: 'Du lå vågen et stykke tid i nat. Husk at du gerne må forlade sengen når du føler dig vågen eller frustreret, uden at kigge på uret. Gå ind i et andet rum, og gå tilbage når du er søvnig nok til at falde i søvn. Det lyder bagvendt, men det træner hjernen til at forbinde sengen med søvn.' },
+  E: { titel: 'Den første tid er den sværeste',
+    tekst: 'Du vurderede din søvn som dårlig i nat. I den første uge med søvnvinduet er det helt forventeligt, og det betyder ikke at behandlingen ikke virker. Tværtimod er det tit et tegn på at søvntrykket er ved at bygge sig op. For de fleste begynder søvnen at samle sig i løbet af de næste uger. Hold fast, og skriv til mig hvis det føles for hårdt.' },
+  F: { titel: 'Om alkohol og søvn',
+    tekst: 'Du noterede alkohol i går. Det er din dagbog, og ærlige svar er præcis det der gør den nyttig. Bare så du ved det: alkohol kan godt hjælpe med at falde i søvn, men den gør typisk søvnen mere opbrudt senere på natten. Hvis du vil give søvnvinduet de bedste betingelser, gør det en forskel at holde igen, især de sidste timer før sengetid.' },
+};
+
+// "HH:MM" -> minutter siden midnat, ellers null.
+function nudgeMin(t) {
+  if (typeof t !== 'string' || !/^\d{1,2}:\d{2}$/.test(t)) return null;
+  const [h, m] = t.split(':').map(Number);
+  return h * 60 + m;
+}
+
+// Vaelg hoejst ét kort. entry = raa dagbogs-entry, ctx = {tibOrd, wakeOrd, tn, nudgeFra}.
+// Score-laas: daytimeSleepiness_0_10 laeses ALDRIG her (spec §2.4).
+export function vaelgNudgeKort(entry, ctx) {
+  if (!entry || !ctx || ctx.nudgeFra) return null;
+  const tibOrd = (typeof ctx.tibOrd === 'number' && isFinite(ctx.tibOrd)) ? ctx.tibOrd : null;
+  const wakeOrd = nudgeMin(ctx.wakeOrd);
+  const bed = nudgeMin(entry.bedtime);
+  const out = nudgeMin(entry.outOfBed);
+  if (tibOrd == null || wakeOrd == null || bed == null || out == null) return null;
+
+  const G = 30;
+  const outN = out < bed ? out + 1440 : out;         // midnats-kryds
+  const tibFaktisk = outN - bed;
+  const vinduesstart = ((wakeOrd - tibOrd) % 1440 + 1440) % 1440;
+  // Afstande maalt cirkulaert med retning: positiv = senere end referencen.
+  const outAfvig = ((out - wakeOrd + 1440 + 720) % 1440) - 720;      // [-720, 720)
+  const bedAfvig = ((bed - vinduesstart + 1440 + 720) % 1440) - 720;
+
+  const glidning = tibFaktisk > tibOrd + G;
+  const byg = (id) => ({ id, titel: NUDGE_KORT_TEKST[id].titel,
+    tekst: NUDGE_KORT_TEKST[id].tekst, tekstVersion: NUDGE_KORT_VERSION });
+
+  if (glidning && outAfvig > G) return byg('A');
+  if (glidning && bedAfvig < -G) return byg('B');
+  if (glidning) return null;                          // glidning uden klar retning: intet kort
+
+  const kvalitet = entry.quality;
+  if (ctx.tn === 0 && (kvalitet === 'Meget dårlig' || kvalitet === 'Dårlig')) return byg('E');
+
+  const sb = entry.substans;
+  if (sb && sb.intet !== true && Array.isArray(sb.alkohol) && sb.alkohol.length) return byg('F');
+
+  const lat = entry.sleepLatencyMin, wake = entry.awakeningsMin;
+  const holdt = tibFaktisk <= tibOrd + G && outAfvig <= G;
+  if (holdt && typeof lat === 'number' && typeof wake === 'number' && lat + wake >= 60) return byg('D');
+
+  if (holdt) return byg('C');
+  return null;
+}
+
+// ════════════════════════════════════════════════════════════════════════
 //  SØVN-BASELINE - engangs intake-skema (IKKE-akkumulerende)
 // ════════════════════════════════════════════════════════════════════════
 // Adskilt fra den daglige CSD: sendes ÉN gang ved forløbs-start, udfyldes én
