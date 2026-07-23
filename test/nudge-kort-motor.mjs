@@ -25,7 +25,7 @@ check('B fyrer: i seng 22:30, oppe til tiden 06:10 -> TIB 460 > 420',
 
 console.log('Kort C (ros):');
 check('C fyrer ved holdt vindue', vaelgNudgeKort(HOLDT, CTX)?.id === 'C');
-check('C kraever begge graenser: oppe +45 men TIB inden for -> intet glidningskort, C fyrer IKKE (outOfBed-graense)',
+check('C kraever begge graenser: oppe +55 men TIB inden for -> intet glidningskort, C fyrer IKKE (outOfBed-graense)',
   vaelgNudgeKort({ ...HOLDT, bedtime: '00:15', outOfBed: '06:55' }, CTX)?.id !== 'C');
 
 console.log('Kort D (laenge vaagen):');
@@ -72,9 +72,11 @@ check('D kraever begge minut-felter: latency alene 40 -> ikke D',
 console.log('Tekster og version:');
 check('version v1', NUDGE_KORT_VERSION === 'v1');
 for (const id of ['A', 'B', 'C', 'D', 'E', 'F'])
-  check(`tekst ${id} findes og er em-dash-fri`,
+  check(`tekst ${id} findes og er dash-fri (em + en)`,
     !!NUDGE_KORT_TEKST[id] && !NUDGE_KORT_TEKST[id].tekst.includes('—')
-    && !NUDGE_KORT_TEKST[id].titel.includes('—'));
+    && !NUDGE_KORT_TEKST[id].tekst.includes('–')
+    && !NUDGE_KORT_TEKST[id].titel.includes('—')
+    && !NUDGE_KORT_TEKST[id].titel.includes('–'));
 check('retur baerer tekstVersion', vaelgNudgeKort(HOLDT, CTX)?.tekstVersion === 'v1');
 
 process.exit(fejl ? 1 : 0);
