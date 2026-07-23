@@ -451,6 +451,67 @@ export function vaelgNudgeKort(entry, ctx) {
   return null;
 }
 
+// ── Ugentligt refleksions-kort (mønster over ugens 7 nætter) ────────────────
+// Laeser KUN gemte nudgeKort.id (SRT-firewall: daytimeSleepiness roeres ALDRIG).
+// Verbatim godkendt af Viktor 23/7 (spec §5). Em-/en-dash-fri.
+export const UGE_KORT_TEKST = {
+  fejring: {
+    titel: 'Stærk uge',
+    tekst: 'Du holdt dit søvnvindue de fleste nætter i denne uge. Det er præcis sådan søvnen får lov at falde til ro. Bliv ved.',
+  },
+  fokus: {
+    titel: 'Et blik på ugen',
+    // {udfordring} + {n} indsaettes af vaelgUgeKort.
+    tekst: 'Du har fulgt din dagbog i denne uge, og det tæller. Det der fyldte mest var {udfordring}, {n} nætter. Det er et helt almindeligt sted at starte, og det tager vi sammen.',
+  },
+  opmuntring: {
+    titel: 'Du er i gang',
+    tekst: 'Du er godt i gang med at bygge vanen. Bliv ved, så tegner mønsteret sig, og vi ser det sammen.',
+  },
+};
+export const UGE_UDFORDRING_FRASE = {
+  A: 'at komme for sent op af sengen',
+  B: 'at gå tidligt i seng',
+  D: 'at ligge vågen om natten',
+  F: 'alkohol tæt på sengetid',
+};
+
+// ugeEntries = ugens (op til 7) entries. Returnerer ét ugekort eller null.
+export function vaelgUgeKort(ugeEntries) {
+  if (!Array.isArray(ugeEntries)) return null;
+  const entries = ugeEntries.filter(e => e && typeof e === 'object');
+  if (entries.length < 4) return null;                        // defensivt gulv (spec §4.0)
+  const tally = {};
+  for (const e of entries) {
+    const id = e.nudgeKort && e.nudgeKort.id;
+    if (id) tally[id] = (tally[id] || 0) + 1;
+  }
+  const holdt = (tally.C || 0) + (tally.E || 0);              // vindue-troskab (spec §3)
+  const byg = (variant, tekst) => ({
+    id: 'UGE', variant,
+    titel: UGE_KORT_TEKST[variant].titel,
+    tekst: tekst || UGE_KORT_TEKST[variant].tekst,
+    tekstVersion: NUDGE_KORT_VERSION,
+  });
+  // 1. Fejring: holdt-vindue >= 5.
+  if (holdt >= 5) return byg('fejring');
+  // 2. Stoettende fokus: dominerende udfordring >= 3; uafgjort -> prioritet A>B>D>F.
+  const PRIORITET = ['A', 'B', 'D', 'F'];
+  let bedst = null;
+  for (const id of PRIORITET) {
+    const antal = tally[id] || 0;
+    if (antal >= 3 && (bedst === null || antal > bedst.antal)) bedst = { id, antal };
+  }
+  if (bedst) {
+    const tekst = UGE_KORT_TEKST.fokus.tekst
+      .replace('{udfordring}', UGE_UDFORDRING_FRASE[bedst.id])
+      .replace('{n}', String(bedst.antal));
+    return byg('fokus', tekst);
+  }
+  // 3. Blid opmuntring.
+  return byg('opmuntring');
+}
+
 // Mikro-probe (spec §7): vises efter 7. og 21. gemte udfyldning, kun hvis mindst
 // ét kort er set. Valgfri, blokerer aldrig send.
 export const NUDGE_EVAL_MILEPAELE = [7, 21];
