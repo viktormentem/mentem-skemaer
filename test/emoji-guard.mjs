@@ -30,10 +30,24 @@ export const GUARDED_FILES = ['index.html', 'mentem-skema-core.js', 'anmod.html'
 
 // ── EM-DASH-SCOPE — kun de C4-navngivne filer (anmod-batch v2.1, 2026-06-19) ──
 // Em-dash-direktivet er globalt ("ALT vi skriver"), men C4-sweepen i denne batch
-// dækker EKSPLICIT kun anmod.html + mentem-skema-core.js. index.html (søvndagbog-
-// host) bærer p.t. ~26 em-dashes i shippet klient-copy → en SEPARAT sweep-opgave
-// (flagget til Viktor; må ikke balloone anmod-PR'en). Når index.html er ren,
-// udvid denne liste til GUARDED_FILES så em-dash-guarden dækker hele fladen.
+// dækker EKSPLICIT kun anmod.html + mentem-skema-core.js.
+//
+// RETTELSE 2026-07-16: her stod at index.html "bærer ~26 em-dashes i shippet klient-copy
+// → en SEPARAT sweep-opgave". Det var FORKERT, og den fejl kostede index.html — den STØRSTE
+// klientflade — en måned uden em-dash-guard. Målt 16/7: index.html har 69 em-dash, hvoraf
+// ALLE sidder i kommentarer (61 i //, resten i <!-- -->). Synlig copy: 0. Filen var ren hele
+// tiden; det var scanneren der ikke kunne se forskel, fordi denne guard scanner RÅ BYTES.
+//
+// index.html er derfor IKKE tilføjet nedenfor (en rå-scan ville være rød på 69 kommentarer
+// uden en eneste ægte fejl). Den er i stedet dækket af test/copy-guard.mjs (VERA-guard #2),
+// der ekstraherer SYNLIG copy (HTML-tekstnoder + tekst-attributter + JS-strengliteraler) og
+// scanner kun den — plus en-dash og anglicistisk bindestreg.
+//
+// MERGE 2026-07-23 (nudge → main): inbox-klientfladerne (inbox-enroll.html,
+// mentem-inbox-enroll.js, inbox-view.html) BEHOLDES i rå-byte-listen. Målt 0 em-dash i dem
+// (også i kommentarer), så rå-scan giver ingen false positives — og copy-guard.mjs's
+// COPY_GUARDED_FILES dækker dem IKKE endnu. Fjern dem herfra KUN hvis de samtidig tilføjes
+// copy-guard, ellers taber inbox-fladen sin em-dash-beskyttelse.
 export const EMDASH_GUARDED_FILES = ['mentem-skema-core.js', 'anmod.html', 'inbox-enroll.html', 'mentem-inbox-enroll.js', 'inbox-view.html'];
 
 // ── DETEKTÉR — emoji/dingbat brugt SOM IKON ─────────────────────────────────

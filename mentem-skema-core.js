@@ -534,7 +534,7 @@ export const NUDGE_EVAL_TEKST = {
 export const SOEVN_BASELINE = {
   id: 'soevn-baseline', kind: 'baseline', title: 'Kort baseline om din søvn', short: 'Baseline', icon: 'maane',
   badge: 'udfyldes én gang',
-  instruction: 'Et kort engangs-skema om din søvn og dine vaner. Det hjælper din psykolog med at tilpasse forløbet til dig. Der er ingen rigtige eller forkerte svar.',
+  instruction: 'Et kort engangsskema om din søvn og dine vaner. Det hjælper din psykolog med at tilpasse forløbet til dig. Der er ingen rigtige eller forkerte svar.',
   fields: [
     { key: 'alder',            kind: 'number', text: 'Hvor gammel er du?', unit: 'år', min: 0, max: 120 },
     { key: 'koen',             kind: 'radio',  text: 'Køn',
@@ -855,6 +855,12 @@ export function buildPayloadBaseline(answers, meta = {}) {
     therapistName: 'Viktor Nielsen',
     categories: ['soevn-baseline'],
     baselineType: 'soevn-intake',
+    // INTET consent-felt (GDPR-register 1.6, Viktor 16/7): en soevn-baseline fra en klient i
+    // forloeb er BEHANDLINGSDATA. Retsgrundlaget er art. 9(2)(h) jf. 9(3) + databeskyttelseslovens
+    // §7 stk. 3 — IKKE samtykke (register 1.3: aldrig samtykke-checkbox for selve databehandlingen).
+    // Oplysningspligten (art. 13) loeftes af oplysningsteksten paa baseline-welcome (register 1.4).
+    // Et samtykke-felt her ville vaere et FORKERT retsgrundlag i journalen: derfor udeladt, og
+    // meta.consent ignoreres bevidst (data-minimering). Soevndagbogen = separat, uafklaret sag.
     baseline,
   };
 }
@@ -962,7 +968,7 @@ export const ANMOD_ART9_DENY = ['cpr', 'helbred', 'diagnose', 'diagnosis', 'medi
 // §2 visningsnavne (korrekt æøå - IKKE wire-værdier). Single source for web + app.
 // Psykiater-klinik: personnavn (Hoff/Westergaard) er display-only (wire = klinik-id).
 export const ANMOD_DISPLAY = {
-  grundlag:            { psykiater: 'Henvist via egen læge til psykiater', forsikring: 'Via forsikring', egenbetaler: 'Egenbetaler' },
+  grundlag:            { psykiater: 'Henvist via egen læge til speciallæge i psykiatri (psykiater)', forsikring: 'Via forsikring', egenbetaler: 'Egenbetaler' },
   henvisning_psykiater:{ vestegnsklinikken: 'Vestegnsklinikken (Andreas Hoff)', westergaard: 'Westergaard Psykiatri (Casper Westergaard)', ved_ikke: 'Ved ikke' },
   forloeb_tilbudt:     { gruppe: 'Gruppeforløb', individuelt: 'Individuelt forløb', ved_ikke: 'Ved ikke' },
   tid_dage:            { tirsdag: 'Tirsdag', onsdag: 'Onsdag', torsdag: 'Torsdag', fredag: 'Fredag' },
@@ -1539,4 +1545,234 @@ export const INSTRUMENT_MODULER = [
 export const INSTRUMENTER = {};
 for (const modul of INSTRUMENT_MODULER) {
   if (modul.KLAR) INSTRUMENTER[modul.skabelon] = modul;   // maskinel licens-gate
+}
+
+// ════════════════════════════════════════════════════════════════════════
+//  SEND-KVITTERING + "Send sikkert"-CTA (besked-track K1P1 FASE B, K3+K4)
+// ════════════════════════════════════════════════════════════════════════
+// Nordstjerne: klienten ser samme kvittering overalt, aldrig tal. Én fælles
+// PRIMÆR kvittering for alle auto-send-flows (batteri/screening/dagbog/baseline);
+// de to FLOW-SPECIFIKKE kliniske forsikringer bevares som SEKUNDÆR linje kun på
+// deres eget flow (Viktor-beslutning V-6, 15/7: "behold som sekundær linje").
+// Term = "din psykolog" (Viktor 15/7, surface-konsistent — hele fladen bruger
+// "psykolog", ikke "behandler"). Kun ren copy her; DOM-render lever i index.html
+// (visSendtKvittering) så samme komponent bruges alle steder (K3 = én genbrugelig).
+export const SENDT_KVITTERING_PRIMAER = 'Dine svar er sendt sikkert og krypteret til din psykolog. Tak!';
+export const SENDT_KVITTERING_VERSION = '2026-07-15';
+
+// K4: den ene primære sikker-send-knap. Vises KUN når linket faktisk auto-sender
+// krypteret (autoSendEnabled) — ellers præcis, beskrivende fallback-tekst i
+// index.html. "Send sikkert" er en sikkerheds-påstand: den skal være sand.
+export const SEND_SIKKERT_CTA = 'Send sikkert';
+
+// Flow-specifik SEKUNDÆR forsikringslinje (V-6). Kendte flow-nøgler:
+//   'soevn-screening'        → beroliger håndoff til søvndagbogen
+//   'soevndagbog-opdatering' → ikke-terminal ugentlig opdatering, forløbet fortsætter
+// Alle andre flows (batteri, soevndagbog terminal, soevn-baseline, ukendt) → null.
+export function sendtKvitteringSekundaer(flow) {
+  switch (flow) {
+    case 'soevn-screening':        return 'Du kan roligt gå i gang med din søvndagbog med det samme.';
+    case 'soevndagbog-opdatering': return 'Du kan roligt fortsætte dagbogen.';
+    default:                       return null;
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+//  FORMULERING (Wells-model, s=formulering) - katalog + fragment-parser
+// ════════════════════════════════════════════════════════════════════════
+// Linket bygges Python-side (journal.formulering_link) som et URL-FRAGMENT
+// (#<32hex-token>;s=formulering;n=..;tr=..;..), IKKE et query-param - payload
+// rører aldrig serveren (GDPR). Denne sektion er parse + katalog ONLY; den
+// animerede DOM-builder (renderFormulering) + index.html-dispatch er en
+// separat, senere opgave. Krypto (PINNED_KEY_ID/PINNED_PUBKEY ovenfor)
+// røres ikke af formulering-modus.
+
+// Kort URL-nøgle → kanonisk feltnavn.
+export const FORMULERING_NOEGLER = {
+  tr: 'trigger',
+  t1: 'type1_worry',
+  em: 'emotion_symptomer',
+  nu: 'neg_metabeliefs_ukontrollerbarhed',
+  nf: 'neg_metabeliefs_fare',
+  po: 'positive_metabeliefs',
+  t2: 'type2_worry',
+  ad: 'adfaerd',
+  tk: 'tankekontrol',
+};
+
+// Klient-synlige danske bokstitler (G1: ukontrollerbarhed før fare).
+export const FORMULERING_BOKS_TITLER = {
+  trigger: 'Udløser',
+  positive_metabeliefs: 'Positive metaantagelser (strategivalg)',
+  type1_worry: 'Type 1-bekymring',
+  neg_metabeliefs_ukontrollerbarhed: 'Negative metaantagelser: ukontrollerbarhed',
+  neg_metabeliefs_fare: 'Negative metaantagelser: fare',
+  type2_worry: 'Type 2-bekymring (metabekymring)',
+  adfaerd: 'Adfærd',
+  tankekontrol: 'Tankekontrol',
+  emotion_symptomer: 'Følelse og symptom',
+};
+
+// Visnings-rækkefølge for de 9 bokse.
+export const FORMULERING_REKKEFOELGE = [
+  'trigger',
+  'positive_metabeliefs',
+  'type1_worry',
+  'neg_metabeliefs_ukontrollerbarhed',
+  'neg_metabeliefs_fare',
+  'type2_worry',
+  'adfaerd',
+  'tankekontrol',
+  'emotion_symptomer',
+];
+
+// 4 navngivne vedligeholdelses-sløjfer (verbatim dansk gloss).
+export const FORMULERING_SLOEJFER = [
+  { id: 1, tekst: 'Jo mere du bekymrer dig, jo flere ting begynder at ligne noget at bekymre sig om, så bekymringen giver næring til sig selv.' },
+  { id: 2, tekst: 'Når du bliver bange for selve bekymringen, stiger uroen i kroppen, og de kropslige tegn tolkes som bevis på at bekymringen er farlig. Det bekræfter frygten.' },
+  { id: 3, tekst: 'Fordi katastrofen udebliver, tænker du at det var fordi du passede på, ikke fordi faren aldrig var reel. Så antagelsen om at bekymring beskytter dig, får aldrig lov at blive modbevist.' },
+  { id: 4, tekst: 'Når du prøver at skubbe bekymringen væk eller diskutere med den, dukker den bare op igen, og det føles som bevis på at du ikke kan styre den.' },
+];
+
+/// Strip leading '#', split token fra params. Værdier forbliver RAW
+/// (stadig percent-encoded) - decodeURIComponent sker i parseFelter.
+export function parseFormuleringFragment(hash) {
+  const raad = (hash || '').replace(/^#/, '');
+  const dele = raad.split(';');
+  const token = dele[0] || '';
+  const params = {};
+  for (let i = 1; i < dele.length; i++) {
+    const del = dele[i];
+    if (!del) continue;
+    const idx = del.indexOf('=');
+    if (idx === -1) { params[del] = ''; continue; }
+    const key = del.slice(0, idx);
+    const val = del.slice(idx + 1);
+    params[key] = val;
+  }
+  return { token, params };
+}
+
+/// Byg de 9 bokse i FORMULERING_REKKEFOELGE-orden fra rå params
+/// (kort URL-nøgler → decodeURIComponent, FULD tekst, ingen afkortning).
+export function parseFelter(params) {
+  const bokse = [];
+  for (const felt of FORMULERING_REKKEFOELGE) {
+    const kort = Object.keys(FORMULERING_NOEGLER).find(k => FORMULERING_NOEGLER[k] === felt);
+    const raw = kort != null ? params[kort] : undefined;
+    let vaerdi = '';
+    if (raw != null) { try { vaerdi = decodeURIComponent(raw); } catch (e) { vaerdi = raw; } }
+    bokse.push({
+      felt,
+      titel: FORMULERING_BOKS_TITLER[felt],
+      vaerdi,
+      liste: felt === 'adfaerd' || felt === 'tankekontrol',
+    });
+  }
+  return bokse;
+}
+
+// Formulering-UI-strenge (klient-synlige, inline i renderFormulering). Samlet HER
+// (ikke i index.html) fordi core.js er em-dash-guarded (jf. EMDASH_GUARDED_FILES);
+// test/formulering.mjs dash-checker Object.values(FORMULERING_UI).
+export const FORMULERING_UI = {
+  titel: 'Sådan kan bekymring hænge sammen',
+  hint: 'Dette er et opdigtet eksempel til at vise, hvordan tanker, følelser og adfærd kan '
+    + 'hænge sammen, ikke en beskrivelse af dig eller en diagnose. Læg mærke til pilene mellem boksene: '
+    + 'det er sammenhængen, der er det vigtige, ikke hver boks for sig.',
+  ikkeUdfyldt: 'ikke udfyldt',
+  sloejferOverskrift: 'Hvad pilene betyder',
+};
+
+// Cross-repo parity-anker: EKSAKT byte-lig med Python-siden
+// (journal.formulering_link.GOLDEN_FRAGMENT). Ændres KUN i lockstep begge steder.
+export const FORMULERING_GOLDEN_FRAGMENT = '0123456789abcdef0123456789abcdef;s=formulering;n=Eksempel;tr=Hvad%20nu%20hvis%20jeg%20har%20glemt%20noget%20vigtigt%3F;t1=tanker%20om%20alt%20det%20der%20kan%20g%C3%A5%20galt%20i%20morgen;em=uro%20i%20maven%2C%20sp%C3%A6ndte%20skuldre%2C%20sv%C3%A6rt%20ved%20at%20slappe%20af;nu=jeg%20kan%20ikke%20stoppe%20bekymringen%2C%20n%C3%A5r%20den%20f%C3%B8rst%20er%20i%20gang;nf=hvis%20jeg%20bliver%20ved%2C%20kan%20jeg%20br%C3%A6nde%20helt%20sammen;po=hvis%20jeg%20bekymrer%20mig%20nok%2C%20er%20jeg%20forberedt%20og%20undg%C3%A5r%20problemer;t2=det%20er%20farligt%20at%20min%20bekymring%20bare%20k%C3%B8rer%20af%20sig%20selv;ad=tjekker%20ting%20flere%20gange%3B%20s%C3%B8ger%20beroligelse%20hos%20andre;tk=pr%C3%B8ver%20at%20skubbe%20tankerne%20v%C3%A6k%3B%20sk%C3%A6lder%20mig%20selv%20ud%20for%20at%20t%C3%A6nke%20s%C3%A5dan';
+
+// ════════════════════════════════════════════════════════════════════════
+//  FORMULERING — animeret DOM-builder (Task 9). Rent browser-only (document.*),
+//  ingen node-DOM-test (verificeres via See-it). Krypto UBERØRT (PINNED_KEY_ID/
+//  PINNED_PUBKEY ovenfor). ALLE klient-synlige danske strenge bor HER (core.js
+//  er em-dash-guarded, jf. EMDASH_GUARDED_FILES) — index.html må ikke bære
+//  ny klient-copy for denne flade.
+// ════════════════════════════════════════════════════════════════════════
+//
+// Fidelitets-invarianter (LÅST, fra klinisk kilde):
+//  - Rækkefølge = FORMULERING_REKKEFOELGE (G1: ukontrollerbarhed FØR fare).
+//  - Fuld tekst, INGEN afkortning (ingen "…").
+//  - Positive/negative metaantagelser i TYDELIGT forskellige dissonans-farver.
+//  - Følelse/symptom er INTERMITTERENDE (refinement 3) — ikke en monoton stigning.
+//  - reduced-motion → samme fulde model, ingen bevægelse (statisk).
+//
+// Flow-pile (klinisk finpuds): hint-teksten lover "pilene mellem boksene" -
+// buildFlowPil() tegner en dekorativ, nedadgående SVG-pil (EGET ikon, ingen emoji,
+// intet unicode-pil-tegn) mellem hvert par af de 9 bokse, så modellens fremadrettede
+// flow (udløser -> ... -> følelse) er visuelt eksplicit, ikke kun impliceret af rækkefølgen.
+function buildFlowPil(delaySekunder) {
+  const wrap = document.createElement('div');
+  wrap.className = 'gadanim-arrow';
+  wrap.setAttribute('aria-hidden', 'true');
+  wrap.style.animationDelay = delaySekunder + 's';
+  wrap.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" '
+    + 'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+    + '<path d="M12 4v13"/><path d="M6 12l6 6 6-6"/></svg>';
+  return wrap;
+}
+
+export function renderFormulering(params, mount) {
+  if (!mount) return;
+  mount.innerHTML = '';
+
+  let navn = '';
+  if (params && params.n) { try { navn = decodeURIComponent(params.n); } catch (e) { navn = params.n; } }
+  const h1 = document.createElement('h1');
+  h1.textContent = FORMULERING_UI.titel + (navn ? ', ' + navn : '');
+  mount.appendChild(h1);
+
+  const hint = document.createElement('p');
+  hint.className = 'gadanim-hint';
+  hint.textContent = FORMULERING_UI.hint;
+  mount.appendChild(hint);
+
+  const nodesWrap = document.createElement('div');
+  nodesWrap.className = 'gadanim-nodes';
+  mount.appendChild(nodesWrap);
+
+  const bokse = parseFelter(params || {});
+  bokse.forEach((b, i) => {
+    const sec = document.createElement('section');
+    sec.className = 'gadanim-node';
+    if (b.felt === 'positive_metabeliefs') sec.classList.add('pos');
+    if (b.felt === 'neg_metabeliefs_ukontrollerbarhed' || b.felt === 'neg_metabeliefs_fare') sec.classList.add('neg');
+    if (b.felt === 'emotion_symptomer') sec.classList.add('gadanim-emotion');
+    sec.style.animationDelay = (i * 0.45) + 's';
+
+    const h2 = document.createElement('h2');
+    h2.textContent = b.titel;
+    sec.appendChild(h2);
+
+    const p = document.createElement('p');
+    p.textContent = b.vaerdi || FORMULERING_UI.ikkeUdfyldt;
+    sec.appendChild(p);
+
+    nodesWrap.appendChild(sec);
+
+    if (i < bokse.length - 1) {
+      nodesWrap.appendChild(buildFlowPil((i + 0.5) * 0.45));
+    }
+  });
+
+  const sloejferSec = document.createElement('section');
+  sloejferSec.className = 'gadanim-sloejfer';
+  const sloejferH2 = document.createElement('h2');
+  sloejferH2.textContent = FORMULERING_UI.sloejferOverskrift;
+  sloejferSec.appendChild(sloejferH2);
+
+  const ul = document.createElement('ul');
+  FORMULERING_SLOEJFER.forEach((s) => {
+    const li = document.createElement('li');
+    li.textContent = s.tekst;
+    ul.appendChild(li);
+  });
+  sloejferSec.appendChild(ul);
+  mount.appendChild(sloejferSec);
 }

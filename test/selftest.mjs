@@ -36,8 +36,17 @@ import {
   ANMOD_FORLOEB_TILBUDT,
   ANMOD_TID_DAGE,
   ANMOD_TID_TIDER,
+  SENDT_KVITTERING_PRIMAER,
+  SENDT_KVITTERING_VERSION,
+  sendtKvitteringSekundaer,
+  SEND_SIKKERT_CTA,
 } from '../mentem-skema-core.js';
 import { scanText, runGuard, scanEmDash, runEmDashGuard, GUARDED_FILES, EMDASH_GUARDED_FILES } from './emoji-guard.mjs';
+import { scanCopy, runCopyGuard, triageCopy, COPY_GUARDED_FILES } from './copy-guard.mjs';
+import { readFileSync } from 'node:fs';
+
+// Live v2-privatlivspolitik (samme URL som anmod.html bruger — én adresse på hele fladen).
+const PRIVATLIV_URL = 'https://psykologviktornielsen.dk/privatlivspolitik.html';
 
 let failures = 0;
 function check(name, cond, detail = '') {
@@ -299,8 +308,69 @@ check('bl bevarer felter', bl.baseline.alder === 67 && bl.baseline.vanligOpvaagn
 check('bl substans struktureret bevaret', bl.baseline.substans && bl.baseline.substans.koffein[0].antalEnheder === 2 && bl.baseline.substans.koffein[0].tidspunkt === 'Morgen');
 check('bl substans natFlag bevaret', bl.baseline.substans.natFlag === false);
 check('bl INGEN scoring (nul-score)', bl.questionnaireScores === undefined && bl.baseline.score === undefined);
+// GDPR-register 1.6 (Viktor 16/7): baseline fra en klient I FORLOEB er BEHANDLINGSDATA.
+// Grundlag = art. 9(2)(h) jf. 9(3) + databeskyttelseslovens §7 stk. 3 — IKKE samtykke
+// (register 1.3: lav ALDRIG samtykke-checkbox for selve databehandlingen). Oplysningspligten
+// (art. 13) opfyldes med en transparens-tekst paa indsamlingstidspunktet (register 1.4).
+// => payload er data-minimal: INTET consent-felt, uanset hvad kalderen sender med.
+check('bl har INTET consent-felt (register 1.6: 9(2)(h), ikke samtykke)', !('consent' in bl));
+const blConsentForsoeg = { accepted: true, timestamp: '2026-07-15T09:00:00Z', version: '2026-07-15' };
+const blMedMetaConsent = buildPayloadBaseline(blAnswers, { name: 'Baseline Klient', consent: blConsentForsoeg });
+check('bl ignorerer meta.consent (samtykke er ikke retsgrundlag her)', !('consent' in blMedMetaConsent));
 const blRT = await nodeDecrypt(await mentemEncrypt(recipientPubB64, bl), recipient.privateKey);
 check('bl round-trip baseline bevaret', blRT.baseline.alder === 67 && blRT.baseline.koen === 'Kvinde');
+const blRTc = await nodeDecrypt(await mentemEncrypt(recipientPubB64, blMedMetaConsent), recipient.privateKey);
+check('bl INTET consent efter decode (Journal Audit ser intet samtykke)', !('consent' in blRTc));
+
+// ── Baseline-oplysningstekst (art. 13) paa welcome-skaermen — statisk kontrakt mod index.html ──
+// Erstatter P1-samtykke-blokken. INGEN checkbox, INGEN blokering af Start/send.
+console.log('baseline-oplysning (art. 13, register 1.4):');
+const INDEX_HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+check('baseline-oplysning-blok findes paa welcome', /id="baseline-oplysning"/.test(INDEX_HTML));
+const oplysningBlok = (INDEX_HTML.match(/<div class="diary-oplysning" id="baseline-oplysning">[\s\S]*?<\/div>/) || [''])[0];
+check('oplysning linker til privatlivspolitikken', oplysningBlok.includes(PRIVATLIV_URL) && /privatlivspolitik/i.test(oplysningBlok));
+check('oplysning siger "din psykolog" (term-lås)', /din psykolog/.test(oplysningBlok));
+check('oplysning em-dash-fri', !oplysningBlok.includes('—'));
+check('oplysning har INGEN checkbox', !/type="checkbox"/.test(oplysningBlok));
+// Samtykke-DOM/-state/-gate er FJERNET fra baseline (kun dagbogen beholder sit consent — separat beslutning).
+check('INGEN baseline-samtykke-checkbox tilbage i index.html', !INDEX_HTML.includes('baseline-consent-cb'));
+check('INGEN baselineConsentAccepted-gate tilbage i index.html', !INDEX_HTML.includes('baselineConsentAccepted'));
+check('INGEN baseline-consent-blok tilbage i index.html', !/id="baseline-consent"/.test(INDEX_HTML));
+check('dagbogens consent BEVARES (register 1.7: 9(2)(a) jf. §7 stk. 1 for server-kladden)',
+  INDEX_HTML.includes('diary-consent-cb') && INDEX_HTML.includes('consentAccepted()'));
+
+// ── Dagbogen: TO ADSKILTE LAG i samme flade (GDPR-register 1.7, Viktor 16/7) ──────────
+// Lag 1 = BEHANDLINGEN: art. 13-oplysningstekst, INGEN checkbox. Grundlaget er journal-
+//   føringspligten (9(2)(h) jf. 9(3) + §7 stk. 3), IKKE samtykke — register 1.3 forbyder
+//   eksplicit en samtykke-checkbox for selve databehandlingen.
+// Lag 2 = SERVER-KLADDEN: den eksisterende samtykke-blok, indrammet så den KUN dækker det
+//   fravælgelige bekvemmeligheds-lag (kontinuitet på tværs af enheder) = 9(2)(a).
+console.log('dagbog: lag 1 oplysning (art. 13) + lag 2 samtykke (kun server-kladden):');
+check('lag 1: dagbog-oplysning-blok findes paa dagbogs-welcome', /id="diary-oplysning"/.test(INDEX_HTML));
+const dagbogOpl = (INDEX_HTML.match(/<div class="diary-oplysning" id="diary-oplysning">[\s\S]*?<\/div>/) || [''])[0];
+check('lag 1: linker til privatlivspolitikken', dagbogOpl.includes(PRIVATLIV_URL) && /privatlivspolitik/i.test(dagbogOpl));
+check('lag 1: siger "din psykolog" (term-lås)', /din psykolog/.test(dagbogOpl));
+check('lag 1: INGEN checkbox (behandlingen beror IKKE paa samtykke — register 1.3)',
+  dagbogOpl.length > 0 && !/type="checkbox"/.test(dagbogOpl));
+check('lag 1: nævner journalfoeringspligten som grundlag (art. 13 stk. 1 litra c)', /journalf/i.test(dagbogOpl));
+check('lag 1: em-dash/en-dash-fri', dagbogOpl.length > 0 && !dagbogOpl.includes('—') && !dagbogOpl.includes('–'));
+check('lag 1: klienten ser ingen tal/scores', !/\d+\s*(point|score)/i.test(dagbogOpl));
+
+// OPGAVE 3 — em-dash i den LÅSTE §2-tekst (låst 3/6; em-dash-direktivet er fra 19/6 og havde
+// aldrig efterset den). index.html er IKKE i EMDASH_GUARDED_FILES (~26 em-dash i shippet copy
+// = separat sweep), så denne mål-rettede kontrakt guarder netop samtykke-regionen.
+const samtykkeRegion = (INDEX_HTML.match(/function renderDiaryConsent\(\)\s*\{[\s\S]*?\n\}/) || [''])[0];
+check('OPGAVE 3: 0 em-dash i dagbogs-samtykket (renderet copy, kommentarer undtaget)',
+  samtykkeRegion.length > 0 && scanEmDash(samtykkeRegion, 'index.html#renderDiaryConsent').length === 0,
+  scanEmDash(samtykkeRegion, 'x').map(v => v.line).join(','));
+check('lag 2: samtykket rammer server-kladden ind (ikke behandlingen)', /kladde/i.test(samtykkeRegion));
+// Tilbagetræknings-status er NY klient-facing copy og lever UDEN FOR renderDiaryConsent
+// → guard den eksplicit, ellers er den em-dash-fri ved held og ikke ved kontrakt.
+const tilbagetraekRegion = (INDEX_HTML.match(/function tilbagetraekningsStatus\(\)\s*\{[\s\S]*?\n\}/) || [''])[0];
+check('tilbagetræknings-status: 0 em-dash', tilbagetraekRegion.length > 0 && scanEmDash(tilbagetraekRegion, 'x').length === 0);
+check('tilbagetræknings-status siger "din psykolog" (term-lås)', /din psykolog/.test(tilbagetraekRegion));
+check('tilbagetræknings-status lover KUN sletning naar DELETE lykkedes (ærligheds-disciplin)',
+  /kladdeSletFejl/.test(tilbagetraekRegion) && /kunne ikke/i.test(tilbagetraekRegion));
 
 // ── Forløbs-anmodning (ANMOD v2.1, adaptiv-grundlags-betinget) — kontrakt §1–§3 ───────────
 // Maskinel drift-vagt på web-fladen (1:1 m. Swift ForloebsAnmodningKonvolutTests).
@@ -417,6 +487,27 @@ eq('anmod round-trip data.tid_praeference', anmodRT.data.tid_praeference, { dage
 // ── VERA-guard #1: emoji/glyf-detektor (regressions-lås) ───────────────────
 // Unit-tests af scanText() (deterministisk — uafhængig af repo-tilstand) + en
 // run mod de FAKTISKE klient-facing filer (fanger en ægte regression i CI).
+// ── K3+K4: samlet send-kvittering + "Send sikkert"-CTA (besked-track FASE B) ──
+// V-6 (Viktor 15/7): én fælles primær kvittering overalt; de 2 flow-specifikke
+// kliniske forsikringer bevares som sekundær linje kun på deres flow.
+// Term (Viktor 15/7): "din psykolog" (surface-konsistent). Klient ser ALDRIG tal.
+console.log('K3+K4 send-kvittering (FASE B):');
+check('primær kvittering = én fælles streng (din psykolog)',
+  SENDT_KVITTERING_PRIMAER === 'Dine svar er sendt sikkert og krypteret til din psykolog. Tak!');
+check('primær kvittering nævner ingen tal (klient ser aldrig tal)', !/[0-9]/.test(SENDT_KVITTERING_PRIMAER));
+check('primær kvittering bruger "psykolog", ikke "behandler"',
+  SENDT_KVITTERING_PRIMAER.includes('psykolog') && !SENDT_KVITTERING_PRIMAER.includes('behandler'));
+eq('screening beholder flow-forsikring som sekundær (V-6)',
+  sendtKvitteringSekundaer('soevn-screening'), 'Du kan roligt gå i gang med din søvndagbog med det samme.');
+eq('dagbog-opdatering beholder flow-forsikring som sekundær (V-6)',
+  sendtKvitteringSekundaer('soevndagbog-opdatering'), 'Du kan roligt fortsætte dagbogen.');
+eq('batteri har ingen sekundær linje', sendtKvitteringSekundaer('batteri'), null);
+eq('dagbog-send (terminal) har ingen sekundær linje', sendtKvitteringSekundaer('soevndagbog'), null);
+eq('baseline har ingen sekundær linje', sendtKvitteringSekundaer('soevn-baseline'), null);
+eq('ukendt flow → ingen sekundær linje (fail-safe)', sendtKvitteringSekundaer('ukendt'), null);
+check('K4 primær CTA = "Send sikkert"', SEND_SIKKERT_CTA === 'Send sikkert');
+check('kvittering-copy versions-stemplet', SENDT_KVITTERING_VERSION === '2026-07-15');
+
 console.log('emoji-guard (VERA #1):');
 const G = (t) => scanText(t, 't').length;
 // catch: emoji-som-ikon i renderet flade
@@ -458,6 +549,31 @@ check('emdash-guard guardet IGEN efter instrument-region-end',
 const liveEmDash = runEmDashGuard();
 check(`emdash-guard GRØN mod live ${EMDASH_GUARDED_FILES.join('+')} (0 em-dash i renderet copy)`, liveEmDash.length === 0,
   liveEmDash.map(v => `${v.file}:${v.line}`).join(' | '));
+
+// ── VERA-guard #2: synlig-copy-guard (em-dash + en-dash + anglicistisk bindestreg) ──
+// Født 16/7: Viktor fangede SELV samme sprogfejl 3 gange på én dag ("engangs-skema",
+// "søvn-svar") — anglicistisk bindestreg, som Iowan Old Style tegner så lang at den ligner
+// em-dash. Ubevogtet indtil nu. Scanner SYNLIG copy (ikke rå bytes), hvilket er præcis det
+// der endelig gør index.html guardbar: den bærer 69 em-dash i KOMMENTARER (0 i synlig copy),
+// så en rå-scan ville være rød uden en eneste ægte fejl. Fuld test: node test/copy-guard-test.mjs
+console.log('copy-guard (VERA #2 — synlig klient-copy):');
+const C = (t) => scanCopy(t, 't.html').length;
+check('copy-guard fanger "engangs-skema" (Viktor 16/7)', C('<p>et engangs-skema</p>') === 1);
+check('copy-guard fanger "søvn-svar" i JS-streng (Viktor 16/7)', C('<script>x.textContent = "dine søvn-svar";</script>') === 1);
+check('copy-guard fanger em-dash i synlig copy', C('<p>A — B</p>') === 1);
+check('copy-guard fanger en-dash som tankestreg', C('<p>A – B</p>') === 1);
+check('copy-guard tillader "GAD-7"/"uge 1-3" (forkortelse/talinterval)', C('<p>GAD-7 i uge 1-3</p>') === 0);
+check('copy-guard tillader talinterval med en-dash "0–100 %"', C('<p>(0–100 %)</p>') === 0);
+check('copy-guard ignorerer kommentarer (rå-byte-fælden)', C('<!-- engangs-skema — her -->') === 0);
+check('copy-guard ignorerer CSS-selektor/className', C('<script>el.className = "diary-field nrs-field";</script>') === 0);
+const liveCopy = triageCopy(runCopyGuard());
+check(`copy-guard GRØN mod live ${COPY_GUARDED_FILES.join('+')} (0 NYE sprog-regressioner)`, liveCopy.nye.length === 0,
+  liveCopy.nye.map(v => `${v.file}:${v.line} "${v.found}"`).join(' | '));
+check('copy-guard: 0 stale poster i PENDING_VIKTOR_GO (listen skal krympe, ikke rådne)',
+  liveCopy.stale.length === 0, liveCopy.stale.map(p => p.found).join(' | '));
+if (liveCopy.pendingFundet) {
+  console.log(`  i ${liveCopy.pendingFundet} KENDTE nudansk-fund i shippet copy afventer Viktor-GO (PENDING_VIKTOR_GO i test/copy-guard.mjs)`);
+}
 
 console.log('');
 if (failures > 0) { console.error(`SELFTEST FAILED: ${failures} fejl`); process.exit(1); }

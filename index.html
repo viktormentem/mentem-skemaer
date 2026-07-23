@@ -104,9 +104,34 @@
   .done-wrap h2 { font-family:'DM Serif Display',serif; font-size:32px; margin-bottom:12px; }
   .done-wrap p { color:var(--muted); font-size:16px; line-height:1.6; margin-bottom:28px; }
   .done-status { font-size:14px; color:var(--accent); margin-top:16px; min-height:20px; }
+  /* K3-animation: kvitteringen skal VISE at noget er sendt OG modtaget, ikke bare
+     paastaa det. To slag: cirklen tegner sig selv (afsendelsen er undervejs), saa
+     slaar fluebenet ind (den er modtaget). Egen SVG, ingen emoji. */
+  /* FAIL-VISIBLE: standard-tilstanden er FAERDIG og synlig. Animationen skjuler kun
+     midlertidigt via `both` (backwards fill), inde i no-preference-blokken. Saetter man
+     omvendt opacity:0 som standard og lader animationen bringe frem, staar kvitteringen
+     USYNLIG hvis ingen media query matcher (aeldre/headless browsere) -> klienten sender
+     og faar ingen bekraeftelse. En kvittering maa aldrig kunne forsvinde. */
+  .kvittering-mark { display:flex; justify-content:center; margin-bottom:10px; }
+  .kvittering-mark svg { width:44px; height:44px; color:var(--accent); }
+  .kvittering-mark .kv-ring { stroke-dasharray:57; stroke-dashoffset:0; }
+  .kvittering-mark .kv-hak  { stroke-dasharray:14; stroke-dashoffset:0; }
+  @media (prefers-reduced-motion: no-preference) {
+    .kvittering-mark .kv-ring { animation: kvRing .5s ease-out both; }
+    .kvittering-mark .kv-hak  { animation: kvHak .3s ease-out .45s both; }
+    .kvittering-primaer  { animation: kvTekst .35s ease-out .6s both; }
+    .kvittering-sekundaer{ animation: kvTekst .35s ease-out .75s both; }
+    @keyframes kvRing  { from { stroke-dashoffset:57; } to { stroke-dashoffset:0; } }
+    @keyframes kvHak   { from { stroke-dashoffset:14; } to { stroke-dashoffset:0; } }
+    @keyframes kvTekst { from { opacity:0; transform:translateY(4px);} to { opacity:1; transform:none;} }
+  }
   .disclaimer { background:var(--border); border-radius:8px; padding:12px 16px; font-size:12px; color:var(--muted); margin-top:24px; line-height:1.5; }
   .start-note { text-align:center; font-size:14px; color:var(--muted); margin-top:14px; line-height:1.5; }
-  /* §1 privatliv + §2 Art.9-samtykke (server-opbevaring) — vist FØR dagbogs-start */
+  /* LAG 2 — §1 privatliv + §2 Art.9-samtykke. Dækker KUN server-kladden (register 1.7).
+     Blokken sidder på dagbogs-welcome, som klienten lander på efter HVER gemt dag, så
+     samtykket er nåbart og kan slås fra UNDERVEJS i forløbet (art. 7(3)). Flyt den ikke
+     til en ren opstarts-skærm: så bliver tilbagetrækning sværere end at give. */
+  .diary-consent-ramme { margin:0 0 12px; padding-bottom:10px; border-bottom:1px solid var(--border); color:var(--muted); }
   .diary-consent { background:var(--accent-light); border:1.5px solid var(--accent); border-radius:10px; padding:16px 18px; margin-bottom:18px; text-align:left; font-size:14px; line-height:1.55; color:var(--ink); }
   .diary-consent h3 { font-size:15px; margin:0 0 8px; font-weight:700; }
   .diary-consent p { margin:0 0 10px; }
@@ -118,6 +143,11 @@
   .diary-consent-label { display:flex; gap:10px; align-items:flex-start; cursor:pointer; padding-top:12px; border-top:1px solid var(--border); }
   .diary-consent-label input { margin-top:3px; width:18px; height:18px; flex:none; cursor:pointer; }
   .diary-consent-status { margin:10px 0 0; font-size:13px; color:var(--muted); }
+  /* Oplysningstekst (art. 13) på baseline-welcome — informerer, gater ikke. Roligere end
+     samtykke-blokken (ingen accent-ramme): det er transparens, ikke en handling klienten skal gøre. */
+  .diary-oplysning { background:var(--accent-light); border-radius:10px; padding:14px 16px; margin-bottom:18px; text-align:left; font-size:14px; line-height:1.55; color:var(--ink); }
+  .diary-oplysning p { margin:0; }
+  .diary-oplysning .diary-oplysning-link { margin-top:8px; color:var(--muted); font-size:13px; }
   .footer-credit { font-size:11px; color:var(--muted); margin-top:20px; line-height:1.5; text-align:center; }
   /* Patientsikkerhed: diskret, ikke-alarmerende "Akut hjælp"-boks — altid findbar i bunden af hver skærm. */
   .akut-hjaelp { background:var(--card); border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:8px; padding:13px 16px; margin-top:26px; text-align:left; font-size:13px; color:var(--ink); line-height:1.55; }
@@ -250,6 +280,37 @@
   .a11y-stepnav button { flex:1; margin-top:0; }
   /* I tilstanden erstatter den læste "Spørgsmål X af Y" den visuelle bjælke. */
   html[data-a11y="1"] #screen-diary-form .form-progress { display:none; }
+
+  /* ── Formulering (Wells-model, animeret) — renderFormulering bygger indholdet ──
+     (mentem-skema-core.js). Stagger-mønster matcher srtRo (:170-171); reveal-
+     mønster matcher fadeIn (:119). Dissonans: pos=grøn (accent), neg=varm brun,
+     tydeligt forskellige. Følelse/symptom = intermitterende (gadanim-uro), ikke
+     en monoton stigning. reduced-motion → statisk fuld model, ingen bevægelse. */
+  .gadanim-hint { font-size:14px; color:var(--muted); line-height:1.55; margin:10px 0 22px; }
+  .gadanim-nodes { display:flex; flex-direction:column; gap:14px; }
+  .gadanim-node { background:var(--card); border:1.5px solid var(--border); border-left:4px solid var(--accent); border-radius:10px; padding:16px 18px; opacity:0; transform:translateY(6px); animation:gadanim-ind 0.5s ease forwards; }
+  .gadanim-node h2 { font-family:'DM Serif Display',serif; font-size:17px; font-weight:400; color:var(--accent); margin:0 0 6px; }
+  .gadanim-node p { font-size:15px; line-height:1.55; color:var(--ink); margin:0; }
+  .gadanim-node.pos { border-left-color:var(--accent); background:var(--accent-light); }
+  .gadanim-node.neg { border-left-color:#854810; background:#f7ecdf; }
+  .gadanim-node.neg h2 { color:#854810; }
+  .gadanim-emotion { animation: gadanim-ind 0.5s ease forwards, gadanim-uro 3.2s ease-in-out infinite; }
+  /* Flow-pil mellem boksene (klinisk finpuds: hint-teksten lover "pilene mellem
+     boksene", jf. buildFlowPil i mentem-skema-core.js). Dekorativ (aria-hidden),
+     samme stagger-reveal som .gadanim-node; muted farve så den ikke konkurrerer
+     med boks-indholdet. */
+  .gadanim-arrow { display:flex; justify-content:center; margin:-3px 0; color:var(--muted); opacity:0; animation:gadanim-ind 0.5s ease forwards; }
+  .gadanim-sloejfer { margin-top:26px; padding:16px 18px; background:var(--accent-light); border-radius:10px; }
+  .gadanim-sloejfer h2 { font-family:'DM Serif Display',serif; font-size:17px; font-weight:400; color:var(--accent); margin:0 0 10px; }
+  .gadanim-sloejfer ul { margin:0; padding-left:20px; }
+  .gadanim-sloejfer li { margin:0 0 9px; line-height:1.55; font-size:14px; color:var(--ink); }
+  @keyframes gadanim-ind { to{opacity:1;transform:none} }
+  @keyframes gadanim-uro { 0%{opacity:.75} 30%{opacity:.45} 60%{opacity:1} 100%{opacity:.75} }
+  @media (prefers-reduced-motion: reduce) {
+    .gadanim-node{opacity:1;transform:none;animation:none}
+    .gadanim-emotion{animation:none}
+    .gadanim-arrow{opacity:1;animation:none}
+  }
 </style>
 <script>
   /* A11Y: gendan tekststørrelse FØR render (ingen flash). Non-PII UI-præference. */
@@ -351,6 +412,19 @@
       <div class="diary-progress-big" id="diary-progress-text">Dag 1</div>
       <div class="diary-dots" id="diary-dots"></div>
     </div>
+    <!-- LAG 1 (BEHANDLINGEN) — art. 13-oplysningstekst, INGEN checkbox. GDPR-register 1.7
+         (Viktor 16/7): selve behandlingen af dagbogs-svarene hviler på journalføringspligten
+         (9(2)(h) jf. 9(3) + databeskyttelseslovens §7 stk. 3), IKKE på samtykke. Register 1.3
+         forbyder en samtykke-checkbox for databehandlingen; oplysningspligten løftes i stedet
+         her, på indsamlingstidspunktet. Spejler #baseline-oplysning så fladen er konsistent.
+         LAG 2 (server-kladden) er den SEPARATE #diary-consent-blok nedenfor: den dækker KUN
+         det fravælgelige bekvemmeligheds-lag, og kun den er et samtykke (9(2)(a) jf. §7 stk. 1).
+         ORDLYD = UDKAST, afventer Viktor-godkendelse ord-for-ord (som V-4 for baseline).
+         Em-dash-fri, æøå-korrekt, term = "din psykolog". -->
+    <div class="diary-oplysning" id="diary-oplysning">
+      <p>Når du sender din søvndagbog, indgår dine svar i din journal som en del af din behandling. Det følger af den journalføringspligt, din psykolog har som autoriseret psykolog, og det hviler ikke på dit samtykke. Kun din psykolog kan åbne dem.</p>
+      <p class="diary-oplysning-link">Sådan behandler vi dine oplysninger: <a href="https://psykologviktornielsen.dk/privatlivspolitik.html" target="_blank" rel="noopener">privatlivspolitik</a>.</p>
+    </div>
     <div class="diary-consent" id="diary-consent" style="display:none"></div>
     <div id="nudge-kort" style="display:none" role="status"></div>
     <div id="nudge-eval" style="display:none"></div>
@@ -387,6 +461,17 @@
   <div class="wrap">
     <h1>Kort om <em>din søvn</em></h1>
     <p class="intro" id="baseline-intro"></p>
+    <!-- Oplysningstekst (GDPR art. 13), IKKE samtykke. GDPR-register 1.6 (Viktor 16/7): en
+         soevn-baseline fra en klient i forloeb er behandlingsdata; grundlaget er art. 9(2)(h)
+         jf. 9(3) + §7 stk. 3. Register 1.3 forbyder samtykke-checkbox for selve databehandlingen,
+         og register 1.4 kraever transparens-tekst m. link til privatlivspolitikken PAA
+         indsamlingstidspunktet. Derfor: ingen checkbox, ingen gate paa Start/send.
+         ORDLYD = UDKAST, afventer V-4 (Viktor godkender ord-for-ord).
+         Em-dash-fri, aeoeaa-korrekt, term = "din psykolog" (surface-konsistent). -->
+    <div class="diary-oplysning" id="baseline-oplysning">
+      <p>Dine svar sendes sikkert og krypteret til din psykolog og indgår i din journal som en del af din behandling. Kun din psykolog kan åbne dem.</p>
+      <p class="diary-oplysning-link">Sådan behandler vi dine oplysninger: <a href="https://psykologviktornielsen.dk/privatlivspolitik.html" target="_blank" rel="noopener">privatlivspolitik</a>.</p>
+    </div>
     <button class="btn-primary" id="baseline-start-btn">Start</button>
     <p class="start-note">Det tager et par minutter og udfyldes kun denne ene gang.</p>
     <div class="disclaimer"><span aria-hidden="true" style="display:inline-flex;width:1em;height:1em;vertical-align:-2px;margin-right:5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><span class="disc-body" data-autosend="<strong>Privatliv:</strong> Du udfylder alt i din egen browser. Til sidst sendes svarene sikkert og krypteret direkte til din psykolog. Kun din psykolog kan åbne dem. Har du det akut svært, skal du ikke vente til samtalen. Se Akut hjælp nederst."><strong>Privatliv:</strong> Du udfylder alt i din egen browser. Til sidst samles svarene i én krypteret fil, som kun din psykolog kan åbne, og du sender den selv. Intet gemmes på en server. Har du det akut svært, skal du ikke vente til samtalen. Se Akut hjælp nederst.</span></div>
@@ -461,14 +546,40 @@
   </div>
 </div>
 
+<!-- FORMULERING (Wells-model, fragment-dispatch #<token>;s=formulering;..) — renderFormulering
+     bygger hele indholdet af .wrap i denne skærm dynamisk (mentem-skema-core.js). -->
+<div id="screen-formulering" class="screen">
+  <div class="wrap"></div>
+</div>
+
 <script type="module">
 import { SKEMAER, SKEMA_ORDER, OFFENTLIGT_KLAR, buildPayload, buildPayloadCSD, buildPayloadBaseline, mentemEncrypt,
          CSD_SOEVNDAGBOG, SOEVN_BASELINE, CONTENT_VERSION, SITE_BUILD, kryptoStoettet,
          PINNED_PUBKEY, PINNED_KEY_ID, resolveRecipientKey,
          INSTRUMENTER, instrumentFeltOrden, buildInstrumentMycel,
          SOEVN_SCREENING, buildPayloadScreening,
-         SRT_VINDUE_TEKST, SOEVN_F2, vaelgNudgeKort, vaelgUgeKort,
+         SENDT_KVITTERING_PRIMAER, sendtKvitteringSekundaer, SEND_SIKKERT_CTA,
+         SRT_VINDUE_TEKST, SOEVN_F2,
+         parseFormuleringFragment, renderFormulering,
+         vaelgNudgeKort, vaelgUgeKort,
          NUDGE_EVAL_MILEPAELE, NUDGE_EVAL_SVAR, NUDGE_EVAL_TEKST } from './mentem-skema-core.js';
+
+// ── FORMULERING fragment-dispatch (Wells-model, s=formulering) ────────────
+// Linket bæres i URL-FRAGMENTET (#<32hex-token>;s=formulering;n=..;tr=..;..),
+// IKKE query-strengen (payload rører aldrig serveren, GDPR). Tjekkes FØR den
+// eksisterende ?s=-query-dispatch (kernebeslutning, retarget-mentem-skemaer.md
+// §"Kernebeslutning"): matcher intet (almindeligt tomt/andet hash) → no-op,
+// resten af boot/dispatchen kører helt uændret. Modulet-top-level har intet
+// `return` (ES-moduler tillader det ikke) → styres i stedet via
+// `formuleringAktiv`-flaget, der gater KUN den endelige skærm-dispatch nedenfor
+// (bootstrap-blokken, ~"screen-formulering"). Ingen render-token-gate her:
+// makeren bager altid et 32hex-token ind i linket, men der er intet hårdt
+// token-krav i denne app (jf. retarget-brief §Task 9).
+const _fFrag = parseFormuleringFragment(location.hash || '');
+const formuleringAktiv = !!(_fFrag.params && _fFrag.params.s === 'formulering');
+if (formuleringAktiv) {
+  renderFormulering(_fFrag.params, document.querySelector('#screen-formulering .wrap'));
+}
 
 // ── URL-parametre (?s=batteri  ?n=sessionsnummer  ?pk=cross-check) ────────
 const params   = new URLSearchParams(location.search);
@@ -568,6 +679,49 @@ async function sendTilIngest(payload, schemaType) {
     return (r.ok && (j.status === 'received' || j.duplicate)) ? 'sendt' : null;
   } catch (e) { console.error('[mentem] auto-send fejlede -> fallback', e); return null; }
 }
+// K3 (FASE B): én genbrugelig send-kvittering. Afløser de spredte
+// `status.textContent = 'Dine svar er sendt ...'`-strenge i hvert flow, så klienten
+// ser SAMME kvittering overalt (nordstjerne). Én fælles PRIMÆR linje + valgfri
+// flow-specifik SEKUNDÆR forsikring (V-6). SVG-checkmarket i .done-wrap er allerede
+// i markuppen; her sætter vi kun status-teksten (ingen tal, ingen emoji).
+function visSendtKvittering(statusEl, flow) {
+  if (!statusEl) return;
+  statusEl.style.color = 'var(--accent)';
+  statusEl.textContent = '';
+  // Animeret mark FOERST: cirklen tegner (sendt) -> hakket slaar ind (modtaget).
+  // Bygges pr. visning, saa animationen faktisk fyrer hver gang (en genbrugt node
+  // ville staa faerdig-tegnet og fortaelle ingenting).
+  const mark = document.createElement('div');
+  mark.className = 'kvittering-mark';
+  mark.setAttribute('aria-hidden', 'true');
+  mark.innerHTML =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" ' +
+    'stroke-linecap="round" stroke-linejoin="round">' +
+    '<circle class="kv-ring" cx="12" cy="12" r="9" transform="rotate(-90 12 12)"/>' +
+    '<path class="kv-hak" d="M8 12.3l2.7 2.7L16 9"/></svg>';
+  statusEl.appendChild(mark);
+  const primaer = document.createElement('div');
+  primaer.className = 'kvittering-primaer';
+  primaer.textContent = SENDT_KVITTERING_PRIMAER;
+  statusEl.appendChild(primaer);
+  const sek = sendtKvitteringSekundaer(flow);
+  if (sek) {
+    const sekEl = document.createElement('div');
+    sekEl.className = 'kvittering-sekundaer';
+    sekEl.style.cssText = 'margin-top:6px;font-size:13px;opacity:0.85';
+    sekEl.textContent = sek;
+    statusEl.appendChild(sekEl);
+  }
+}
+
+// K4 (FASE B): sæt den primære send-knap til "Send sikkert" KUN når linket faktisk
+// auto-sender krypteret (autoSendEnabled). Ellers præcis, beskrivende fallback-tekst
+// (token-løst/manuelt fil-flow). "Send sikkert" er en sikkerheds-påstand → skal være sand.
+function saetSikkerSendLabel(btn, fallbackTekst) {
+  if (!btn) return;
+  btn.textContent = autoSendEnabled() ? SEND_SIKKERT_CTA : fallbackTekst;
+}
+
 // #F privatlivstekst: når auto-send er aktiv, lover vi "sendes direkte" i st.f.
 // "intet gemmes / du sender selv". Gated på autoSendEnabled → prod-tekst uændret uden it=.
 function gatePrivacyTekst() {
@@ -896,7 +1050,10 @@ function startForm() {
 }
 
 // ── AFSLUTNING + KRYPTERET DELING (nul-score) ───────────────────────────────
-function goDone() { showScreen('screen-done'); window.scrollTo(0, 0); }
+function goDone() {
+  saetSikkerSendLabel(document.getElementById('share-btn'), 'Send filen til din psykolog');
+  showScreen('screen-done'); window.scrollTo(0, 0);
+}
 
 // ════════════════════════════════════════════════════════════════════════
 //  ROBUST FIL-LEVERING (fælles for ALLE send-flows)
@@ -998,7 +1155,7 @@ async function shareEncrypted() {
   // AUTO-SEND (#1/#2): kun it=-links. Lykkes → færdig; ellers fald til download/del.
   if (autoSendEnabled()) {
     const ok = await sendTilIngest(payload, 'batteri');
-    if (ok) { status.style.color = 'var(--accent)'; status.textContent = 'Dine svar er sendt sikkert og krypteret til din psykolog. Tak!'; return; }
+    if (ok) { visSendtKvittering(status, 'batteri'); return; }
   }
   // TRIN 2 — levering (deling el. robust download/kopiér-fallback; aldrig fastlås).
   const filename = `mentem-skema-${new Date().toISOString().slice(0, 10)}.json`;
@@ -1049,6 +1206,11 @@ function clearCSDState() {
 // PUT'es (buildPayloadCSD meta.consent). Persisteres i diaryState (saveCSDState)
 // → overlever reload. Afkrydsning fjernet = samtykke trukket tilbage → sync FRA.
 const CONSENT_TEXT_VERSION = '2026-06-03';   // = låst doc server-privatlivstekst-samtykke
+// Ren UI-tilstand (bevidst IKKE persisteret): skelner "har endnu ikke sagt ja" fra "har
+// trukket tilbage", så status-linjen kan sige sandheden om hvad der lige skete med kladden.
+// Et reload nulstiller den korrekt til "ikke givet" — der er intet at fortælle om da.
+let harTrukketTilbage = false;
+let kladdeSletFejl = false;
 function consentAccepted() { return !!(diaryState && diaryState.consent && diaryState.consent.accepted); }
 function recordConsent(accepted) {
   if (!diaryState) return;
@@ -1270,9 +1432,14 @@ async function syncDraftOnLoad() {
   } catch (e) { /* offline → kør videre på lokal kladde */ }
 }
 
+// Returnerer true når serveren bekræftede sletningen. Kaldere der bare rydder op (afslut/
+// send) ignorerer returværdien uændret; tilbagetrækningen BRUGER den, fordi vi kun må love
+// klienten at kladden er slettet hvis den faktisk blev det.
+// draftEnabled()=false → der er ingen server-kladde at slette → intet at fortryde = true.
 async function deleteDraft() {
-  if (!draftEnabled()) return;
-  try { await fetch(draftUrl(), { method: 'DELETE' }); } catch (e) { /* best-effort */ }
+  if (!draftEnabled()) return true;
+  try { const res = await fetch(draftUrl(), { method: 'DELETE' }); return !!res.ok; }
+  catch (e) { return false; }   /* offline → kladden ligger der stadig; sig det ærligt */
 }
 
 function renderDiaryWelcome() {
@@ -1406,19 +1573,35 @@ function renderDiaryWelcome() {
   if (fp) fp.textContent = 'Krypteret til din psykologs nøgle · ID ' + aktivKeyId();
 }
 
-// §1 (privatliv, verbatim) + §2 (Art.9-samtykke, verbatim checkbox) — server-path.
-// Ordlyd LÅST i soevn/server-privatlivstekst-samtykke-2026-06-03.md (§1+§2). MÅ
-// IKKE ændres. Samtykket gater pushDraft(); afkrydset = server-opbevaring til.
+// LAG 2 (SERVER-KLADDEN) — §1 (privatliv, verbatim) + §2 (Art.9-samtykke, verbatim checkbox).
+// Ordlyd LÅST i soevn/server-privatlivstekst-samtykke-2026-06-03.md (§1+§2). MÅ IKKE ændres.
+//
+// HVAD SAMTYKKET DÆKKER (GDPR-register 1.7, Viktor 16/7): KUN server-kladden — et
+// FRAVÆLGELIGT bekvemmeligheds-lag (kontinuitet på tværs af enheder) oven på en behandling
+// der kører uændret. Grundlag = 9(2)(a) jf. §7 stk. 1. Selve behandlingen hviler IKKE herpå;
+// den oplyses i LAG 1 (#diary-oplysning) og beror på journalføringspligten.
+// 9(2)(h) kan ikke bære kladden: den fejler nødvendighedstesten, fordi localStorage-varianten
+// ER det mindre indgribende middel og findes allerede (LOCAL_ONLY).
+//
+// GYLDIGHEDEN HVILER PÅ ÉN EGENSKAB: saveCSDState() er UAFHÆNGIG af samtykket, så et fravalg
+// koster klienten NUL indtastede dage — kun fordelen (EDPB 05/2020 Eksempel 9 = frit samtykke).
+// Kobles lokal lagring nogensinde til consentAccepted(), nedgraderes tjenesten ved fravalg og
+// samtykket bliver UGYLDIGT med tilbagevirkende kraft (Eksempel 8). Vagt: e2e-dagbog-samtykke.mjs.
 function renderDiaryConsent() {
   const el = document.getElementById('diary-consent');
   if (!el) return;
   // Vises kun i server-pathen (ikke localStorage-variant) og kun ved gyldig nøgle.
+  // NB: prod kører LOCAL_ONLY=true → hele blokken renderer INTET i dag (der er ingen
+  // server-kladde at samtykke til). Blokken er den server-wirede v2-stis samtykke.
   if (LOCAL_ONLY || !keyCheck.ok) { el.style.display = 'none'; el.innerHTML = ''; return; }
   el.style.display = 'block';
   const accepted = consentAccepted();
-  // §1 — VERBATIM. §2 — VERBATIM (☐ → ægte checkbox). Status-linjen er supplerende
-  // UI (ikke låst tekst): viser at server-PUT er blokeret til samtykke er givet.
+  // §1 — VERBATIM. §2 — VERBATIM (☐ → ægte checkbox). Ramme-linjen + status-linjen er
+  // supplerende UI (IKKE låst tekst): de rammer samtykket ind som noget der kun angår
+  // kladden, og fortæller ærligt hvad et fravalg reelt gør i koden.
+  // RAMME/STATUS-ORDLYD = UDKAST, afventer Viktor-godkendelse ord-for-ord.
   el.innerHTML = `
+    <p class="diary-consent-ramme">Det næste er <strong>valgfrit</strong> og handler kun om, hvor din kladde ligger, mens du udfylder dagbogen. Din behandling er den samme, uanset hvad du vælger.</p>
     <h3>Sådan opbevares dine svar</h3>
     <p>Dine svar gemmes <strong>krypteret</strong>, så du kan vende tilbage til dem fra det samme link, også hvis du skifter telefon eller rydder din browser. Det betyder, at du ikke mister de dage, du allerede har udfyldt.</p>
     <ul>
@@ -1429,17 +1612,39 @@ function renderDiaryConsent() {
     </ul>
     <label class="diary-consent-label">
       <input type="checkbox" id="diary-consent-cb"${accepted ? ' checked' : ''}>
-      <span><strong>Jeg accepterer, at mine søvn-svar opbevares krypteret som beskrevet ovenfor</strong>, så jeg kan fortsætte forløbet på tværs af enheder. Jeg ved, at det er helbredsoplysninger, at kun min psykolog kan læse dem, og at jeg kan trække mit samtykke tilbage når som helst.</span>
+      <span><strong>Jeg accepterer, at mine søvnsvar opbevares krypteret som beskrevet ovenfor</strong>, så jeg kan fortsætte forløbet på tværs af enheder. Jeg ved, at det er helbredsoplysninger, at kun min psykolog kan læse dem, og at jeg kan trække mit samtykke tilbage når som helst.</span>
     </label>
     <p class="diary-consent-status">${accepted
       ? 'Tak. Dine svar gemmes nu krypteret, så du kan fortsætte på tværs af enheder.'
-      : 'Indtil du sætter flueben, gemmes dine svar kun på denne enhed. De sendes ikke til serveren.'}</p>`;
+      : (harTrukketTilbage ? tilbagetraekningsStatus()
+        : 'Indtil du sætter flueben, gemmes dine svar kun på denne enhed. De sendes ikke til serveren.')}</p>`;
   const cb = document.getElementById('diary-consent-cb');
-  cb.addEventListener('change', () => {
+  cb.addEventListener('change', async () => {
     recordConsent(cb.checked);
-    if (cb.checked) pushDraft();   // samtykke givet → flush evt. lokal buffer til server
-    renderDiaryConsent();          // opdatér status-linje (ingen fuld re-render nødvendig)
+    if (cb.checked) {
+      harTrukketTilbage = false; kladdeSletFejl = false;
+      renderDiaryConsent();        // opdatér status-linje (ingen fuld re-render nødvendig)
+      pushDraft();                 // samtykke givet → flush evt. lokal buffer til server
+      return;
+    }
+    // TILBAGETRÆKNING (art. 7(3)) — ét klik, samme vej som samtykket blev givet.
+    // recordConsent(false) har allerede slået fremtidige PUT fra (pushDraft er gatet).
+    // Art. 17(1)(b): grundlaget for den ALLEREDE PUT'ede kladde er nu væk, så den skal
+    // SLETTES, ikke bare holde op med at blive opdateret. Klientens dage ligger uberørt
+    // i localStorage → sletningen koster ingen data (dét er hvad der holder samtykket frit).
+    harTrukketTilbage = true; kladdeSletFejl = false;
+    renderDiaryConsent();          // vis tilstanden STRAKS, uden at vente på netværket
+    kladdeSletFejl = !(await deleteDraft());
+    renderDiaryConsent();          // ...og korrigér ærligt hvis sletningen ikke lykkedes
   });
+}
+
+// Status efter en tilbagetrækning. Vi lover KUN det koden faktisk gjorde: lykkedes DELETE
+// ikke (offline/server nede), siger vi det i stedet for at påstå at kladden er slettet.
+function tilbagetraekningsStatus() {
+  return kladdeSletFejl
+    ? 'Dit samtykke er trukket tilbage, og dine svar gemmes nu kun på denne enhed. Vi kunne ikke få fat i serveren for at slette din gemte kladde lige nu. Den slettes automatisk efter 45 dage, og du kan bede din psykolog om at slette den med det samme.'
+    : 'Dit samtykke er trukket tilbage. Din gemte kladde på serveren er slettet, og dine svar gemmes nu kun på denne enhed. De dage, du allerede har udfyldt, er der stadig, og du kan fortsætte dagbogen som før.';
 }
 
 function lastEntryBefore(dateStr) {
@@ -2596,7 +2801,7 @@ function runScreening(id) {
       ? 'Dine svar er klar. Tryk nedenfor for at sende dem sikkert og krypteret til din psykolog.'
       : 'Dine svar er nu samlet i én krypteret fil. Tryk nedenfor for at sende filen til din psykolog i den samme SMS-tråd, hvor du fik linket.';
     const btn = document.getElementById('share-btn');
-    if (btn) btn.textContent = autoSendEnabled() ? 'Send til din psykolog' : 'Send filen til din psykolog';
+    saetSikkerSendLabel(btn, 'Send filen til din psykolog');
     showScreen('screen-done');
     window.scrollTo(0, 0);
   });
@@ -2631,8 +2836,7 @@ function runScreening(id) {
     if (autoSendEnabled()) {
       const ok = await sendTilIngest(payload, 'soevn-screening');
       if (ok) {
-        status.style.color = 'var(--accent)';
-        status.textContent = 'Dine svar er sendt sikkert og krypteret til din psykolog. Du kan roligt gå i gang med din søvndagbog med det samme. Tak!';
+        visSendtKvittering(status, 'soevn-screening');
         return;
       }
     }
@@ -2706,6 +2910,7 @@ function finishDiary() {
   if (!ok) return;
   const p = document.querySelector('#screen-done p');
   if (p) p.textContent = 'Dine søvndage er nu samlet i én krypteret fil. Tryk nedenfor for at sende filen til din psykolog i den samme SMS-tråd, hvor du fik linket.';
+  saetSikkerSendLabel(document.getElementById('share-btn'), 'Send filen til din psykolog');
   showScreen('screen-done');
   window.scrollTo(0, 0);
 }
@@ -2757,8 +2962,7 @@ async function shareDiaryEncrypted() {
   if (autoSendEnabled() && diaryState.entries.length > 0) {
     const ok = await sendTilIngest(byggDiaryPayload(true), 'soevndagbog');
     if (ok) {
-      status.style.color = 'var(--accent)';
-      status.textContent = 'Dine svar er sendt sikkert og krypteret til din psykolog. Tak!';
+      visSendtKvittering(status, 'soevndagbog');
       try { await deleteDraft(); } catch (e) { /* server-kladde-sletning er best-effort */ }
       clearCSDState();
       recoveredBlob = null;
@@ -2805,14 +3009,13 @@ async function sendDiaryOpdatering() {
   if (autoSendEnabled() && diaryState.entries.length > 0) {
     const ok = await sendTilIngest(byggDiaryPayload(false), 'soevndagbog');
     if (ok) {
-      status.style.color = 'var(--accent)';
-      status.textContent = 'Opdateringen er sendt sikkert og krypteret til din psykolog. Tak! Du kan roligt fortsætte dagbogen.';
+      visSendtKvittering(status, 'soevndagbog-opdatering');
       btn.disabled = false;
       return;
     }
   }
   // TRIN 2 — levering (deling el. robust fallback).
-  const r = await leverKrypteretFil(containerJSON, `mentem-soevndagbog-${todayISO()}.json`, 'Søvndagbog-opdatering til min psykolog', status);
+  const r = await leverKrypteretFil(containerJSON, `mentem-soevndagbog-${todayISO()}.json`, 'Søvndagbogsopdatering til min psykolog', status);
   if (r === 'delt') {
     status.style.color = 'var(--accent)';
     status.textContent = 'Opdateringen er klar til at sende. Tak! Du kan roligt fortsætte dagbogen.';
@@ -2839,6 +3042,10 @@ function runBaseline(id) {
   showScreen('screen-baseline-welcome');
 }
 
+// INGEN baseline-samtykke-tilstand: GDPR-register 1.6 (Viktor 16/7) => grundlag 9(2)(h) jf. 9(3)
+// + §7 stk. 3, ikke 9(2)(a). Oplysningspligten løftes af #baseline-oplysning (statisk art.13-tekst).
+// Søvndagbogens consentAccepted() er URØRT (separat, endnu ikke truffet beslutning).
+
 function renderBaselineWelcome() {
   const intro = document.getElementById('baseline-intro');
   const startBtn = document.getElementById('baseline-start-btn');
@@ -2848,6 +3055,8 @@ function renderBaselineWelcome() {
     return;
   }
   intro.textContent = baselineSkema.instruction;
+  // Ingen samtykke-gate: Start må ALDRIG være spærret af samtykke (register 1.6). Eneste gate på
+  // denne skærm er nøgle-pinningen ovenfor (sikkerhed), som fail-closer med sin egen besked.
   startBtn.disabled = false;
   const fp = document.getElementById('baseline-key-fp');
   if (fp) fp.textContent = 'Krypteret til din psykologs nøgle · ID ' + aktivKeyId();
@@ -2958,6 +3167,7 @@ function finishBaseline() {
   if (req.some(f => { const v = baselineDraft[f.key]; return v == null || v === ''; })) return;
   const p = document.querySelector('#screen-done p');
   if (p) p.textContent = 'Dine svar er nu samlet i én krypteret fil. Tryk nedenfor for at sende filen til din psykolog i den samme SMS-tråd, hvor du fik linket.';
+  saetSikkerSendLabel(document.getElementById('share-btn'), 'Send filen til din psykolog');
   showScreen('screen-done');
   window.scrollTo(0, 0);
 }
@@ -2970,6 +3180,8 @@ async function shareBaselineEncrypted() {
     status.textContent = 'Sikkerhedstjek fejlede: linket peger på en ukendt nøgle. Del IKKE dine svar. Kontakt din psykolog for et nyt link.';
     return;
   }
+  // INGEN samtykke-blok her (GDPR-register 1.6): baseline i forløb behandles på grundlag
+  // 9(2)(h) jf. 9(3) + §7 stk. 3. Kun nøgletjekket ovenfor må stoppe en afsendelse.
   btn.disabled = true;
   status.style.color = 'var(--accent)';
   status.textContent = 'Krypterer …';
@@ -2978,7 +3190,7 @@ async function shareBaselineEncrypted() {
   try {
     const nameEl = document.getElementById('patient-name');
     const name = ((nameEl && nameEl.value) || '').trim();
-    payload = buildPayloadBaseline(baselineDraft, { name });
+    payload = buildPayloadBaseline(baselineDraft, { name });   // intet consent-felt (register 1.6)
     containerJSON = JSON.stringify(await mentemEncrypt(keyCheck.key, payload, keyCheck.keyId)); // ALTID pinned key
   } catch (e) {
     console.error('[mentem] kryptering fejlede (baseline)', e && e.name, e && e.message, e);
@@ -2988,7 +3200,7 @@ async function shareBaselineEncrypted() {
   // AUTO-SEND (#1/#2): kun it=-links. Lykkes → færdig; ellers fald til download/del.
   if (autoSendEnabled()) {
     const ok = await sendTilIngest(payload, 'soevn-baseline');
-    if (ok) { status.style.color = 'var(--accent)'; status.textContent = 'Dine svar er sendt sikkert og krypteret til din psykolog. Tak!'; return; }
+    if (ok) { visSendtKvittering(status, 'soevn-baseline'); return; }
   }
   // TRIN 2 — levering (deling el. robust download/kopiér-fallback; aldrig fastlås).
   const filename = `mentem-soevn-baseline-${new Date().toISOString().slice(0, 10)}.json`;
@@ -2996,9 +3208,14 @@ async function shareBaselineEncrypted() {
   if (r === 'delt') { status.style.color = 'var(--accent)'; status.textContent = 'Filen er klar til at sende. Tak!'; }
 }
 
-// ── BOOTSTRAP: baseline-flow ELLER dagbog-flow ELLER spørgeskema-flow ──────
+// ── BOOTSTRAP: formulering-flow ELLER baseline-flow ELLER dagbog-flow ELLER spørgeskema-flow ──
 injectAkutHjaelp();   // patientsikkerhed: Akut hjælp-boks i bunden af hver skærm (alle flows)
-if (screeningId) {
+if (formuleringAktiv) {
+  // renderFormulering() har allerede bygget indholdet af #screen-formulering .wrap
+  // (fragment-dispatch øverst i modulet); resten af den eksisterende ?s=-query-
+  // dispatch-kæde springes helt over (urørt for alle andre flows).
+  showScreen('screen-formulering');
+} else if (screeningId) {
   runScreening(screeningId);
 } else if (baselineId) {
   runBaseline(baselineId);
