@@ -463,7 +463,7 @@ import { SKEMAER, SKEMA_ORDER, OFFENTLIGT_KLAR, buildPayload, buildPayloadCSD, b
          PINNED_PUBKEY, PINNED_KEY_ID, resolveRecipientKey,
          INSTRUMENTER, instrumentFeltOrden, buildInstrumentMycel,
          SOEVN_SCREENING, buildPayloadScreening,
-         SRT_VINDUE_TEKST, SOEVN_F2, vaelgNudgeKort,
+         SRT_VINDUE_TEKST, SOEVN_F2, vaelgNudgeKort, vaelgUgeKort,
          NUDGE_EVAL_MILEPAELE, NUDGE_EVAL_SVAR, NUDGE_EVAL_TEKST } from './mentem-skema-core.js';
 
 // ── URL-parametre (?s=batteri  ?n=sessionsnummer  ?pk=cross-check) ────────
@@ -1055,6 +1055,7 @@ function recordConsent(accepted) {
 
 let diaryState = null;   // { startedAt, plannedDays, contentVersion, dirty, entries:[{date, …felter, savedAt}] }
 let senesteNudgeKort = null;   // Feature B: session-scoped, IKKE persisteret (kun visning på welcome-skærmen)
+let senesteUgeKort = null;   // ugentligt refleksions-kort: session-scoped, IKKE persisteret; erstatter nat-kortet på blok-grænsen
 let diaryDraft = {};     // dagens igangværende svar
 let diarySkema = null;
 let recoveredBlob = null;   // opaque server-kladde efter ITP-wipe (kan IKKE dekrypteres klient-side)
@@ -1274,11 +1275,12 @@ function renderDiaryWelcome() {
   // Feature B: nudge-kort (må aldrig kunne blokere resten af renderet - guard mod manglende felter).
   const nk = document.getElementById('nudge-kort');
   if (nk) {
-    if (senesteNudgeKort) {
+    const visKort = senesteUgeKort || senesteNudgeKort;   // ugekort erstatter nat-kort (max ét)
+    if (visKort) {
       nk.style.display = 'block';
-      nk.className = 'nudge-kort nudge-' + senesteNudgeKort.id;
-      nk.innerHTML = '<h3 class="nudge-titel srt-aloud">' + srtEsc(senesteNudgeKort.titel)
-        + '</h3><div class="srt-aloud">' + srtEsc(senesteNudgeKort.tekst) + '</div>';
+      nk.className = 'nudge-kort nudge-' + visKort.id;
+      nk.innerHTML = '<h3 class="nudge-titel srt-aloud">' + srtEsc(visKort.titel)
+        + '</h3><div class="srt-aloud">' + srtEsc(visKort.tekst) + '</div>';
     } else { nk.style.display = 'none'; nk.innerHTML = ''; }
   }
 
@@ -2673,6 +2675,14 @@ function saveDiaryEntry() {
   const idx = diaryState.entries.findIndex(e => e.date === date);
   if (idx >= 0) diaryState.entries[idx] = entry; else diaryState.entries.push(entry);
   diaryState.entries.sort((a, b) => a.date.localeCompare(b.date));
+
+  // Ugentligt refleksions-kort: kun ved en NY entry der bringer antallet til et
+  // multiplum af 7 (samme entry-rytme som proben). Erstatter nat-kortet den morgen
+  // (max ét kort). nudge=0 slår det fra. Session-scoped, ikke persisteret.
+  const erNyEntry = idx < 0;
+  senesteUgeKort = (srtAktiv && !nudgeFra && erNyEntry && diaryState.entries.length % 7 === 0)
+    ? vaelgUgeKort(diaryState.entries.slice(-7))
+    : null;
   recoveredBlob = null;     // brugeren udfylder aktivt → lokal kladde er nu autoritativ
   saveCSDState(diaryState);
 
