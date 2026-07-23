@@ -101,6 +101,9 @@
   .diary-consent { background:var(--accent-light); border:1.5px solid var(--accent); border-radius:10px; padding:16px 18px; margin-bottom:18px; text-align:left; font-size:14px; line-height:1.55; color:var(--ink); }
   .diary-consent h3 { font-size:15px; margin:0 0 8px; font-weight:700; }
   .diary-consent p { margin:0 0 10px; }
+  /* Feature B: hoejst ét nudge-kort på welcome-skærmen efter gem */
+  .nudge-kort { border-radius:14px; padding:14px 16px; margin:14px 0; font-size:15px; line-height:1.5; border:1px solid var(--accent); background:var(--accent-light, rgba(45,106,79,0.08)); text-align:left; color:var(--ink); }
+  .nudge-kort .nudge-titel { font-weight:700; margin-bottom:4px; }
   .diary-consent ul { margin:0 0 14px; padding-left:18px; }
   .diary-consent li { margin-bottom:6px; }
   .diary-consent-label { display:flex; gap:10px; align-items:flex-start; cursor:pointer; padding-top:12px; border-top:1px solid var(--border); }
@@ -340,6 +343,7 @@
       <div class="diary-dots" id="diary-dots"></div>
     </div>
     <div class="diary-consent" id="diary-consent" style="display:none"></div>
+    <div id="nudge-kort" style="display:none" role="status"></div>
     <button class="btn-primary" id="diary-start-btn">Udfyld for i nat</button>
     <button class="btn-secondary" id="diary-backfill-btn" style="display:none">Udfyld for i går</button>
     <button class="btn-secondary" id="diary-update-btn" style="display:none">Send opdatering til psykolog</button>
@@ -453,7 +457,7 @@ import { SKEMAER, SKEMA_ORDER, OFFENTLIGT_KLAR, buildPayload, buildPayloadCSD, b
          PINNED_PUBKEY, PINNED_KEY_ID, resolveRecipientKey,
          INSTRUMENTER, instrumentFeltOrden, buildInstrumentMycel,
          SOEVN_SCREENING, buildPayloadScreening,
-         SRT_VINDUE_TEKST, SOEVN_F2 } from './mentem-skema-core.js';
+         SRT_VINDUE_TEKST, SOEVN_F2, vaelgNudgeKort } from './mentem-skema-core.js';
 
 // ── URL-parametre (?s=batteri  ?n=sessionsnummer  ?pk=cross-check) ────────
 const params   = new URLSearchParams(location.search);
@@ -473,6 +477,7 @@ const srtAdvAktiv  = params.get('adv') === '1';
 const srtTn        = params.get('tn') != null ? parseInt(params.get('tn'), 10) : null;
 const srtMode      = params.get('mode');
 const srtAktiv     = srtTibParam != null && srtWakeParam != null;
+const nudgeFra     = params.get('nudge') === '0';   // Feature B: Viktor-styret fra-slag pr. klient
 
 // ── Server draft-store (Mulighed A) ───────────────────────────────────────
 // token = forløbs-id (128-bit, fra Mentem). {BASE} er KONFIGURERBAR (ikke
@@ -1042,6 +1047,7 @@ function recordConsent(accepted) {
 }
 
 let diaryState = null;   // { startedAt, plannedDays, contentVersion, dirty, entries:[{date, …felter, savedAt}] }
+let senesteNudgeKort = null;   // Feature B: session-scoped, IKKE persisteret (kun visning på welcome-skærmen)
 let diaryDraft = {};     // dagens igangværende svar
 let diarySkema = null;
 let recoveredBlob = null;   // opaque server-kladde efter ITP-wipe (kan IKKE dekrypteres klient-side)
@@ -1258,6 +1264,17 @@ async function deleteDraft() {
 }
 
 function renderDiaryWelcome() {
+  // Feature B: nudge-kort (må aldrig kunne blokere resten af renderet - guard mod manglende felter).
+  const nk = document.getElementById('nudge-kort');
+  if (nk) {
+    if (senesteNudgeKort) {
+      nk.style.display = 'block';
+      nk.className = 'nudge-kort nudge-' + senesteNudgeKort.id;
+      nk.innerHTML = '<div class="nudge-titel">' + srtEsc(senesteNudgeKort.titel)
+        + '</div><div>' + srtEsc(senesteNudgeKort.tekst) + '</div>';
+    } else { nk.style.display = 'none'; nk.innerHTML = ''; }
+  }
+
   const intro = document.getElementById('diary-intro');
   const startBtn = document.getElementById('diary-start-btn');
   const finishNow = document.getElementById('diary-finish-now-btn');
@@ -2604,6 +2621,13 @@ function saveDiaryEntry() {
     if (f.kind === 'substans' && !substansHasContent(v)) return;   // urørt valgfrit felt = ubesvaret
     entry[f.key] = v;
   });
+
+  // Feature B: vaelg hoejst ét nudge-kort for natten (kun SRT-mode; null ellers).
+  const nudgeCtx = { tibOrd: srtTibParam != null ? parseInt(srtTibParam, 10) : null,
+    wakeOrd: srtWakeParam, tn: srtTn, nudgeFra };
+  const kort = srtAktiv ? vaelgNudgeKort(entry, nudgeCtx) : null;
+  entry.nudgeKort = kort ? { id: kort.id, tekstVersion: kort.tekstVersion } : null;
+  senesteNudgeKort = kort;   // session-scoped visning paa welcome-skaermen
 
   // Dag-dedup: én entry pr. kalenderdag (overskriv hvis samme dag gemmes igen).
   const idx = diaryState.entries.findIndex(e => e.date === date);

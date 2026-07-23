@@ -694,6 +694,7 @@ export function buildPayloadCSD(entries, meta = {}) {
   const sleepDiary = (entries || []).map((e) => {
     const out = { date: e.date };
     for (const k of FIELD_KEYS) if (e[k] != null && e[k] !== '') out[k] = e[k];
+    if (e.nudgeKort !== undefined) out.nudgeKort = e.nudgeKort;   // Feature B: {id, tekstVersion} | null
     return out;
   });
 
