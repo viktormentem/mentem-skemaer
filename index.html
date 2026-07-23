@@ -103,7 +103,7 @@
   .diary-consent p { margin:0 0 10px; }
   /* Feature B: hoejst ét nudge-kort på welcome-skærmen efter gem */
   .nudge-kort { border-radius:14px; padding:14px 16px; margin:14px 0; font-size:15px; line-height:1.5; border:1px solid var(--accent); background:var(--accent-light, rgba(45,106,79,0.08)); text-align:left; color:var(--ink); }
-  .nudge-kort .nudge-titel { font-weight:700; margin-bottom:4px; }
+  .nudge-kort .nudge-titel { font-weight:700; font-size:1.15em; color:var(--accent); margin:0 0 6px; line-height:1.3; }
   .diary-consent ul { margin:0 0 14px; padding-left:18px; }
   .diary-consent li { margin-bottom:6px; }
   .diary-consent-label { display:flex; gap:10px; align-items:flex-start; cursor:pointer; padding-top:12px; border-top:1px solid var(--border); }
@@ -1272,8 +1272,8 @@ function renderDiaryWelcome() {
     if (senesteNudgeKort) {
       nk.style.display = 'block';
       nk.className = 'nudge-kort nudge-' + senesteNudgeKort.id;
-      nk.innerHTML = '<div class="nudge-titel">' + srtEsc(senesteNudgeKort.titel)
-        + '</div><div>' + srtEsc(senesteNudgeKort.tekst) + '</div>';
+      nk.innerHTML = '<h3 class="nudge-titel srt-aloud">' + srtEsc(senesteNudgeKort.titel)
+        + '</h3><div class="srt-aloud">' + srtEsc(senesteNudgeKort.tekst) + '</div>';
     } else { nk.style.display = 'none'; nk.innerHTML = ''; }
   }
 
@@ -1693,16 +1693,20 @@ function buildSubstansField(f, draft, afterChange) {
 function renderDiaryFields() {
   const root = document.getElementById('diary-fields');
   root.innerHTML = '';
+  let qNum = 0;   // #5: sekventiel ordinal KUN over talte (påkrævede) felter, så maks == "af N"-nævneren (updateDiaryProgress)
   diarySkema.fields.forEach((f, i) => {
     // M1.6: skjulte felter (srtOnly uden SRT-mode · F1 uden for kadencen ·
     // safetyNote der renderes af safety-sektionen) hverken vises eller tælles.
     if (!diaryFieldVisible(f) || f.kind === 'safetyNote') return;
     const inputId = `dfield-${f.key}`;
     const optTag = f.optional ? '<span class="diary-optional">valgfrit</span>' : '';
+    // #5: valgfrie felter tælles ikke i "af N" og får derfor intet nummer (kun "valgfrit").
+    if (!f.optional) qNum++;
+    const numTag = f.optional ? '' : `<span class="question-num" aria-hidden="true">${qNum}.</span>`;
     // Nummeret er KUN en visuel ordinal — skjult for skærmlæser (aria-hidden) så
     // spørgsmålet læses ordret. "Spørgsmål X af Y" annoncerer allerede positionen
     // (oplæsnings-venlig tilstand), så et oplæst "8." foran ville være redundant.
-    const qHtml = `<span class="question-num" aria-hidden="true">${i + 1}.</span>${f.text}${optTag}`;
+    const qHtml = `${numTag}${f.text}${optTag}`;
     const val = diaryDraft[f.key];
 
     // M1.6 F1: 0-10 NRS m. ord-ankre KUN i enderne; INGEN score-feedback.
@@ -1711,7 +1715,7 @@ function renderDiaryFields() {
       fs.className = 'diary-field nrs-field';
       const legend = document.createElement('legend');
       legend.className = 'diary-q';
-      legend.innerHTML = `<span class="question-num" aria-hidden="true">${i + 1}.</span>`
+      legend.innerHTML = `${numTag}`
         + (f.titel ? `<span class="nrs-titel"><span class="nrs-titel-ikon" aria-hidden="true">${iconSVG('soevnighed')}</span>${f.titel}</span>` : '') + f.text;
       fs.appendChild(legend);
       const group = document.createElement('div'); group.className = 'nrs-scale'; group.setAttribute('role', 'radiogroup');
@@ -1748,7 +1752,7 @@ function renderDiaryFields() {
       fs.className = 'diary-field safety-field';
       const legend = document.createElement('legend');
       legend.className = 'diary-q';
-      legend.innerHTML = `<span class="question-num" aria-hidden="true">${i + 1}.</span>`
+      legend.innerHTML = `${numTag}`
         + `<span class="nrs-titel"><span class="nrs-titel-ikon" aria-hidden="true">${iconSVG('skjold')}</span>${f.titel}</span>` + f.text;
       fs.appendChild(legend);
 
@@ -3052,7 +3056,7 @@ function a11yVisibleText(el) {
 function visibleScreenText() {
   const scr = document.querySelector('.screen.active');
   if (!scr) return '';
-  const sel = 'h1, h2, .intro, .schema-title, .schema-instruction, .question-text, label.diary-q, legend.diary-q, .radio-option, .done-wrap p';
+  const sel = 'h1, h2, h3, .srt-aloud, .intro, .schema-title, .schema-instruction, .question-text, label.diary-q, legend.diary-q, .radio-option, .done-wrap p';
   const parts = [];
   scr.querySelectorAll(sel).forEach(el => {
     if (el.offsetParent !== null && el.getAttribute('aria-hidden') !== 'true') {
