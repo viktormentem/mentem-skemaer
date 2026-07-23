@@ -1284,7 +1284,7 @@ function renderDiaryWelcome() {
     const antal = diaryState ? diaryState.entries.length : 0;
     const besvarede = (diaryState && diaryState.nudgeEval || []).map(s => s.vedEntry);
     const milepael = NUDGE_EVAL_MILEPAELE.find(m => antal >= m && !besvarede.includes(m));
-    if (diaryState && diaryState.nudgeKortSet && milepael != null) {
+    if (diaryState && diaryState.nudgeKortSet && milepael != null && !nudgeFra) {
       ne.style.display = 'block';
       ne.className = 'nudge-kort';
       ne.innerHTML = '<div class="nudge-titel">' + srtEsc(NUDGE_EVAL_TEKST.spm1) + '</div>'

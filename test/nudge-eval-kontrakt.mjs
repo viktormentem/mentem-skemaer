@@ -1,6 +1,6 @@
 // nudge-eval-kontrakt.mjs - nudgeEval flyder additivt som meta til payload.
 // Koer: node test/nudge-eval-kontrakt.mjs
-import { buildPayloadCSD, NUDGE_EVAL_SVAR } from '../mentem-skema-core.js';
+import { buildPayloadCSD, NUDGE_EVAL_SVAR, NUDGE_EVAL_TEKST } from '../mentem-skema-core.js';
 
 let fejl = 0;
 function check(navn, ok) { if (ok) console.log(`  ✓ ${navn}`); else { fejl++; console.error(`  ✗ ${navn}`); } }
@@ -16,4 +16,12 @@ const p2 = buildPayloadCSD([], {}).data;
 check('udeladt -> null (additivt)', p2.nudgeEval === null);
 check('4 laaste svarmuligheder', Array.isArray(NUDGE_EVAL_SVAR) && NUDGE_EVAL_SVAR.length === 4
   && NUDGE_EVAL_SVAR.includes('De forstyrrer mig'));
+
+// Klient-vendte eval-strenge skal vaere dash-fri (em U+2014 + en U+2013) —
+// samme guard-idiom som test/nudge-kort-motor.mjs for NUDGE_KORT_TEKST A-F.
+const dashFri = s => typeof s === 'string' && !s.includes('—') && !s.includes('–');
+check('eval spm1 dash-fri (em + en)', dashFri(NUDGE_EVAL_TEKST.spm1));
+check('eval spm2 dash-fri (em + en)', dashFri(NUDGE_EVAL_TEKST.spm2));
+check('alle 4 eval-svar dash-fri (em + en)', NUDGE_EVAL_SVAR.every(dashFri));
+
 process.exit(fejl ? 1 : 0);
