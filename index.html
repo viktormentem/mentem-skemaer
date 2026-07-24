@@ -497,7 +497,7 @@
      Viktor-ratifikation (batch §3a) — ship IKKE klient-facing tekst uden GO. -->
 <div id="screen-screening-welcome" class="screen">
   <div class="wrap">
-    <h1>Kort <em>sikkerhedsskema</em></h1>
+    <h1>Kort <em>oplysningsskema</em></h1>
     <p class="intro" id="screening-intro"></p>
     <button class="btn-primary" id="screening-start-btn">Start</button>
     <p class="start-note">Det tager cirka 5 minutter og udfyldes kun denne ene gang. Din psykolog gennemgår dine svar og vender tilbage til dig.</p>
@@ -1502,8 +1502,8 @@ function renderDiaryWelcome() {
   const filledToday = diaryHasToday();
 
   // §3f forventningsstyring (Fase C, UDKAST til Viktor-ratifikation): dagbogen er
-  // nyttig uanset hvad sikkerhedsskemaet viser — klienten skal roligt gå i gang nu.
-  intro.textContent = 'Udfyld dagbogen kort hver morgen for natten, der gik. Det tager et øjeblik. Skriv bare som du husker den. Til sidst samler vi alle dagene i én fil, som du sender til din psykolog. Har du også fået et kort sikkerhedsskema, kan du trygt gå i gang med dagbogen med det samme: den er nyttig for dit forløb, uanset hvad sikkerhedsskemaet viser.';
+  // nyttig uanset hvad oplysningsskemaet viser — klienten skal roligt gå i gang nu.
+  intro.textContent = 'Udfyld dagbogen kort hver morgen for natten, der gik. Det tager et øjeblik. Skriv bare som du husker den. Til sidst samler vi alle dagene i én fil, som du sender til din psykolog. Har du også fået et kort oplysningsskema, kan du trygt gå i gang med dagbogen med det samme: den er nyttig for dit forløb, uanset hvad oplysningsskemaet viser.';
 
   // Privatlivstekst.
   // - localStorage-variant: v1-tekst i diary-privacy (under knappen, uændret).
@@ -2842,7 +2842,7 @@ function runScreening(id) {
     }
     // TRIN 2 — levering (deling el. robust download/kopiér-fallback; aldrig fastlås).
     const filename = `mentem-soevn-screening-${new Date().toISOString().slice(0, 10)}.json`;
-    const r = await leverKrypteretFil(containerJSON, filename, 'Sikkerhedsskema til min psykolog', status);
+    const r = await leverKrypteretFil(containerJSON, filename, 'Oplysningsskema til min psykolog', status);
     if (r === 'delt') { status.style.color = 'var(--accent)'; status.textContent = 'Filen er klar til at sende. Tak!'; }
   }
 }
