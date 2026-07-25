@@ -573,7 +573,7 @@ SKEMAER['soevn-baseline'] = SOEVN_BASELINE;
 // KLIENT-COPY = UDKAST (omskrivning af tjeklistens kliniker-ordlyd til klient-sprog).
 // Viktor-ratificeres ord-for-ord FØR ship (batch §3a); nudansk, æøå, 0 em-dash.
 export const SOEVN_SCREENING = {
-  id: 'soevn-screening', kind: 'screening', title: 'Kort sikkerhedsskema', short: 'Sikkerhedsskema',
+  id: 'soevn-screening', kind: 'screening', title: 'Kort oplysningsskema', short: 'Oplysningsskema',
   badge: 'udfyldes én gang',
   instruction: 'Et kort skema om din søvn og dit helbred. Dine svar hjælper din psykolog med at vælge den fremgangsmåde, der er tryg for dig. Svar så godt du kan. Er du i tvivl om et svar, så svar ja, og skriv gerne mere i tekstfeltet til sidst. Der er ingen rigtige eller forkerte svar.',
   // Anamnese-items (ja/nej). key = SoevnKontraindikation.rawValue (wire-kontrakt).
