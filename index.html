@@ -554,7 +554,7 @@
 
 <script type="module">
 import { SKEMAER, SKEMA_ORDER, OFFENTLIGT_KLAR, buildPayload, buildPayloadCSD, buildPayloadBaseline, mentemEncrypt,
-         CSD_SOEVNDAGBOG, SOEVN_BASELINE, CONTENT_VERSION, SITE_BUILD, kryptoStoettet,
+         CSD_SOEVNDAGBOG, SOEVN_BASELINE, CONTENT_VERSION, kryptoStoettet,
          PINNED_PUBKEY, PINNED_KEY_ID, resolveRecipientKey,
          INSTRUMENTER, instrumentFeltOrden, buildInstrumentMycel,
          SOEVN_SCREENING, buildPayloadScreening,
@@ -563,7 +563,7 @@ import { SKEMAER, SKEMA_ORDER, OFFENTLIGT_KLAR, buildPayload, buildPayloadCSD, b
          parseFormuleringFragment, renderFormulering,
          vaelgNudgeKort, vaelgUgeKort,
          NUDGE_EVAL_MILEPAELE, NUDGE_EVAL_SVAR, NUDGE_EVAL_TEKST,
-         setAfsenderKontekst } from './mentem-skema-core.js';
+         setAfsenderKontekst, afsenderStempel } from './mentem-skema-core.js';
 
 // ── FORMULERING fragment-dispatch (Wells-model, s=formulering) ────────────
 // Linket bæres i URL-FRAGMENTET (#<32hex-token>;s=formulering;n=..;tr=..;..),
@@ -590,9 +590,11 @@ const dParam   = params.get('d') ? parseInt(params.get('d'), 10) : null;   // da
 
 // ── AFSENDER-STEMPEL (Viktor-ordre 26/7 punkt 2) ──────────────────────────
 // Hver aflevering skal selv kunne svare på "hvilken udgave udfyldte klienten?".
-// I dag kan den ikke: `version`/`schemaVersion` er hårdkodede 1-taller, og den
-// eneste eksisterende stamp (SITE_BUILD) er en HÅNDHOLDT streng — den har stået
-// på '2026-06-01-fase1' siden 1. juni og beskriver derfor ikke det udrullede.
+// Før 26/7 kunne den ikke: `version`/`schemaVersion` er hårdkodede 1-taller, og den
+// eneste stamp der fandtes, var en HÅNDHOLDT streng — den havde stået på
+// '2026-06-01-fase1' siden 1. juni og beskrev derfor ikke det udrullede. Den er
+// afskaffet; payloadens build-stempel er nu den målte herkomst herunder, og den
+// findes ét sted i huset (se `afsenderStempel` i mentem-skema-core.js).
 //   • ?v=  = link-generation (Mentem stempler den ved udsendelse)
 //   • <meta name="mentem-deploy-sha"> = den FAKTISK udrullede SHA, indsat af deployet
 //
@@ -815,7 +817,13 @@ async function byggDiagnostikLinje(fejl) {
     'sec=' + (!!globalThis.isSecureContext),
     'crypto=' + (await kryptoStoettet()),
     'fejl=' + ((fejl && fejl.name) ? fejl.name : 'ukendt'),
-    'ver=' + (typeof SITE_BUILD !== 'undefined' ? SITE_BUILD : '-'),
+    // 🔴 `ver=` er Viktors ENESTE vindue ind i en klients krypto-fejl, så den skal pege på
+    // den udgave der faktisk kørte — ikke på en håndholdt streng fra 1. juni, der ville
+    // sende ham efter den forkerte kode. Læser samme målte herkomst som payloadens
+    // `meta.siteBuild`. FULD SHA med vilje: en afkortet værdi kunne kopieres tilbage som
+    // om den var SHA'en, og husets egen rens-regel kasserer netop afkortede SHA'er.
+    // Kunne herkomsten ikke måles, står der '-' — aldrig et gæt.
+    'ver=' + (afsenderStempel().webDeploySha || '-'),
     'ts=' + new Date().toISOString(),
     'ua=' + ua,
   ].join(' · ');

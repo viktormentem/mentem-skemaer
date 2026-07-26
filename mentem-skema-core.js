@@ -808,7 +808,13 @@ export function buildPayload(answers, meta = {}) {
 export const SCHEMA_VERSION = 1;          // payload-strukturversion
 export const CONTENT_VERSION = 1;         // CSD-indholdsversion (bump = kun NYE forløb, G2-frys)
 export const PROTOCOL_VERSION = 1;        // draft-store transport-kontrakt
-export const SITE_BUILD = '2026-06-01-fase1';   // synlig version-stamp (G3)
+// 🔴 `SITE_BUILD` ER AFSKAFFET (26/7). Den var `'2026-06-01-fase1'` og havde stået uændret
+// siden 1. juni, mens den fulgte med i HVER klient-aflevering som `meta.siteBuild`. Den var
+// ikke bare forældet — den var den forkerte KLASSE af værdi: et menneske skrev den, så den
+// beskrev hvad nogen MENTE den dag, ikke hvad der faktisk KØRTE da klienten trykkede send.
+// I en obduktion er det værre end ingenting, for den ser ud som om nogen havde målt.
+// `meta.siteBuild` er nu den målte deploy-herkomst (`afsender.webDeploySha`), og ukendt
+// herkomst er `null` — vi gætter aldrig en build. Se `afsenderStempel` for fail-closed-reglen.
 
 export function buildPayloadCSD(entries, meta = {}) {
   const now = isoNoFrac(new Date());
@@ -823,9 +829,15 @@ export function buildPayloadCSD(entries, meta = {}) {
 
   const startedAt = meta.startedAt || (sleepDiary[0] && sleepDiary[0].date) || now;
 
+  // 🔴 ÉT kald, to felter. `afsender.webDeploySha` og `meta.siteBuild` besvarer SAMME
+  // spørgsmål — »hvilken web-udgave producerede denne aflevering?« — og to kald ville
+  // gøre det muligt for dem at divergere. Så ved en obduktion ikke hvilket af dem den
+  // skal tro på, og et stempel man ikke kan tro på er værre end intet stempel.
+  const afsender = afsenderStempel();
+
   const data = {
     version: 1,
-    afsender: afsenderStempel(),
+    afsender,
     exportedAt: now,
     clientName: meta.name || '',
     therapistName: 'Viktor Nielsen',
@@ -844,7 +856,7 @@ export function buildPayloadCSD(entries, meta = {}) {
       contentVersion: (meta.contentVersion != null) ? meta.contentVersion : CONTENT_VERSION,
       instrument: 'CSD-Carney-2012',
       protocolVersion: PROTOCOL_VERSION,
-      siteBuild: SITE_BUILD,
+      siteBuild: afsender.webDeploySha,   // MÅLT herkomst (deploy-SHA); null = vi ved det ikke
       forloebId: meta.forloebId || null,          // = token (mapping kun i Mentem)
       periodPlanned: (meta.plannedDays != null) ? meta.plannedDays : null,
       periodCompleted: sleepDiary.length,

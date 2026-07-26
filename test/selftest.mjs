@@ -254,7 +254,13 @@ check('meta.instrument = CSD-Carney-2012', csdV.meta.instrument === 'CSD-Carney-
 check('meta.schemaVersion', csdV.meta.schemaVersion === 1);
 check('meta.contentVersion', csdV.meta.contentVersion === 1);
 check('meta.protocolVersion', csdV.meta.protocolVersion === 1);
-check('meta.siteBuild stamp', typeof csdV.meta.siteBuild === 'string' && csdV.meta.siteBuild.length > 0);
+// 🔴 KONTRAKTEN SKIFTEDE 26/7: `meta.siteBuild` var en håndholdt streng (`SITE_BUILD`), og
+// dette tjek krævede derfor »en ikke-tom streng«. Det ville i dag være det stik modsatte af
+// kontrakten: uden et målt deploy-stempel SKAL feltet være null, for vi gætter aldrig en
+// build. Her måles at det er den MÅLTE herkomst — samme værdi som afsender-stemplet, aldrig
+// et andet svar på samme spørgsmål. Fuld dækning: test/site-build-stempel-kontrakt.mjs.
+check('meta.siteBuild ER den målte herkomst (én kilde, ikke to)', csdV.meta.siteBuild === csdV.afsender.webDeploySha);
+check('meta.siteBuild er null uden målt deploy-stempel', csdV.meta.siteBuild === null);
 check('meta.forloebId = token', csdV.meta.forloebId === 'a1b2c3d4e5f60718293a4b5c6d7e8f90');
 check('meta.periodPlanned/Completed', csdV.meta.periodPlanned === 14 && csdV.meta.periodCompleted === 2);
 check('meta additivt på formatVersion 1', csdV.version === 1);
