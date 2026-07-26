@@ -35,6 +35,15 @@ assert_har_ikke() {
     *) ok=$((ok+1)); printf '  ✅ %s\n' "$1" ;;
   esac
 }
+# assert_stempel <navn> <linje> — leder KUN i det udskrevne stempel, ikke i hele uddataen.
+# En mutationskørsel fandt hullet: scriptets egen ADVARSEL nævner »herkomst=OVERSTYRET« i prosa,
+# så et frit substreng-søg blev grønt selv med et stempel der altid løj og sagde ok.
+assert_stempel() {
+  local linje
+  linje="$(printf '%s\n' "$3" | sed -n '/── Herkomst-stempel/,/^──/p' | sed -n "s/^  //p" | grep -cx "$2")"
+  if [ "$linje" -ge 1 ]; then ok=$((ok+1)); printf '  ✅ %s\n' "$1"
+  else fejl=$((fejl+1)); printf '  ❌ %s\n     stemplet havde ikke linjen: [%s]\n' "$1" "$2"; fi
+}
 
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/herkomst-test-XXXXXX")"
 trap 'rm -rf "$TMP"' EXIT
@@ -81,8 +90,8 @@ echo "── deploy-herkomst-test ──"
 koer --dry-run
 assert "1. rent + pushet træ giver rc 0" "0" "$RC"
 assert_har "2. stemplet ligger i staging" "deploy-sha.txt" "$UD"
-assert_har "3. stemplets linje 1 er HEADs fulde sha" "$(SHA)" "$UD"
-assert_har "4. herkomsten meldes ok" "herkomst=ok" "$UD"
+assert_stempel "3. stemplets linje 1 er HEADs fulde sha" "$(SHA)" "$UD"
+assert_stempel "4. herkomsten meldes ok" "herkomst=ok" "$UD"
 
 # 5. Stemplet må ikke røre repoet. Gør det det, lukker scriptet sin egen gate næste gang.
 assert "5. repoet er stadig rent efter kørslen" "" "$(git -C "$FIX" status --porcelain)"
@@ -120,13 +129,13 @@ koer_med_go "0000000000000000000000000000000000000000" --dry-run
 assert "14. overstyring med FORKERT sha nægtes stadig" "3" "$RC"
 koer_med_go "$(SHA)" --dry-run
 assert "15. overstyring med rigtig sha slipper igennem" "0" "$RC"
-assert_har "16. stemplet indrømmer overstyringen" "herkomst=OVERSTYRET" "$UD"
+assert_stempel "16. stemplet indrømmer overstyringen" "herkomst=OVERSTYRET" "$UD"
 
 # 17. Pushet igen -> grøn uden overstyring
 git -C "$FIX" push -q origin HEAD:refs/heads/main; git -C "$FIX" fetch -q origin
 koer --dry-run
 assert "17. efter push er gaten grøn igen" "0" "$RC"
-assert_har "18. stemplet følger den NYE sha" "$(SHA)" "$UD"
+assert_stempel "18. stemplet følger den NYE sha" "$(SHA)" "$UD"
 
 # 19-21. Stemplet skal overleve scriptets EGNE fail-closed-gates og lande som rod-fil
 assert_har_ikke "19. stemplet udløser ikke intern-fil-gaten" "ABORT: intern fil" "$UD"
@@ -140,7 +149,7 @@ assert_har "21. dry-run stopper før wrangler" "DRY-RUN: deployer IKKE" "$UD"
 # 22-24. Preview må aldrig kunne blive produktion
 koer --preview --dry-run
 assert "22. --preview uden navn er lovligt" "0" "$RC"
-assert_har "23. preview-grenen står i stemplet" "pages_branch=preview-herkomst" "$UD"
+assert_stempel "23. preview-grenen står i stemplet" "pages_branch=preview-herkomst" "$UD"
 koer --preview main --dry-run
 assert "24. --preview main afvises" "1" "$RC"
 
