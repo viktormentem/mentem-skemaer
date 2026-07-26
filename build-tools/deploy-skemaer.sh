@@ -108,7 +108,45 @@ for f in *; do
   esac
 done
 
-# ── 2. HERKOMST-STEMPEL: bagud. Skrives i STAGING, aldrig i repoet — ellers ville scriptet gøre
+# ── 2. AFSENDER-STEMPEL: samme SHA, men i selve siden (bestilt af MYCEL BUILDER 26/7 kl. 19:4x).
+#       Siden læser `meta[name="mentem-deploy-sha"]` (index.html) og sender den med i hver
+#       aflevering, så en obduktion kan spørge "hvilken udgave udfyldte klienten?".
+#       🔴 Hvorfor det ikke er et hent af deploy-sha.txt: et fetch ville 404'e i hver klients
+#       browser så længe stemplet ikke er på main, og det ville tabe et kapløb mod en klient der
+#       svarer hurtigere end serveren. Et meta-tag koster intet netværk og læses før first paint.
+#       🔴 Hvorfor scriptet ABORTERER frem for at springe over: siden sætter selv webDeploySha til
+#       null når tagget mangler — forsvarligt hos dem, men det gør en manglende injektion til en
+#       TAVS fejl her: deployet lykkes, siden ser rigtig ud, og hver aflevering bærer "vi ved det
+#       ikke". Fail-closed er den eneste form hvor et manglende stempel opdages af nogen.
+INDEX="$STAGING/index.html"
+if [ ! -f "$INDEX" ]; then
+  echo "🔴 ABORT: index.html nåede ikke staging. Uden den har siden ingen indgang, og" >&2
+  echo "   afsender-stemplet (mentem-deploy-sha) ville mangle i hver eneste aflevering." >&2
+  exit 1
+fi
+# Fjern et evt. eksisterende stempel FØR indsættelsen: to tags ville gøre det vilkårligt hvilken
+# SHA `querySelector` giver klienten, og en hånd-holdt værdi må aldrig kunne slå deployets egen.
+awk -v sha="$SHA" -v herk="$HERKOMST" '
+  /<meta name="mentem-deploy-(sha|herkomst)"/ { next }
+  { print }
+  !sat && /<head>/ {
+    print "<meta name=\"mentem-deploy-sha\" content=\"" sha "\">"
+    print "<meta name=\"mentem-deploy-herkomst\" content=\"" herk "\">"
+    sat = 1
+  }
+' "$INDEX" > "$INDEX.ny" && mv -f "$INDEX.ny" "$INDEX"
+
+# TILBAGELÆSNING, ikke en kvittering: tallet og linjerne nedenfor læses ud af den fil der uploades.
+antal="$(grep -c 'name="mentem-deploy-sha"' "$INDEX" || true)"
+if [ "$antal" -ne 1 ]; then
+  echo "🔴 ABORT: index.html har $antal afsender-stempler (mentem-deploy-sha), forventet præcis 1." >&2
+  echo "   Sandsynligvis mangler et <head>-element at indsætte tagget efter." >&2
+  exit 1
+fi
+echo "── Afsender-stempel (index.html) ──"
+grep 'name="mentem-deploy-' "$INDEX" | sed 's/^[[:space:]]*/  /'
+
+# ── 3. HERKOMST-STEMPEL: bagud. Skrives i STAGING, aldrig i repoet — ellers ville scriptet gøre
 #       træet urent og dermed lukke sin egen gate ved næste kørsel.
 #       Linje 1 er den BARE SHA, så en maskine kan sammenligne med `head -1`. Resten er til et
 #       menneske. Filen er en rod-fil med en tilladt endelse (.txt står i EXTS), og det er ikke
