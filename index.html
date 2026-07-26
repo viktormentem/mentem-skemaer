@@ -562,7 +562,8 @@ import { SKEMAER, SKEMA_ORDER, OFFENTLIGT_KLAR, buildPayload, buildPayloadCSD, b
          SRT_VINDUE_TEKST, SOEVN_F2,
          parseFormuleringFragment, renderFormulering,
          vaelgNudgeKort, vaelgUgeKort,
-         NUDGE_EVAL_MILEPAELE, NUDGE_EVAL_SVAR, NUDGE_EVAL_TEKST } from './mentem-skema-core.js';
+         NUDGE_EVAL_MILEPAELE, NUDGE_EVAL_SVAR, NUDGE_EVAL_TEKST,
+         setAfsenderKontekst } from './mentem-skema-core.js';
 
 // ── FORMULERING fragment-dispatch (Wells-model, s=formulering) ────────────
 // Linket bæres i URL-FRAGMENTET (#<32hex-token>;s=formulering;n=..;tr=..;..),
@@ -586,6 +587,29 @@ const params   = new URLSearchParams(location.search);
 const sParam   = params.get('s');
 const sessionN = params.get('n') ? parseInt(params.get('n'), 10) : null;
 const dParam   = params.get('d') ? parseInt(params.get('d'), 10) : null;   // dagbog-periode (dage)
+
+// ── AFSENDER-STEMPEL (Viktor-ordre 26/7 punkt 2) ──────────────────────────
+// Hver aflevering skal selv kunne svare på "hvilken udgave udfyldte klienten?".
+// I dag kan den ikke: `version`/`schemaVersion` er hårdkodede 1-taller, og den
+// eneste eksisterende stamp (SITE_BUILD) er en HÅNDHOLDT streng — den har stået
+// på '2026-06-01-fase1' siden 1. juni og beskriver derfor ikke det udrullede.
+//   • ?v=  = link-generation (Mentem stempler den ved udsendelse)
+//   • <meta name="mentem-deploy-sha"> = den FAKTISK udrullede SHA, indsat af deployet
+//
+// 🔴 IKKE en fetch af deploy-sha.txt, og det er et MÅLT valg: filen skrives i dag kun
+// af herkomst-gaten, som ikke er på main endnu, så et hent ville 404'e i hver eneste
+// klients browser. Husets egne konsol-fejl-vagter (e2e-besked-fase-b,
+// e2e-dagbog-samtykke) fangede præcis det og havde ret. Et meta-tag koster intet
+// netværk, kan ikke tabe et kapløb mod en hurtig klient, og er læsbart før first paint.
+//
+// Mangler tagget (som på main i dag) => webDeploySha er null. null betyder "vi ved det
+// ikke" — vi gætter ALDRIG en SHA, for en forkert SHA ser autoritativ ud i en obduktion.
+const linkVersion = params.get('v');
+const _shaMeta = document.querySelector('meta[name="mentem-deploy-sha"]');
+setAfsenderKontekst({
+  webDeploySha: _shaMeta ? _shaMeta.getAttribute('content') : null,
+  linkVersion,
+});
 
 // ── M1.6 · SRT-leverance-params (tib/wake/adv/tn/mode) ────────────────────
 // Mapping = SRTOrdinationURLCodec (OrdinationLeverandoer.swift:62, Code-confirmet
