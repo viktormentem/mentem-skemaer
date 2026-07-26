@@ -116,6 +116,15 @@ console.log('\n── 5. Kilde-vagt: ingen håndholdt build-streng må overleve 
   // indholds-version, ville prøven have sagt fra uden at have ret. Derfor måles navne der
   // betyder »hvilken KODE kører« (build/deploy/site/commit/revision/sha) — ikke »hvilken
   // TEKST blev vist«.
+  // 🟢 MÅLT MOD MYCEL COMPANIONs FEJLKLASSE (22:01): »et kvantificeret krav inde i et mønster
+  // med ENSARTEDE afgrænsere« — samme tegn åbner og lukker, så et lukkende tegn kan parres
+  // med et FJERNT åbnende og indholdet derimellem forsvinde. Mønsteret herunder HAR den form
+  // (`['"]` … `['"]` med `\d{4}-\d{2}-\d{2}` indeni), så det skulle prøves, ikke antages.
+  // Seks tilfælde målt — kort/lang streng foran, en anden dato imellem, begge citattegn,
+  // blandede — alle fanget. Grunden er strukturel og er allerede kuren COMPANION peger på:
+  // `[^'"]*` forbyder anførselstegn INDENI, så et match kan aldrig spænde over en
+  // strenggrænse. Ændrer nogen den klasse til `.*` eller `[\s\S]*`, falder vagten i præcis
+  // det hul — og det er lettere gjort end det ser ud.
   const haandholdt = core.match(/const\s+\w*(BUILD|DEPLOY|SITE|COMMIT|REVISION|SHA)\w*\s*=\s*['"]\d{4}-\d{2}-\d{2}[^'"]*['"]/gi) || [];
   check('ingen håndholdt dato-streng som build-stempel i core', haandholdt.length === 0,
         haandholdt.join(' | '));
