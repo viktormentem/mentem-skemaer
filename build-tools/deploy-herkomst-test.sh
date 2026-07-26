@@ -45,7 +45,7 @@ assert_stempel() {
   else fejl=$((fejl+1)); printf '  ❌ %s\n     stemplet havde ikke linjen: [%s]\n' "$1" "$2"; fi
 }
 
-# assert_afsender <navn> <linje> — leder KUN i afsender-stemplets egen udskrift, af præcis
+# assert_afsender <navn> <linje>: leder KUN i afsender-stemplets egen udskrift, af præcis
 # samme grund som assert_stempel: scriptets kommentarer og fejltekster nævner selv tag-navnet,
 # så et frit substreng-søg ville blive grønt af prosa. Udskriften er en TILBAGELÆSNING af
 # staging-filen, ikke en påstand fra scriptet om hvad det mente at skrive.
@@ -193,7 +193,7 @@ assert_har_ikke "28. wrangler blev aldrig kaldt" "wrangler pages deploy" "$UD"
 # ── 29-38. AFSENDER-STEMPLET I index.html (MYCEL BUILDERs bestilling 26/7 kl. 19:4x) ──────────
 #   Deres side læser `document.querySelector('meta[name="mentem-deploy-sha"]')` (index.html:608
 #   på feat/afsender-stempel-2026-07-26) og sætter webDeploySha = null hvis tagget mangler.
-#   Null er FORSVARLIGT for dem — de gætter aldrig en SHA — men det gør en manglende injektion
+#   Null er FORSVARLIGT for dem, de gætter aldrig en SHA, men det gør en manglende injektion
 #   til en TAVS fejl her hos os: deployet ville lykkes, siden ville se rigtig ud, og hver
 #   aflevering ville bære "vi ved det ikke". Derfor måler prøven ikke om koden findes, men om
 #   tagget står i den fil der faktisk uploades, og at scriptet ABORTERER hvis det ikke gør.
@@ -207,7 +207,7 @@ assert_afsender "31. herkomsten står med på siden" \
 assert_afsender_antal "32. præcis ÉT sha-tag (to ville gøre querySelector vilkårlig)" \
                       "1" 'mentem-deploy-sha' "$UD"
 
-# 33-34. Repoets egen index.html må ALDRIG røres — samme grund som deploy-sha.txt: et script
+# 33-34. Repoets egen index.html må ALDRIG røres, samme grund som deploy-sha.txt: et script
 #        der gør sit eget træ urent, lukker sin egen herkomst-gate ved næste kørsel.
 assert "33. repoet er rent efter injektionen" "" "$(git -C "$FIX" status --porcelain)"
 assert_har_ikke "34. kildens index.html har intet stempel" "mentem-deploy-sha" "$(cat "$FIX/index.html")"

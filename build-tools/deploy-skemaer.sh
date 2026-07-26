@@ -115,7 +115,7 @@ done
 #       browser så længe stemplet ikke er på main, og det ville tabe et kapløb mod en klient der
 #       svarer hurtigere end serveren. Et meta-tag koster intet netværk og læses før first paint.
 #       🔴 Hvorfor scriptet ABORTERER frem for at springe over: siden sætter selv webDeploySha til
-#       null når tagget mangler — forsvarligt hos dem, men det gør en manglende injektion til en
+#       null når tagget mangler, forsvarligt hos dem, men det gør en manglende injektion til en
 #       TAVS fejl her: deployet lykkes, siden ser rigtig ud, og hver aflevering bærer "vi ved det
 #       ikke". Fail-closed er den eneste form hvor et manglende stempel opdages af nogen.
 INDEX="$STAGING/index.html"
