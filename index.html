@@ -1253,8 +1253,17 @@ let diaryFillDate = null;   // hvilken kalenderdag formularen udfylder (i dag / 
 let diaryStepIndex = 0;     // oplæsnings-venlig tilstand: aktivt trin (ét spørgsmål ad gangen)
 let stepperCfg = null;      // aktiv generisk-stepper-konfiguration (instrument-flow); null = ingen
 
+// `?d=`-KONTRAKTEN (besluttet + vogtet: test/soevn-dagbog-periode-kontrakt.mjs).
+// Øvre grænse = APPENS maksimum, ikke en præference her: Mentem prefiller send-dialogen med
+// SoevnSendKanaler.standardPeriodeDage = 90 og klamper selv til 1..90 (clampPeriode), og
+// buildSoevndagbogUrl vedhæfter `&d=<plannedDays>`. Grænsen stod på 60 ⇒ standard-linkets
+// `d=90` blev KASSERET og perioden faldt tavst til 14 — og fordi plannedDays LÅSES ved
+// første åbning, frøs det forkerte tal for hele forløbet (»X af 14 dage« + payloadens
+// plannedDays). Sænkes grænsen under appens maksimum igen, bliver kontrakt-prøven rød.
+// Uden for intervallet klampes IKKE, der faldes tilbage til default: en værdi appen aldrig
+// kan udstede kommer fra en redigeret URL, og den skal ikke foræres en gyldig-udseende periode.
 function diaryPlannedDays() {
-  if (dParam && dParam > 0 && dParam <= 60) return dParam;   // ?d= ved første åbning
+  if (dParam && dParam > 0 && dParam <= 90) return dParam;   // ?d= ved første åbning
   return CSD_DEFAULT_DAYS;
 }
 function diaryHasToday() {
