@@ -13,9 +13,23 @@
 #   og deploy den. FAIL-CLOSED: kun rod-filer med klient-endelse kommer med; alt i undermapper
 #   (docs/ test/ noter/ .superpowers/ .test-evidence/ .git/) + *.md + dotfiles ekskluderes.
 #
+# HERKOMST-GATEN (tilføjet 2026-07-26 af INFRA, bestilt af AUDIT, ratificeret af MYCEL BUILDER):
+#   c2d75f6-hændelsen 25/7 kostede huset en dag: en SHA var udrullet som INGEN klon, intet reflog
+#   og ikke GitHub kendte. Det er kendetegnet på en upushet commit der siden forsvandt. Derfor to
+#   ting, og de hænger sammen:
+#     1. FREMAD: scriptet nægter at udrulle et træ der er urent, eller hvis HEAD ikke findes på
+#        nogen remote. Så kan der ikke opstå en udrullet SHA som kun denne maskine har set.
+#     2. BAGUD: den udrullede SHA stemples i en statisk fil på siden (/deploy-sha.txt), så
+#        spørgsmålet »hvad kører der lige nu« besvares med et curl frem for et dashboard-login.
+#   Gaten kan overstyres, men kun ved at NAVNGIVE den præcise SHA:
+#        MYCEL_DEPLOY_HERKOMST_GO=<40-cifret sha> bash build-tools/deploy-skemaer.sh
+#   En overstyring kan derfor ikke sættes én gang og glemmes, og den skriver sig selv ind i
+#   stemplet (`herkomst=OVERSTYRET`), så siden selv indrømmer at den kom fra et uverificeret træ.
+#
 # BRUG:
-#   bash build-tools/deploy-skemaer.sh --dry-run   # byg staging + vis scope, deploy IKKE
-#   bash build-tools/deploy-skemaer.sh             # byg staging + deploy til PRODUKTION
+#   bash build-tools/deploy-skemaer.sh --dry-run        # byg staging + vis scope, deploy IKKE
+#   bash build-tools/deploy-skemaer.sh --preview [navn] # deploy til PREVIEW-gren (rører ikke prod-aliaset)
+#   bash build-tools/deploy-skemaer.sh                  # byg staging + deploy til PRODUKTION
 #
 # NB: deploy kræver wrangler-skriveadgang (Viktors OAuth). Verificér ALTID live UDEN query-string
 #     (CF returnerer falske tomme svar for index.html?foo=bar).
@@ -24,12 +38,59 @@ set -euo pipefail
 
 PROJECT="mycel-skemaer"
 BRANCH="main"                                  # produktions-branch for projektet
+STAMP="deploy-sha.txt"                         # rod-fil, endelse .txt er i EXTS nedenfor
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 STAGING="$(mktemp -d "${TMPDIR:-/tmp}/sk-deploy-XXXXXX")"
 trap 'rm -rf "$STAGING"' EXIT
 
 DRY_RUN=""
-[ "${1:-}" = "--dry-run" ] && DRY_RUN="1"
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --dry-run) DRY_RUN="1" ;;
+    --preview)
+      # Enhver gren der IKKE er produktions-grenen giver en preview-URL hos Pages og flytter
+      # ALDRIG produktions-aliaset. Navnet må derfor aldrig kunne blive "main".
+      case "${2:-}" in
+        ""|-*) BRANCH="preview-herkomst" ;;   # et flag er ikke et grennavn
+        *)     BRANCH="$2"; shift ;;
+      esac
+      if [ "$BRANCH" = "main" ]; then
+        echo "🔴 ABORT: --preview main er ikke en preview. Vælg et andet grennavn." >&2
+        exit 1
+      fi
+      ;;
+    *) echo "🔴 ABORT: ukendt flag '$1'." >&2; exit 1 ;;
+  esac
+  shift
+done
+
+# ── 1. HERKOMST-GATE: fremad. Kører FØR staging bygges, så en afvisning aldrig kan forveksles
+#       med en scope-fejl længere nede. ────────────────────────────────────────────────────────
+SHA="$(git -C "$REPO" rev-parse HEAD)"
+GREN="$(git -C "$REPO" rev-parse --abbrev-ref HEAD)"
+HERKOMST="ok"
+gate_fejl=""
+
+if [ -n "$(git -C "$REPO" status --porcelain)" ]; then
+  gate_fejl="træet er URENT"
+elif [ -z "$(git -C "$REPO" branch -r --contains "$SHA" 2>/dev/null)" ]; then
+  gate_fejl="HEAD ($SHA) findes IKKE på nogen remote"
+fi
+
+if [ -n "$gate_fejl" ]; then
+  if [ "${MYCEL_DEPLOY_HERKOMST_GO:-}" = "$SHA" ]; then
+    HERKOMST="OVERSTYRET"
+    echo "🟡 HERKOMST OVERSTYRET: $gate_fejl. Du navngav SHA'en, så deployet fortsætter." >&2
+    echo "   Stemplet på siden vil sige herkomst=OVERSTYRET." >&2
+  else
+    echo "🔴 ABORT (herkomst): $gate_fejl." >&2
+    echo "   En udrullet SHA som ingen klon kender, kan ikke findes igen. Det var c2d75f6." >&2
+    git -C "$REPO" status --short >&2 || true
+    echo "   Ret det (commit + push), eller navngiv SHA'en bevidst:" >&2
+    echo "     MYCEL_DEPLOY_HERKOMST_GO=$SHA bash build-tools/deploy-skemaer.sh${DRY_RUN:+ --dry-run}" >&2
+    exit 3
+  fi
+fi
 
 # Klient-facing rod-endelser. Nye assets med disse endelser i roden kommer AUTOMATISK med.
 EXTS=" html js mjs css png ico svg jpg jpeg webp gif json webmanifest txt woff woff2 "
@@ -47,8 +108,26 @@ for f in *; do
   esac
 done
 
-echo "── Staging-scope: $copied klient-filer ──"
+# ── 2. HERKOMST-STEMPEL: bagud. Skrives i STAGING, aldrig i repoet — ellers ville scriptet gøre
+#       træet urent og dermed lukke sin egen gate ved næste kørsel.
+#       Linje 1 er den BARE SHA, så en maskine kan sammenligne med `head -1`. Resten er til et
+#       menneske. Filen er en rod-fil med en tilladt endelse (.txt står i EXTS), og det er ikke
+#       en tilfældighed: undermapper, *.md og dotfiles udelades LYDLØST af kopieringen ovenfor,
+#       så et stempel i .deploy-sha eller meta/version.txt ville give 404 mens scriptet exitter 0.
+printf '%s\n' "$SHA" > "$STAGING/$STAMP"
+{
+  echo "gren=$GREN"
+  echo "pages_branch=$BRANCH"
+  echo "herkomst=$HERKOMST"
+  echo "utc=$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+} >> "$STAGING/$STAMP"
+# NB: $copied tælles IKKE op af stemplet. Ellers ville et repo med 11 klient-filer slippe forbi
+# for-få-gaten nedenfor, alene fordi scriptet selv lagde en tolvte fil i mappen.
+
+echo "── Staging-scope: $copied klient-filer + 1 herkomst-stempel ──"
 ls -1 "$STAGING" | sort | sed 's/^/  /'
+echo "── Herkomst-stempel ($STAMP) ──"
+sed 's/^/  /' "$STAGING/$STAMP"
 
 # FAIL-CLOSED sanity-gates
 if find "$STAGING" -mindepth 1 \( -name '*.md' -o -name '.*' -o -type d \) | grep -q .; then
@@ -65,11 +144,17 @@ if [ -n "$DRY_RUN" ]; then
   exit 0
 fi
 
-echo "── Deployer til Cloudflare Pages: $PROJECT / branch=$BRANCH (PRODUKTION) ──"
+if [ "$BRANCH" = "main" ]; then
+  echo "── Deployer til Cloudflare Pages: $PROJECT / branch=$BRANCH (PRODUKTION) ──"
+else
+  echo "── Deployer til Cloudflare Pages: $PROJECT / branch=$BRANCH (PREVIEW, prod-aliaset røres ikke) ──"
+fi
 npx wrangler pages deploy "$STAGING" --project-name "$PROJECT" --branch "$BRANCH"
 
 echo ""
 echo "── VERIFICÉR (uden query-string!): ──"
+echo "  curl -s https://skemaer.mycel.dk/$STAMP | head -1     # skal være $SHA"
+echo "  (ved preview: curl -s https://<deployment>.$PROJECT.pages.dev/$STAMP | head -1)"
 echo "  curl -s https://skemaer.mycel.dk/ | grep -c 'rel=\"icon\"'          # forvent 3"
 echo "  curl -s https://skemaer.mycel.dk/mentem-skema-core.js | grep -c vaelgUgeKort   # forvent 2"
 echo "  curl -sI https://skemaer.mycel.dk/test/emoji-guard.mjs | grep content-type     # skal være text/html (fallback = ikke lækket)"
