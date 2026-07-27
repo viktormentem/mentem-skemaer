@@ -41,7 +41,10 @@ BRANCH="main"                                  # produktions-branch for projekte
 STAMP="deploy-sha.txt"                         # rod-fil, endelse .txt er i EXTS nedenfor
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 STAGING="$(mktemp -d "${TMPDIR:-/tmp}/sk-deploy-XXXXXX")"
-trap 'rm -rf "$STAGING"' EXIT
+# Wrangler-loggen ligger som SØSKENDE til staging, aldrig inde i den: en fil i staging ville
+# blive uploadet til klient-fladen. Den ryddes samme sted som staging, så en tidlig exit ikke
+# efterlader den.
+trap 'rm -rf "$STAGING" "$STAGING.wrangler.log"' EXIT
 
 DRY_RUN=""
 while [ $# -gt 0 ]; do
@@ -71,10 +74,29 @@ GREN="$(git -C "$REPO" rev-parse --abbrev-ref HEAD)"
 HERKOMST="ok"
 gate_fejl=""
 
+# 🔴 HERKOMST-REMOTES (skærpet 2026-07-27 af INFRA, efter måling på nedbruddet 26/7):
+#   Gaten spurgte oprindeligt kun »findes SHA'en på NOGEN remote«. Det er ikke nok, og prisen
+#   blev målt: de to tomme produktions-udrulninger 26/7 kl. 12:20:09Z og 12:22:43Z bar begge
+#   `herkomst=ok`, og deres SHA'er findes i dag i NUL af 91 objektlagre på maskinen. De slap
+#   igennem på et træf i `backup-private/backup/*`.
+#   En backup-remote er ikke en herkomst: dens refs flyttes af automatik, den force-pushes, og
+#   den er netop stedet hvor et commit ingen ellers har set, havner. Gaten blev bygget for at
+#   gøre »en udrullet SHA ingen kan finde igen« umulig, og en backup-ref gør præcis det muligt.
+#   Derfor tæller kun refs under en NAVNGIVEN herkomst-remote. Hold listen smal.
+HERKOMST_REMOTES="${MYCEL_HERKOMST_REMOTES:-origin}"
+
 if [ -n "$(git -C "$REPO" status --porcelain)" ]; then
   gate_fejl="træet er URENT"
-elif [ -z "$(git -C "$REPO" branch -r --contains "$SHA" 2>/dev/null)" ]; then
-  gate_fejl="HEAD ($SHA) findes IKKE på nogen remote"
+else
+  ref_traef="$(git -C "$REPO" branch -r --contains "$SHA" 2>/dev/null | sed 's/^[ *]*//' || true)"
+  findbare="$(printf '%s\n' "$ref_traef" | grep -E "^(${HERKOMST_REMOTES})/" || true)"
+  if [ -z "$ref_traef" ]; then
+    gate_fejl="HEAD ($SHA) findes IKKE på nogen remote"
+  elif [ -z "$findbare" ]; then
+    # Sig hvad der FAKTISK blev fundet. Uden det ligner afvisningen en fejl i gaten, og en
+    # gate man ikke forstår, bliver overstyret frem for rettet.
+    gate_fejl="HEAD ($SHA) findes KUN uden for herkomst-remoten ($HERKOMST_REMOTES): $(printf '%s' "$ref_traef" | tr '\n' ' ')"
+  fi
 fi
 
 if [ -n "$gate_fejl" ]; then
@@ -187,12 +209,80 @@ if [ "$BRANCH" = "main" ]; then
 else
   echo "── Deployer til Cloudflare Pages: $PROJECT / branch=$BRANCH (PREVIEW, prod-aliaset røres ikke) ──"
 fi
-npx wrangler pages deploy "$STAGING" --project-name "$PROJECT" --branch "$BRANCH"
+WRLOG="$STAGING.wrangler.log"
+set +e
+${MYCEL_WRANGLER:-npx wrangler} pages deploy "$STAGING" --project-name "$PROJECT" --branch "$BRANCH" 2>&1 | tee "$WRLOG"
+wr_rc="${PIPESTATUS[0]}"
+set -e
+if [ "$wr_rc" -ne 0 ]; then
+  rm -f "$WRLOG"
+  echo "🔴 ABORT: wrangler fejlede (rc=$wr_rc). Intet er efterprøvet." >&2
+  exit 1
+fi
+
+# ── 5. EFTERKONTROL. Eksekveret, ikke foreslået. ─────────────────────────────────────────────
+# 🔴 HER STOD FEM `echo`-LINJER FØR 27/7, OG DE KOSTEDE 18 TIMERS NEDETID.
+#   De printede hvad et menneske burde køre bagefter, med overskriften »VERIFICÉR (uden
+#   query-string!)«. To fejl, og den anden er den dyre:
+#     1. Den foreslåede forespørgsel var den bare rod, altså netop den ene cache-nøgle
+#        Cloudflare stadig havde et gammelt svar på (`age: 72240`). Alt med `?s=…` ramte
+#        origin og fik 404. Rådet pegede på det eneste sted der ikke kunne gå rødt.
+#     2. Ingen kørte dem. Scriptet exittede 0 efter at have udskrevet prosa, og en udrulning
+#        med ÉN fil i blev derfor stemplet som lykkedes. **En efterprøvning der ikke
+#        eksekveres, er ikke en efterprøvning.** Samme klasse som resten af huset lukkede
+#        27/7: en erklæring lyder som en kvittering, og ingen gate læser prosa.
+#
+# 🔴 FAIL-CLOSED PÅ SELVE ADRESSEN: kan URL'en ikke læses ud af wranglers svar, ABORTERER vi.
+#   Alternativet ville være at springe kontrollen over med en advarsel, og et spring er
+#   præcis den tilstand vi lige har betalt for.
+DEPLOY_URL="$(grep -Eo "https://[a-z0-9-]+\.${PROJECT}\.pages\.dev" "$WRLOG" | tail -1 || true)"
+rm -f "$WRLOG"
+if [ -z "$DEPLOY_URL" ]; then
+  echo "🔴 ABORT: kunne ikke læse udrulningens URL ud af wranglers svar." >&2
+  echo "   Udrulningen ER sket, men den er UEFTERPRØVET. Kør selv:" >&2
+  echo "     bash build-tools/deploy-efterkontrol.sh --url <url> --sha $SHA" >&2
+  exit 1
+fi
+
+EK="$(dirname "$0")/deploy-efterkontrol.sh"
+[ -f "$EK" ] || { echo "🔴 ABORT: finder ikke deploy-efterkontrol.sh ved siden af." >&2; exit 1; }
 
 echo ""
-echo "── VERIFICÉR (uden query-string!): ──"
-echo "  curl -s https://skemaer.mycel.dk/$STAMP | head -1     # skal være $SHA"
-echo "  (ved preview: curl -s https://<deployment>.$PROJECT.pages.dev/$STAMP | head -1)"
-echo "  curl -s https://skemaer.mycel.dk/ | grep -c 'rel=\"icon\"'          # forvent 3"
-echo "  curl -s https://skemaer.mycel.dk/mentem-skema-core.js | grep -c vaelgUgeKort   # forvent 2"
-echo "  curl -sI https://skemaer.mycel.dk/test/emoji-guard.mjs | grep content-type     # skal være text/html (fallback = ikke lækket)"
+echo "── Efterkontrol 1 af 2: selve udrulningen ($DEPLOY_URL) ──"
+# Den udrulnings-specifikke adresse er ny i dette sekund og kan derfor ikke besvares fra en
+# gammel kant-kopi. Den måler ét spørgsmål rent: kom filerne overhovedet op?
+bash "$EK" --url "$DEPLOY_URL" --sha "$SHA" || {
+  echo "🔴 ABORT: udrulningen er ufuldstændig. Prod-aliaset er IKKE efterprøvet." >&2
+  exit 1
+}
+
+if [ "$BRANCH" != "main" ]; then
+  echo ""
+  echo "── Preview: prod-aliaset røres ikke, så det efterprøves ikke. ──"
+  exit 0
+fi
+
+# 🔴 Aliaset skifter ikke i samme sekund som uploaden er færdig. Uden et par forsøg ville
+#   kontrollen fyre på et kapløb frem for på en fejl, og en vagt der melder falsk rødt,
+#   bliver slået fra. Forsøgene er få og korte: det er propagering, ikke tålmodighed.
+FORSOEG="${MYCEL_EFTERKONTROL_FORSOEG:-5}"
+PAUSE="${MYCEL_EFTERKONTROL_PAUSE:-6}"
+echo ""
+echo "── Efterkontrol 2 af 2: produktionsfladen på klientens egen form ──"
+n=1
+while : ; do
+  if bash "$EK" --url "https://skemaer.mycel.dk" --sha "$SHA"; then
+    echo ""
+    echo "── Udrulning $SHA er EFTERPRØVET fremme, både i udrulningen og på prod. ──"
+    exit 0
+  fi
+  if [ "$n" -ge "$FORSOEG" ]; then
+    echo "🔴 ABORT: prod-aliaset svarer stadig forkert efter $n forsøg." >&2
+    echo "   Udrulningen selv var hel, så det er aliaset eller kanten. Sidste hele udrulning" >&2
+    echo "   kan sættes tilbage med et deploy fra origin/main." >&2
+    exit 1
+  fi
+  echo "   (forsøg $n af $FORSOEG, aliaset er måske ikke skiftet endnu, venter $PAUSE sek)" >&2
+  sleep "$PAUSE"
+  n=$((n+1))
+done

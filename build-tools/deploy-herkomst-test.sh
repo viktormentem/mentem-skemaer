@@ -253,6 +253,47 @@ git -C "$FIX" push -q origin HEAD:refs/heads/main; git -C "$FIX" fetch -q origin
 koer --dry-run
 assert "41. manglende index.html afvises" "1" "$RC"
 
+# ── 42-47. EN BACKUP-REMOTE ER IKKE EN HERKOMST (INFRA 27/7, efter 18 timers nedetid) ────────
+#   🔴 Instansen, målt: produktions-udrulningerne `c34fcef1` (12:20:09Z) og `ea2f80e6`
+#   (12:22:43Z) den 26/7 bar begge `herkomst=ok`. Deres SHA'er `0541324` og `0816831` findes
+#   i dag i NUL af 91 objektlagre under ~/Documents/MEMTEM (`cat-file -e`, som også ser
+#   uopnåelige objekter; positiv kontrol i samme løkke: `0f12cad` findes i 2). De slap
+#   igennem fordi `git branch -r --contains` fandt dem på `backup-private/backup/*`.
+#   🔴 Hvorfor det er en rigtig fejl og ikke en formalitet: backup-refs flyttes af automatik
+#   og force-pushes. Et commit der KUN findes dér, er præcis det commit ingen har set, og
+#   det er hele den hændelse gaten blev skrevet for at gøre umulig.
+#   Prøven bygger derfor en RIGTIG anden bar remote og skubber kun dertil.
+BARE_BACKUP="$TMP/backup-private.git"
+git init -q "$BARE_BACKUP" --bare
+git -C "$FIX" remote add backup-private "$BARE_BACKUP"
+
+# Bring fixturet tilbage til en deploybar tilstand (assert 41 slettede index.html)
+printf '<!DOCTYPE html>\n<html lang="da">\n<head>\n<meta charset="UTF-8">\n</head>\n<body>x</body>\n</html>\n' > "$FIX/index.html"
+git -C "$FIX" add -A >/dev/null; git -C "$FIX" commit -qm "kun paa backup"
+git -C "$FIX" push -q backup-private HEAD:refs/heads/backup/main
+git -C "$FIX" fetch -q --all
+
+koer --dry-run
+assert "42. en sha der KUN findes på backup-remoten, afvises" "3" "$RC"
+assert_har "43. afvisningen navngiver herkomst-remoten" "uden for herkomst-remoten" "$UD"
+assert_har "44. og siger hvad den FAKTISK fandt" "backup-private/backup/main" "$UD"
+assert_har_ikke "45. den når aldrig frem til staging" "Staging-scope" "$UD"
+
+# 46. Positiv kontrol: samme commit, nu også på origin, skal være grøn. Uden den ville 42-45
+#     også være grønne hvis gaten bare afviste ALT, og så målte de ingenting.
+git -C "$FIX" push -q origin HEAD:refs/heads/main; git -C "$FIX" fetch -q origin
+koer --dry-run
+assert "46. samme sha, nu på origin, er grøn igen" "0" "$RC"
+
+# 47. Listen kan udvides bevidst, men kun ved at NAVNGIVE remoten, aldrig ved et generelt
+#     »en eller anden remote«. Uden dette assert kunne gaten være hårdkodet til origin, og
+#     så ville den blokere ethvert repo med en anden navngivning frem for at kunne rettes.
+git -C "$FIX" push -q --delete origin main >/dev/null 2>&1 || true
+git -C "$FIX" fetch -q --prune --all
+UD="$(cd "$FIX" && env -u MYCEL_DEPLOY_HERKOMST_GO MYCEL_HERKOMST_REMOTES='origin|backup-private' \
+      bash build-tools/deploy-skemaer.sh --dry-run 2>&1)"; RC=$?
+assert "47. en NAVNGIVEN udvidelse af herkomst-remoterne virker" "0" "$RC"
+
 echo ""
 echo "── $ok grønne, $fejl røde ──"
 [ "$fejl" -eq 0 ] || exit 1
