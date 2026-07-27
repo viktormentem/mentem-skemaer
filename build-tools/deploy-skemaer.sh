@@ -159,14 +159,24 @@ awk -v sha="$SHA" -v herk="$HERKOMST" '
 ' "$INDEX" > "$INDEX.ny" && mv -f "$INDEX.ny" "$INDEX"
 
 # TILBAGELÆSNING, ikke en kvittering: tallet og linjerne nedenfor læses ud af den fil der uploades.
-antal="$(grep -c 'name="mentem-deploy-sha"' "$INDEX" || true)"
+#
+# 🔴 Mønstret er ankret til at linjen ER et meta-tag (^ + valgfri indrykning), ikke til at den
+#    NÆVNER tag-navnet. Uden ankeret tæller gaten sidens egen LÆSER med: index.html indeholder
+#    `document.querySelector('meta[name="mentem-deploy-sha"]')` og en kommentar der citerer
+#    tagget, og et frit navne-søg finder dem begge. Målt 27/7 kl. 17:2x, da de to grene blev
+#    landet sammen: deployet aborterede med »har 2 afsender-stempler« og der var præcis ét.
+#    Hver gren var grøn alene. Samme rod som assert_stempel/assert_afsender i prøven blev
+#    skærpet for: prosa og kode der omtaler stemplet, er ikke stemplet.
+#    Retningen er den dyre: en fail-closed gate der tæller forkert, blokerer et KORREKT deploy
+#    og lærer huset at overstyre gaten. Dækket af assert 48-52 (mutant: fjern ankeret => 4 røde).
+antal="$(grep -cE '^[[:space:]]*<meta name="mentem-deploy-sha"' "$INDEX" || true)"
 if [ "$antal" -ne 1 ]; then
   echo "🔴 ABORT: index.html har $antal afsender-stempler (mentem-deploy-sha), forventet præcis 1." >&2
   echo "   Sandsynligvis mangler et <head>-element at indsætte tagget efter." >&2
   exit 1
 fi
 echo "── Afsender-stempel (index.html) ──"
-grep 'name="mentem-deploy-' "$INDEX" | sed 's/^[[:space:]]*/  /'
+grep -E '^[[:space:]]*<meta name="mentem-deploy-' "$INDEX" | sed 's/^[[:space:]]*/  /'
 
 # ── 3. HERKOMST-STEMPEL: bagud. Skrives i STAGING, aldrig i repoet — ellers ville scriptet gøre
 #       træet urent og dermed lukke sin egen gate ved næste kørsel.

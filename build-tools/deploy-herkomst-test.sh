@@ -294,6 +294,71 @@ UD="$(cd "$FIX" && env -u MYCEL_DEPLOY_HERKOMST_GO MYCEL_HERKOMST_REMOTES='origi
       bash build-tools/deploy-skemaer.sh --dry-run 2>&1)"; RC=$?
 assert "47. en NAVNGIVEN udvidelse af herkomst-remoterne virker" "0" "$RC"
 
+
+# ── 48-52. DEN KODE DER LÆSER STEMPLET, ER IKKE ET STEMPEL (MYCEL BUILDER 27/7) ───────────────
+#   Fundet da de to grene blev landet sammen kl. 17:1x. Hver for sig var begge grønne:
+#   `feat/afsender-stempel` lagde LÆSEREN i index.html
+#   (`document.querySelector('meta[name="mentem-deploy-sha"]')` + en kommentar der citerer
+#   tagget), og `chore/deploy-scoping` lagde TÆLLINGEN her. Sammen aborterede deployet med
+#   »har 2 afsender-stempler, forventet præcis 1«, og der var kun ét.
+#
+#   🔴 Hvorfor prøven ovenfor ikke fangede det: assert 29-38 er skrevet PRÆCIS om denne læser
+#   (kommentaren ved 29 citerer endda dens linjenummer), men fixturets index.html indeholder
+#   den ikke. Prøven kendte samspillet og målte det ikke. Fixturet er derfor selv påstanden.
+#
+#   Fejlklassen er ikke »en for løs grep«. Det er en gate der tæller sit eget subjekt ved at
+#   søge på tag-NAVNET frem for på tag-FORMEN, altså samme rod som assert_stempel og
+#   assert_afsender blev skærpet for: prosa og kode der NÆVNER stemplet, må ikke kunne tælle
+#   som stemplet. En fail-closed gate der tæller forkert, blokerer et korrekt deploy, og det er
+#   den dyre retning: den lærer huset at overstyre gaten.
+git -C "$FIX" push -q origin HEAD:refs/heads/main 2>/dev/null || true
+cat > "$FIX/index.html" <<'HTML'
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+</head>
+<body>x
+<script>
+//   • <meta name="mentem-deploy-sha"> = den FAKTISK udrullede SHA, indsat af deployet
+const _shaMeta = document.querySelector('meta[name="mentem-deploy-sha"]');
+</script>
+</body>
+</html>
+HTML
+git -C "$FIX" add -A >/dev/null; git -C "$FIX" commit -qm "index med laeser-JS"
+git -C "$FIX" push -q origin HEAD:refs/heads/main; git -C "$FIX" fetch -q origin
+koer --dry-run
+assert "48. et index der LÆSER stemplet, blokerer ikke deployet" "0" "$RC"
+assert_har_ikke "49. og aborten om fordoblede stempler udløses ikke" "forventet præcis 1" "$UD"
+assert_afsender_antal "50. der tælles præcis ét, læseren ufortalt" \
+                      "1" '<meta name="mentem-deploy-sha"' "$UD"
+assert_afsender "51. og det ene er deployets egen sha" \
+                "<meta name=\"mentem-deploy-sha\" content=\"$(SHA)\">" "$UD"
+
+# 52. 🔴 Negativ kontrol, og uden den måler 48-51 ingenting: to ÆGTE tags skal STADIG afvises.
+#     En »fix« der bare slettede tællingen ville gøre 48-51 grønne og genåbne præcis det hul
+#     tællingen fandtes for (querySelector ville vilkårligt vælge mellem to SHA'er).
+#     Det hånd-holdte tag ligger i <body>, ikke i <head>: fjernelses-awk'en rammer det, men
+#     hvis den nogensinde snævres til kun <head>, står der to bagefter, og DET skal ses.
+cat > "$FIX/index.html" <<'HTML'
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+</head>
+<body>x
+<meta name="mentem-deploy-sha" content="ffffffffffffffffffffffffffffffffffffffff">
+<meta name="mentem-deploy-sha" content="eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee">
+</body>
+</html>
+HTML
+git -C "$FIX" add -A >/dev/null; git -C "$FIX" commit -qm "to aegte stempler"
+git -C "$FIX" push -q origin HEAD:refs/heads/main; git -C "$FIX" fetch -q origin
+koer --dry-run
+assert_afsender_antal "52. to ægte tags fordobles ikke, de erstattes af ét" \
+                      "1" '<meta name="mentem-deploy-sha"' "$UD"
+
 echo ""
 echo "── $ok grønne, $fejl røde ──"
 [ "$fejl" -eq 0 ] || exit 1
