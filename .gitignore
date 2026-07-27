@@ -1,0 +1,4 @@
+# wranglers egen cache-/temp-mappe. Den SKABES af deploy-scriptet selv, så uden denne linje
+# ville herkomst-gaten i build-tools/deploy-skemaer.sh nægte enhver deploy efter den første:
+# træet ville være urent af værktøjets eget aftryk. Målt 2026-07-26 (INFRA).
+.wrangler/
