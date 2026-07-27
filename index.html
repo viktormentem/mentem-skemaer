@@ -554,7 +554,7 @@
 
 <script type="module">
 import { SKEMAER, SKEMA_ORDER, OFFENTLIGT_KLAR, buildPayload, buildPayloadCSD, buildPayloadBaseline, mentemEncrypt,
-         CSD_SOEVNDAGBOG, SOEVN_BASELINE, CONTENT_VERSION, SITE_BUILD, kryptoStoettet,
+         CSD_SOEVNDAGBOG, SOEVN_BASELINE, CONTENT_VERSION, kryptoStoettet,
          PINNED_PUBKEY, PINNED_KEY_ID, resolveRecipientKey,
          INSTRUMENTER, instrumentFeltOrden, buildInstrumentMycel,
          SOEVN_SCREENING, buildPayloadScreening,
@@ -562,7 +562,8 @@ import { SKEMAER, SKEMA_ORDER, OFFENTLIGT_KLAR, buildPayload, buildPayloadCSD, b
          SRT_VINDUE_TEKST, SOEVN_F2,
          parseFormuleringFragment, renderFormulering,
          vaelgNudgeKort, vaelgUgeKort,
-         NUDGE_EVAL_MILEPAELE, NUDGE_EVAL_SVAR, NUDGE_EVAL_TEKST } from './mentem-skema-core.js';
+         NUDGE_EVAL_MILEPAELE, NUDGE_EVAL_SVAR, NUDGE_EVAL_TEKST,
+         setAfsenderKontekst, afsenderStempel } from './mentem-skema-core.js';
 
 // ── FORMULERING fragment-dispatch (Wells-model, s=formulering) ────────────
 // Linket bæres i URL-FRAGMENTET (#<32hex-token>;s=formulering;n=..;tr=..;..),
@@ -586,6 +587,31 @@ const params   = new URLSearchParams(location.search);
 const sParam   = params.get('s');
 const sessionN = params.get('n') ? parseInt(params.get('n'), 10) : null;
 const dParam   = params.get('d') ? parseInt(params.get('d'), 10) : null;   // dagbog-periode (dage)
+
+// ── AFSENDER-STEMPEL (Viktor-ordre 26/7 punkt 2) ──────────────────────────
+// Hver aflevering skal selv kunne svare på "hvilken udgave udfyldte klienten?".
+// Før 26/7 kunne den ikke: `version`/`schemaVersion` er hårdkodede 1-taller, og den
+// eneste stamp der fandtes, var en HÅNDHOLDT streng — den havde stået på
+// '2026-06-01-fase1' siden 1. juni og beskrev derfor ikke det udrullede. Den er
+// afskaffet; payloadens build-stempel er nu den målte herkomst herunder, og den
+// findes ét sted i huset (se `afsenderStempel` i mentem-skema-core.js).
+//   • ?v=  = link-generation (Mentem stempler den ved udsendelse)
+//   • <meta name="mentem-deploy-sha"> = den FAKTISK udrullede SHA, indsat af deployet
+//
+// 🔴 IKKE en fetch af deploy-sha.txt, og det er et MÅLT valg: filen skrives i dag kun
+// af herkomst-gaten, som ikke er på main endnu, så et hent ville 404'e i hver eneste
+// klients browser. Husets egne konsol-fejl-vagter (e2e-besked-fase-b,
+// e2e-dagbog-samtykke) fangede præcis det og havde ret. Et meta-tag koster intet
+// netværk, kan ikke tabe et kapløb mod en hurtig klient, og er læsbart før first paint.
+//
+// Mangler tagget (som på main i dag) => webDeploySha er null. null betyder "vi ved det
+// ikke" — vi gætter ALDRIG en SHA, for en forkert SHA ser autoritativ ud i en obduktion.
+const linkVersion = params.get('v');
+const _shaMeta = document.querySelector('meta[name="mentem-deploy-sha"]');
+setAfsenderKontekst({
+  webDeploySha: _shaMeta ? _shaMeta.getAttribute('content') : null,
+  linkVersion,
+});
 
 // ── M1.6 · SRT-leverance-params (tib/wake/adv/tn/mode) ────────────────────
 // Mapping = SRTOrdinationURLCodec (OrdinationLeverandoer.swift:62, Code-confirmet
@@ -791,7 +817,13 @@ async function byggDiagnostikLinje(fejl) {
     'sec=' + (!!globalThis.isSecureContext),
     'crypto=' + (await kryptoStoettet()),
     'fejl=' + ((fejl && fejl.name) ? fejl.name : 'ukendt'),
-    'ver=' + (typeof SITE_BUILD !== 'undefined' ? SITE_BUILD : '-'),
+    // 🔴 `ver=` er Viktors ENESTE vindue ind i en klients krypto-fejl, så den skal pege på
+    // den udgave der faktisk kørte — ikke på en håndholdt streng fra 1. juni, der ville
+    // sende ham efter den forkerte kode. Læser samme målte herkomst som payloadens
+    // `meta.siteBuild`. FULD SHA med vilje: en afkortet værdi kunne kopieres tilbage som
+    // om den var SHA'en, og husets egen rens-regel kasserer netop afkortede SHA'er.
+    // Kunne herkomsten ikke måles, står der '-' — aldrig et gæt.
+    'ver=' + (afsenderStempel().webDeploySha || '-'),
     'ts=' + new Date().toISOString(),
     'ua=' + ua,
   ].join(' · ');
@@ -1229,8 +1261,17 @@ let diaryFillDate = null;   // hvilken kalenderdag formularen udfylder (i dag / 
 let diaryStepIndex = 0;     // oplæsnings-venlig tilstand: aktivt trin (ét spørgsmål ad gangen)
 let stepperCfg = null;      // aktiv generisk-stepper-konfiguration (instrument-flow); null = ingen
 
+// `?d=`-KONTRAKTEN (besluttet + vogtet: test/soevn-dagbog-periode-kontrakt.mjs).
+// Øvre grænse = APPENS maksimum, ikke en præference her: Mentem prefiller send-dialogen med
+// SoevnSendKanaler.standardPeriodeDage = 90 og klamper selv til 1..90 (clampPeriode), og
+// buildSoevndagbogUrl vedhæfter `&d=<plannedDays>`. Grænsen stod på 60 ⇒ standard-linkets
+// `d=90` blev KASSERET og perioden faldt tavst til 14 — og fordi plannedDays LÅSES ved
+// første åbning, frøs det forkerte tal for hele forløbet (»X af 14 dage« + payloadens
+// plannedDays). Sænkes grænsen under appens maksimum igen, bliver kontrakt-prøven rød.
+// Uden for intervallet klampes IKKE, der faldes tilbage til default: en værdi appen aldrig
+// kan udstede kommer fra en redigeret URL, og den skal ikke foræres en gyldig-udseende periode.
 function diaryPlannedDays() {
-  if (dParam && dParam > 0 && dParam <= 60) return dParam;   // ?d= ved første åbning
+  if (dParam && dParam > 0 && dParam <= 90) return dParam;   // ?d= ved første åbning
   return CSD_DEFAULT_DAYS;
 }
 function diaryHasToday() {

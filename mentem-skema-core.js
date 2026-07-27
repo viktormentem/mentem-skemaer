@@ -660,6 +660,52 @@ export function computeScores(answers) {
 }
 
 // ════════════════════════════════════════════════════════════════════════
+//  AFSENDER-STEMPEL (Viktor-ordre 26/7 punkt 2)
+// ════════════════════════════════════════════════════════════════════════
+// Hver aflevering baerer HVEM der producerede den: hvilken udrullet web-udgave
+// (deploy-sha.txt, samme SHA som deploy-herkomst-gaten stempler) og hvilken
+// link-generation klienten kom ind ad (?v= i URL'en).
+//
+// Hullet det lukker (maalt 26/7): `version`/`schemaVersion` er haardkodede 1-taller i
+// alle byggere og har aldrig aendret sig. Da MN's oplysningsskema blev afvist 09:34:13,
+// kunne den udgave han faktisk udfyldte KUN udledes af serverlog + kildekode side om side.
+//
+// 🔴 STEMPLET OPDIGTER ALDRIG. Ukendt herkomst = null, ikke en default. En forkert SHA er
+// vaerre end ingen SHA: den ser autoritativ ud i en obduktion. Derfor fail-closed paa alt
+// der ikke ER en 40-hex SHA / et positivt heltal - det er samme fejlklasse som app-sidens
+// `?? 1`, hvor en antagelse har ligget og lignet en maaling.
+let _afsenderKontekst = { webDeploySha: null, linkVersion: null };
+
+function rensDeploySha(raa) {
+  if (typeof raa !== 'string') return null;
+  const s = raa.trim().toLowerCase();
+  return /^[0-9a-f]{40}$/.test(s) ? s : null;      // 404-HTML, afkortet SHA, tom streng => null
+}
+
+function rensLinkVersion(raa) {
+  if (typeof raa === 'number') return Number.isInteger(raa) && raa > 0 ? raa : null;
+  if (typeof raa !== 'string') return null;
+  const s = raa.trim();
+  if (!/^\d+$/.test(s)) return null;               // "nyeste", "2a", "" => null
+  const n = Number(s);
+  return n > 0 ? n : null;                         // versioner taelles fra 1
+}
+
+/// Saettes EEN gang ved sideindlaesning (index.html), foer nogen payload bygges.
+/// `null`/tomt argument nulstiller - saa en side der ikke kunne maale sin herkomst,
+/// paastaar ingenting.
+export function setAfsenderKontekst(kontekst) {
+  const k = kontekst || {};
+  _afsenderKontekst = {
+    webDeploySha: rensDeploySha(k.webDeploySha),
+    linkVersion: rensLinkVersion(k.linkVersion),
+  };
+}
+
+/// Frisk kopi pr. kald - en bygger maa aldrig kunne mutere husets kontekst.
+export function afsenderStempel() { return { ..._afsenderKontekst }; }
+
+// ════════════════════════════════════════════════════════════════════════
 //  INGEST-KONVOLUT (transport-form - matcher app IngestKonvolut)
 // ════════════════════════════════════════════════════════════════════════
 // Producent-side envelope-wrap (PR-2): web emitterer den ÆGTE konvolut-form
@@ -709,6 +755,7 @@ export function buildPayload(answers, meta = {}) {
 
   const payload = {
     version: 1,
+    afsender: afsenderStempel(),
     exportedAt: now,
     clientName: meta.name || '',
     therapistName: 'Viktor Nielsen',
@@ -761,7 +808,13 @@ export function buildPayload(answers, meta = {}) {
 export const SCHEMA_VERSION = 1;          // payload-strukturversion
 export const CONTENT_VERSION = 1;         // CSD-indholdsversion (bump = kun NYE forløb, G2-frys)
 export const PROTOCOL_VERSION = 1;        // draft-store transport-kontrakt
-export const SITE_BUILD = '2026-06-01-fase1';   // synlig version-stamp (G3)
+// 🔴 `SITE_BUILD` ER AFSKAFFET (26/7). Den var `'2026-06-01-fase1'` og havde stået uændret
+// siden 1. juni, mens den fulgte med i HVER klient-aflevering som `meta.siteBuild`. Den var
+// ikke bare forældet — den var den forkerte KLASSE af værdi: et menneske skrev den, så den
+// beskrev hvad nogen MENTE den dag, ikke hvad der faktisk KØRTE da klienten trykkede send.
+// I en obduktion er det værre end ingenting, for den ser ud som om nogen havde målt.
+// `meta.siteBuild` er nu den målte deploy-herkomst (`afsender.webDeploySha`), og ukendt
+// herkomst er `null` — vi gætter aldrig en build. Se `afsenderStempel` for fail-closed-reglen.
 
 export function buildPayloadCSD(entries, meta = {}) {
   const now = isoNoFrac(new Date());
@@ -776,8 +829,15 @@ export function buildPayloadCSD(entries, meta = {}) {
 
   const startedAt = meta.startedAt || (sleepDiary[0] && sleepDiary[0].date) || now;
 
+  // 🔴 ÉT kald, to felter. `afsender.webDeploySha` og `meta.siteBuild` besvarer SAMME
+  // spørgsmål — »hvilken web-udgave producerede denne aflevering?« — og to kald ville
+  // gøre det muligt for dem at divergere. Så ved en obduktion ikke hvilket af dem den
+  // skal tro på, og et stempel man ikke kan tro på er værre end intet stempel.
+  const afsender = afsenderStempel();
+
   const data = {
     version: 1,
+    afsender,
     exportedAt: now,
     clientName: meta.name || '',
     therapistName: 'Viktor Nielsen',
@@ -796,7 +856,7 @@ export function buildPayloadCSD(entries, meta = {}) {
       contentVersion: (meta.contentVersion != null) ? meta.contentVersion : CONTENT_VERSION,
       instrument: 'CSD-Carney-2012',
       protocolVersion: PROTOCOL_VERSION,
-      siteBuild: SITE_BUILD,
+      siteBuild: afsender.webDeploySha,   // MÅLT herkomst (deploy-SHA); null = vi ved det ikke
       forloebId: meta.forloebId || null,          // = token (mapping kun i Mentem)
       periodPlanned: (meta.plannedDays != null) ? meta.plannedDays : null,
       periodCompleted: sleepDiary.length,
@@ -850,6 +910,7 @@ export function buildPayloadBaseline(answers, meta = {}) {
   }
   return {
     version: 1,
+    afsender: afsenderStempel(),
     exportedAt: now,
     clientName: meta.name || '',
     therapistName: 'Viktor Nielsen',
@@ -924,6 +985,10 @@ export function buildPayloadScreening(svar = {}, meta = {}) {
   const now = isoNoFrac(new Date());
   const data = {
     version: 1,
+    // Stemplet ligger i `data`, ALDRIG paa konvolut-toppen: Swift-decoderen
+    // (IngestKonvolut) har faste felter og ville tabe et ukendt top-felt tavst,
+    // mens `data` bevares uaendret hele vejen ind (FELT-BEVARENDE, 0 tab).
+    afsender: afsenderStempel(),
     exportedAt: now,
     clientName: meta.name || '',
     therapistName: 'Viktor Nielsen',
