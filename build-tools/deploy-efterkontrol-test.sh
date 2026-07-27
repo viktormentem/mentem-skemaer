@@ -116,51 +116,58 @@ sig() { printf '%s|%s|%s' "$RC" "$MASK" "$URLLOG"; }
 
 echo "── deploy-efterkontrol-test ──"
 
-# ── 1-4. Den hele flade
+# ── 1-5. Den hele flade
 koer hel --maskine --sha "$SHA_NY"
 assert "1. en hel udrulning giver rc 0" "0" "$RC"
 assert "2. og alle syv kontroller er groenne" "groenne=7 roede=0 sha=$SHA_NY" "$MASK"
 assert_har "3. stemplet hentes cache-bustet" "deploy-sha.txt?<CB>" "$URLLOG"
 assert_har "4. og klientens EGEN form proeves, ikke kun den bare rod" "?s=soevndagbog&d=14&<CB>" "$URLLOG"
+# 🔴 Assert 5 er tilfoejet 27/7 kl. 09:1x efter MYCEL BUILDERs linje »en kur anvendt EET sted er ikke
+#    en kur anvendt«. Jeg tog den paa mit eget arbejde og fandt hullet: cache-bustet STOD i alle
+#    tre hentninger i vagten, men proeven maalte kun de TO. Forsidens hentning havde hverken
+#    assert eller mutant, saa en senere redigering kunne have fjernet den uden at noget gik roedt.
+#    Taellingen kunne ikke se det: en hentning uden cache-bust svarer praecis det samme mod en
+#    fikstur. Kun URL'en afsloerer det, og kun hvis nogen ser paa den.
+assert_har "5. OGSAA forsiden hentes cache-bustet (alle tre, ikke to af tre)" "x.test/?<CB>" "$URLLOG"
 
-# ── 5-7. GENSPILNING AF HAENDELSEN. Det er den positive kontrol: vagten skal fyre paa den
+# ── 6-8. GENSPILNING AF HAENDELSEN. Det er den positive kontrol: vagten skal fyre paa den
 #        praecise flade der stod nede i 18 timer.
 koer haendelsen --maskine --sha "$SHA_NY"
-assert "5. den doede udrulning 26/7 giver rc 1" "1" "$RC"
-assert "6. og fem af syv kontroller er roede" "groenne=2 roede=5 sha=$SHA_NY" "$MASK"
+assert "6. den doede udrulning 26/7 giver rc 1" "1" "$RC"
+assert "7. og fem af syv kontroller er roede" "groenne=2 roede=5 sha=$SHA_NY" "$MASK"
 # 🔴 De to groenne er hele pointen: stemplet VAR derude og var korrekt. Et vaern der kun saa
 #    paa stemplet, ville have meldt alt vel, praecis som huset gjorde i 18 timer.
 koer haendelsen --sha "$SHA_NY"
-assert_har "7. meldingen navngiver den blanke side" "blank side" "$UD"
+assert_har "8. meldingen navngiver den blanke side" "blank side" "$UD"
 
-# ── 8-10. Kant-loegnen: den bare rod er groen, klientens form er doed
+# ── 9-11. Kant-loegnen: den bare rod er groen, klientens form er doed
 koer kant-loegn --maskine --sha "$SHA_NY"
-assert "8. en gammel kant-kopi paa roden redder ikke fladen" "1" "$RC"
-assert "9. forsiden ser hel ud, men sha og klientform er roede" "groenne=3 roede=4 sha=$SHA_GL" "$MASK"
+assert "9. en gammel kant-kopi paa roden redder ikke fladen" "1" "$RC"
+assert "10. forsiden ser hel ud, men sha og klientform er roede" "groenne=3 roede=4 sha=$SHA_GL" "$MASK"
 koer kant-loegn --sha "$SHA_NY"
-assert_har "10. og den siger at det er en ANDEN udrulning" "ANDEN udrulning" "$UD"
+assert_har "11. og den siger at det er en ANDEN udrulning" "ANDEN udrulning" "$UD"
 
-# ── 11-12. SPA-fallback: 200 er ikke et bevis
+# ── 12-13. SPA-fallback: 200 er ikke et bevis
 koer spa-fallback --maskine --sha "$SHA_NY"
-assert "11. et 200-svar med index.html i stedet for stemplet afvises" "1" "$RC"
-assert "12. praecis de to stempel-kontroller er roede" "groenne=5 roede=2 sha=<!DOCTYPE html>" "$MASK"
+assert "12. et 200-svar med index.html i stedet for stemplet afvises" "1" "$RC"
+assert "13. praecis de to stempel-kontroller er roede" "groenne=5 roede=2 sha=<!DOCTYPE html>" "$MASK"
 
-# ── 13-15. Transportfejl er ikke det samme som nedetid
+# ── 14-16. Transportfejl er ikke det samme som nedetid
 koer transport --maskine --sha "$SHA_NY"
-assert "13. transportfejl giver rc 1" "1" "$RC"
-assert "14. og INGEN kontrol meldes groen paa et svar vi aldrig fik" "groenne=0 roede=3 sha=ingen" "$MASK"
+assert "14. transportfejl giver rc 1" "1" "$RC"
+assert "15. og INGEN kontrol meldes groen paa et svar vi aldrig fik" "groenne=0 roede=3 sha=ingen" "$MASK"
 koer transport --sha "$SHA_NY"
-assert_har "15. meldingen skelner transportfejl fra en doed flade" "transportfejl" "$UD"
+assert_har "16. meldingen skelner transportfejl fra en doed flade" "transportfejl" "$UD"
 
-# ── 16-17. Uden --sha er den en ren »hvad koerer der«
+# ── 17-18. Uden --sha er den en ren »hvad koerer der«
 koer hel --maskine
-assert "16. uden --sha er en hel flade stadig groen" "0" "$RC"
-assert "17. og de to sha-sammenligninger springes over" "groenne=5 roede=0 sha=$SHA_NY" "$MASK"
+assert "17. uden --sha er en hel flade stadig groen" "0" "$RC"
+assert "18. og de to sha-sammenligninger springes over" "groenne=5 roede=0 sha=$SHA_NY" "$MASK"
 
-# ── 18. Brugsfejl er ikke det samme som en roed flade. Uden det her kunne en kalder der
+# ── 19. Brugsfejl er ikke det samme som en roed flade. Uden det her kunne en kalder der
 #       glemte --url, laese exit 1 som »fladen er nede« og rulle tilbage uden grund.
 UD="$(bash "$VAGT" --maskine 2>&1)"; RC=$?
-assert "18. manglende --url giver rc 2, ikke rc 1" "2" "$RC"
+assert "19. manglende --url giver rc 2, ikke rc 1" "2" "$RC"
 
 # ── MUTANTER ─────────────────────────────────────────────────────────────────────────────────
 # 🔴 Grundlinjen maales FOERST og AFLEDES, den hardkodes aldrig. En hardkodet grundlinje gjorde
@@ -203,6 +210,9 @@ mutant "M5 transportfejl ignoreret"    's/if \[ "\$rc" -ne 0 \]; then/if false; 
 mutant "M6 cache-bust fjernet"         's|\$BASE/deploy-sha.txt?\$CB|$BASE/deploy-sha.txt|'
 mutant "M7 klientformen droppet"       's|\$BASE/?s=\$SKEMA&d=14&\$CB|$BASE/?$CB|'
 mutant "M8 sha-formen ikke tjekket"    's/\[0-9a-f\]\[0-9a-f\]\[0-9a-f\]\[0-9a-f\]\[0-9a-f\]\[0-9a-f\]\[0-9a-f\]\*)/*)/'
+# M9 er tvillingen til M6 og findes fordi M6 ALENE var en halv kur: den fjernede kun
+# cache-bustet fra stempel-hentningen. Fjernes det fra FORSIDEN, er skaden den samme.
+mutant "M9 cache-bust fjernet fra forsiden" 's|\$BASE/?\$CB|$BASE/|g'
 
 echo ""
 echo "── $ok groenne, $fejl roede · $draebt mutanter draebt, $overlevet overlevede ──"
