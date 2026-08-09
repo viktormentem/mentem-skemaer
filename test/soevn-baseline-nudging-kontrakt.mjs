@@ -122,7 +122,11 @@ check('srtAktiv gaelder ogsaa ved fuld baseline', nud(14, false, true) === null)
 // en gennemlaesning hver gang nogen retter et ord.
 console.log('Tone (klient-sprog, ingen pres, intet loefte om at behandling ikke kan starte):');
 const KLINISKE_ORD = /ATST|søvneffektivitet|estimat|titrer|SRT|compliance|adhærens/i;
-const PRES_ORD = /du mangler|du skal|husk at|for sent|ikke nok|fejl|advarsel/i;
+// 🔴 STRAMMET 9/8, fordi vagten fyrede paa sin egen kur: den nye paedagogiske ordlyd siger
+// »hvornaar du skal gaa i seng og staa op«, og DET er den kliniske instruktion, ikke pres.
+// En vagt der er gron paa uklar tekst og roed paa klar tekst, presser mig til at skrive
+// daarligere dansk. Pres-formerne der faktisk betyder noget, handler om dagbogs-PLIGTEN.
+const PRES_ORD = /du mangler|du skal (huske|udfylde|svare|sende|aflevere)|husk at|for sent|ikke nok|du har glemt|advarsel/i;
 const START_LOEFTE = /kan (først|ikke) (starte|begynde)|venter på|inden vi kan/i;
 for (const [navn, r] of [['0 gemte', nud(0, false)], ['11 gemte', nud(11, false)],
   ['13 gemte', nud(13, false)], ['14 gemte', nud(14, false)]]) {
@@ -131,6 +135,11 @@ for (const [navn, r] of [['0 gemte', nud(0, false)], ['11 gemte', nud(11, false)
   check(`${navn}: intet pres-sprog`, !PRES_ORD.test(t), t);
   check(`${navn}: intet loefte om at behandlingen ikke kan starte`, !START_LOEFTE.test(t), t);
   check(`${navn}: ingen em dash`, !/—/.test(t), t);
+  // Viktor 9/8: »ramme rigtigt fra den foerste uge« var for utydeligt for en klient.
+  // Vagten holder den gamle vending vaek, saa den ikke sniger sig tilbage ved naeste rettelse.
+  check(`${navn}: ingen »ramme rigtigt«-vending`, !/ramme rigtigt/i.test(t), t);
+  // Og teksten skal sige hvad tallet BRUGES til, ikke bare at det er godt.
+  check(`${navn}: siger hvad naetterne bruges til`, /sover om natten|gå i seng og stå op/i.test(t), t);
 }
 
 // ── Uge-gitteret (Viktor 9/8: behandlingen koerer en uge ad gangen) ──────────
@@ -161,6 +170,15 @@ check('er dagens nat udfyldt, findes der INGEN »idag«-celle',
 
 // 🔴 Det Viktor faktisk klagede over: 90 dage gav 13 raekker, hvoraf 11 var tomme.
 check('90 dage tegner 3 raekker, ikke 13', g90.uger.length === 3, String(g90.uger.length));
+// 🔴 Viktor 9/8: paa den ALLERFOERSTE morgen maa der ikke staa »og N uger mere i dit forloeb«.
+// Han laeste den som tvivl om forloebets laengde, ikke som overblik.
+const g0 = git(90, 0, false);
+check('allerfoerste morgen: ingen »og N uger mere«', g0.skjulte === 0, JSON.stringify(g0.skjulte));
+check('allerfoerste morgen viser stadig sin egen uge + een frem', g0.uger.length === 2, String(g0.uger.length));
+// Med 1 nat staar klienten stadig i uge 1, saa der skjules 11 uger (13 - egen - een frem).
+// Ved 11 naetter staar hun i uge 2, og saa er det 10. Tallet foelger ugen, ikke natten.
+check('POS-KTRL: fra dag 2 kommer linjen tilbage', git(90, 1, false).skjulte === 11,
+  String(git(90, 1, false).skjulte));
 check('resten staar som eet tal, ikke som tomme raekker', g90.skjulte === 10, String(g90.skjulte));
 check('gaaede uger klappes ALDRIG sammen (de baerer det klienten har gjort)',
   git(90, 60, false).uger.filter(u => u.tilstand === 'gaaet').length === 8,

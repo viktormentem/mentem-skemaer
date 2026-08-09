@@ -169,6 +169,20 @@
   /* Fremdriften er ORGANISERET I UGER, fordi behandlingen kører en uge ad gangen.
      Før wrappede prikkerne ved den bredde der nu tilfældigvis var plads til (målt: 13 pr.
      række ved 420 px), så uge 1 lå hen over to rækker og ingen række betød noget. */
+  /* Dagens handling som fast bjælke: den må aldrig ligge under folden. MÅLT før den fandtes
+     (420x900, dag 12): knappen begyndte ved 1225 px, altså 325 px at rulle for at gøre det
+     man kom for. Bjælken SPEJLER knappen i siden; den flytter ikke oplysningsteksten, som
+     står hvor den står af en juridisk grund. */
+  .diary-bar { position:fixed; left:0; right:0; bottom:0; z-index:40; padding:12px 20px calc(14px + env(safe-area-inset-bottom));
+               background:var(--bg); border-top:1px solid var(--border); box-shadow:0 -6px 20px rgba(0,0,0,0.07); }
+  .diary-bar .btn-primary { width:100%; margin:0; }
+  .diary-bar-rest { font-size:12.5px; color:var(--muted); text-align:center; margin:8px 0 0; }
+  body.har-diary-bar #screen-diary-welcome .wrap { padding-bottom:112px; }
+  /* Lange tekster: fulde FØRSTE gang, foldet bagefter. Ikke slettet, altid ét tryk væk. */
+  .tekst-mere { background:none; border:0; padding:0; font:inherit; font-weight:600; color:var(--accent);
+                text-decoration:underline; cursor:pointer; }
+  .oplysning-kvittér { display:flex; gap:9px; align-items:flex-start; margin-top:10px; font-size:13.5px; color:var(--muted); }
+  .oplysning-kort { font-size:13.5px; color:var(--muted); }
   .diary-uger { display:flex; flex-direction:column; gap:4px; margin-top:14px; }
   /* 46 px, ikke 30: »Uge 13« brækkede i to linjer og gjorde den venstre kant ragget. */
   .diary-uge { display:grid; grid-template-columns:46px auto; align-items:center; gap:10px;
@@ -1221,6 +1235,13 @@ async function shareEncrypted() {
 
 // ── NAVIGATION ───────────────────────────────────────────────────────────
 function showScreen(id) {
+  // Bjælken bærer dagbogens ene handling og må ikke følge med over på andre skærme.
+  const bar = document.getElementById('diary-bar');
+  if (bar) {
+    const paaForsiden = id === 'screen-diary-welcome';
+    bar.style.display = paaForsiden ? 'block' : 'none';
+    document.body.classList.toggle('har-diary-bar', paaForsiden);
+  }
   if (typeof stopAloud === 'function') stopAloud();   // stop oplæsning ved navigation
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
@@ -1367,6 +1388,11 @@ function diaryUgeGitter(perioden, gemteNaetter, harUdfyldtIDag, ugeBredde, basel
       baselineSlutter: baselineMaal > 0 && start + bredde === baselineMaal && dage > baselineMaal,
     });
   }
+  // 🔴 ALLERFOERSTE MORGEN (Viktor 9/8): ingen »og N uger mere«. Han læste den som tvivl,
+  // ikke som overblik: »det kan skabe tvivl om hvad der så sker, eller om det er længere tid
+  // end jeg havde regnet med«. På dag 1 har klienten ingen erfaring at måle tallet imod.
+  // Fra dag 2 er linjen retvisende og bliver stående.
+  if (gemteNaetter === 0) return { bredde, nuUge, uger: uger.slice(0, nuUge + ugerFremme + 1), skjulte: 0 };
   // Klap fremtiden sammen, men kun når der er mere end én uge at spare: én skjult uge koster
   // en linje at fortælle om og sparer en linje at tegne, altså ingenting.
   const sidsteSynlige = nuUge + ugerFremme;
@@ -1401,7 +1427,7 @@ function baselineNudging(gemteNaetter, harUdfyldtIDag, srtErAktiv) {
     // at noget gik i stykker, og klienten får aldrig at vide at hun nåede det.
     return {
       stort: `Du har udfyldt de første ${maal} nætter`,
-      detalje: 'Din psykolog har nu det, der skal til for at ramme rigtigt fra den første uge. Udfylder du flere nætter, bliver billedet kun tydeligere.',
+      detalje: 'Din psykolog kan nu se, hvor meget du faktisk sover om natten. Det er tallet, I bruger til at aftale, hvornår du skal gå i seng og stå op. Udfylder du flere nætter, bliver tiderne kun mere præcise.',
       naerhed: null,
     };
   }
@@ -1418,7 +1444,7 @@ function baselineNudging(gemteNaetter, harUdfyldtIDag, srtErAktiv) {
     stort: gemteNaetter === 0
       ? `${maal} nætter til en god start`
       : `${mangler} ${mangler === 1 ? 'nat' : 'nætter'} tilbage af de første ${maal}`,
-    detalje: `Hver nat, du udfylder, gør billedet af din søvn mere præcist. Med de første ${maal} nætter har din psykolog det, der skal til for at ramme rigtigt fra den første uge.`,
+    detalje: `De første ${maal} nætter viser, hvor meget du faktisk sover om natten. Det er tallet, din psykolog bruger til at aftale, hvornår du skal gå i seng og stå op. Jo flere nætter, jo bedre passer tiderne til dig.`,
     naerhed: `Udfylder du hver nat, er du igennem dem ${naar}.`,
   };
 }
@@ -1435,6 +1461,15 @@ function srtMinToHhmm(min) {
   min = ((min % 1440) + 1440) % 1440;
   var h = Math.floor(min / 60), m = min % 60;
   return ('0' + h).slice(-2) + ':' + ('0' + m).slice(-2);
+}
+/// Det ordinerede vindue som klokkeslæt, læst af linkets egne parametre (tib + wake).
+/// Samme udregning som påmindelsen øverst i formularen brugte inline; nu ét sted, så de to
+/// flader ikke kan nå frem til hvert sit vindue. null = linket bærer det ikke.
+function srtVindueFraLink() {
+  const tib = parseInt(srtTibParam, 10);
+  const wake = srtHhmmToMin(srtWakeParam);
+  if (isNaN(tib) || wake == null) return null;
+  return { fra: srtMinToHhmm(wake - tib), til: srtWakeParam };
 }
 function srtEsc(x) { return String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 function srtInlineBold(x) { return srtEsc(x).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>'); }
@@ -1551,9 +1586,8 @@ async function runDiary(id) {
   // M1.6: kompakt vindue-reminder øverst i dagbogen (SRT-mode; link tilbage til vinduet).
   if (srtAktiv && !document.getElementById('srt-diary-reminder')) {
     const dWrap = document.querySelector('#screen-diary-form .wrap');
-    const tibV = parseInt(srtTibParam, 10);
-    const wm = srtHhmmToMin(srtWakeParam);
-    const fraTid = (!isNaN(tibV) && wm != null) ? srtMinToHhmm(wm - tibV) : null;
+    const v = srtVindueFraLink();
+    const fraTid = v ? v.fra : null;
     if (fraTid != null && dWrap) {
       const el = document.createElement('div');
       el.className = 'srt-diary-reminder'; el.id = 'srt-diary-reminder';
@@ -1689,7 +1723,22 @@ function renderDiaryWelcome() {
 
   // §3f forventningsstyring (Fase C, UDKAST til Viktor-ratifikation): dagbogen er
   // nyttig uanset hvad oplysningsskemaet viser — klienten skal roligt gå i gang nu.
-  intro.textContent = 'Udfyld dagbogen kort hver morgen for natten, der gik. Det tager et øjeblik. Skriv bare som du husker den. Til sidst samler vi alle dagene i én fil, som du sender til din psykolog. Har du også fået et kort oplysningsskema, kan du trygt gå i gang med dagbogen med det samme: den er nyttig for dit forløb, uanset hvad oplysningsskemaet viser.';
+  // 🔴 Viktor 9/8: den fulde tekst er vigtig FØRSTE gang, »da det er her det er vigtigt at se
+  // det«. Derefter er den kognitiv belastning hver eneste morgen. Den er derfor FOLDET fra
+  // dag 2, ikke slettet: ét tryk væk, og ordlyden er uændret.
+  const introLang = 'Udfyld dagbogen kort hver morgen for natten, der gik. Det tager et øjeblik. Skriv bare som du husker den. Til sidst samler vi alle dagene i én fil, som du sender til din psykolog. Har du også fået et kort oplysningsskema, kan du trygt gå i gang med dagbogen med det samme: den er nyttig for dit forløb, uanset hvad oplysningsskemaet viser.';
+  if (done >= 1) {
+    intro.innerHTML = '<span>Godmorgen. Udfyld for natten, der gik. Det tager et \u00f8jeblik.</span> '
+      + '<button type="button" class="tekst-mere" id="intro-mere">Hvad skal jeg skrive?</button>'
+      + '<span id="intro-lang" hidden></span>';
+    document.getElementById('intro-lang').textContent = ' ' + introLang;
+    document.getElementById('intro-mere').addEventListener('click', () => {
+      const l = document.getElementById('intro-lang'), b = document.getElementById('intro-mere');
+      l.hidden = !l.hidden; b.textContent = l.hidden ? 'Hvad skal jeg skrive?' : 'Skjul igen';
+    });
+  } else {
+    intro.textContent = introLang;
+  }
 
   // Privatlivstekst.
   // - localStorage-variant: v1-tekst i diary-privacy (under knappen, uændret).
@@ -1701,15 +1750,17 @@ function renderDiaryWelcome() {
     ? chipIcon('laas') + '<strong>Privatliv:</strong> Dine svar gemmes kun i denne browser på din egen enhed. De sendes ikke nogen steder undervejs. Udfyld alle dagene på den samme enhed. Når du er klar, ' + (autoSendEnabled() ? 'sendes de sikkert og krypteret direkte til din psykolog, så kun din psykolog kan åbne dem.' : 'samles svarene i én krypteret fil, som kun din psykolog kan åbne, og du sender den selv til sidst.') + ' <strong>Bemærk:</strong> rydder du browseren eller skifter enhed, mistes de dage, du har gemt, og du må starte forfra.'
     : '';
   renderDiaryConsent();
+  renderDiaryOplysning();
 
   // Open-ended: vis reelt dag-tal; "af N" kun mens inden for målet, ellers "(fortsat)".
   const dagNu = done + (filledToday ? 0 : 1);
   document.getElementById('diary-progress-text').textContent =
     dagNu <= N ? `Dag ${dagNu} af ${N}` : `Dag ${dagNu} (fortsat)`;
 
-  // Ugentlig ikke-terminal "Send opdatering"-knap (fortsætter forløbet).
+  // Ugentlig ikke-terminal "Send opdatering"-knap. Med auto-send er den overflødig og VÆK
+  // (Viktor 9/8); uden auto-send er den den eneste vej, og så bliver den stående.
   const updateBtn = document.getElementById('diary-update-btn');
-  if (updateBtn) updateBtn.style.display = done >= 1 ? 'block' : 'none';
+  if (updateBtn) updateBtn.style.display = (done >= 1 && !autoSendEnabled()) ? 'block' : 'none';
 
   const dotsEl = document.getElementById('diary-dots');
   dotsEl.innerHTML = '';
@@ -1753,7 +1804,19 @@ function renderDiaryWelcome() {
   const blEl = document.getElementById('diary-baseline');
   if (blEl) {
     const nud = baselineNudging(done, filledToday, srtAktiv);
-    if (!nud) { blEl.style.display = 'none'; blEl.innerHTML = ''; }
+    // 🔴 Viktor 9/8: »ugerne 3 og frem er der blevet etableret et søvnvindue, og det er
+    // oplagt at man kan se hvad det ordinerede søvnvindue er«. Slottet er ledigt af sig selv:
+    // baselineNudging() tier netop når ordinationen er leveret, så de to kan ikke støde sammen.
+    // Tiderne kommer fra linkets egne parametre (samme kilde som påmindelsen i formularen),
+    // ikke fra en ny udregning.
+    const ordVindue = srtAktiv ? srtVindueFraLink() : null;
+    if (ordVindue) {
+      blEl.style.display = 'block';
+      blEl.innerHTML = '<div class="diary-baseline-stort srt-aloud">Dit søvnvindue lige nu</div>'
+        + '<p class="diary-baseline-detalje srt-aloud"><strong>' + srtEsc(ordVindue.fra) + ' til ' + srtEsc(ordVindue.til) + '</strong>'
+        + '. Det er de tider, I har aftalt, at du er i sengen.</p>'
+        + '<p class="diary-baseline-naerhed srt-aloud">Dagbogen viser din psykolog, hvordan det går, så tiderne kan justeres.</p>';
+    } else if (!nud) { blEl.style.display = 'none'; blEl.innerHTML = ''; }
     else {
       blEl.style.display = 'block';
       blEl.innerHTML = '<div class="diary-baseline-stort srt-aloud">' + srtEsc(nud.stort) + '</div>'
@@ -1797,9 +1860,64 @@ function renderDiaryWelcome() {
     if (backfillBtn) backfillBtn.style.display = 'none';
   }
 
+  // Dagens handling som fast bjælke. Den spejler knappen i siden, så rækkefølgen af tekst
+  // på siden er urørt; den fjerner kun de 325 px rul der lå mellem klienten og hendes minut.
+  (function tegnDiaryBar() {
+    let bar = document.getElementById('diary-bar');
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.id = 'diary-bar'; bar.className = 'diary-bar';
+      bar.innerHTML = '<button class="btn-primary" id="diary-bar-btn"></button>'
+        + '<p class="diary-bar-rest" id="diary-bar-rest"></p>';
+      document.body.appendChild(bar);
+      document.getElementById('diary-bar-btn')
+        .addEventListener('click', () => document.getElementById('diary-start-btn').click());
+    }
+    document.getElementById('diary-bar-btn').textContent = startBtn.textContent;
+    const nud = baselineNudging(done, filledToday, srtAktiv);
+    const v = srtAktiv ? srtVindueFraLink() : null;
+    document.getElementById('diary-bar-rest').textContent =
+      v ? `Dit vindue: ${v.fra} til ${v.til}` : (nud ? nud.stort : '');
+    document.body.classList.add('har-diary-bar');
+  })();
+
   document.getElementById('diary-attribution').textContent = diarySkema.attribution || '';
   const fp = document.getElementById('diary-key-fp');
   if (fp) fp.textContent = 'Krypteret til din psykologs nøgle · ID ' + aktivKeyId();
+}
+
+/// LAG 1 (oplysningspligten) som noget der kan LÆSES FÆRDIG.
+///
+/// 🔴 Viktor 9/8: teksten er vigtig første gang, »da det er her det er vigtigt at se det«.
+/// Bagefter er den kognitiv belastning hver morgen resten af forløbet.
+///
+/// 🔴 DET ER IKKE ET SAMTYKKE og må aldrig komme til at ligne et. Behandlingen hviler på
+/// journalføringspligten (register 1.7), ikke på klientens ja. Derfor:
+///  - hakket GATER INTET. Alt virker nøjagtig som før, hakket eller ej.
+///  - ordlyden er »Læst og forstået«, aldrig »jeg accepterer«.
+///  - teksten SLETTES ikke, den foldes, og er ét tryk væk resten af forløbet.
+///  - selve afsnittenes ordlyd er uændret (låst tekst, kopieres fra DOM'en).
+/// Kvitteringen er lokal (samme localStorage som dagbogen), fordi den kun styrer visning.
+function renderDiaryOplysning() {
+  const el = document.getElementById('diary-oplysning');
+  if (!el) return;
+  if (!el.dataset.fuld) el.dataset.fuld = el.innerHTML;   // den låste ordlyd, gemt én gang
+  if (!(diaryState && diaryState.oplysningLaest)) {
+    el.innerHTML = el.dataset.fuld
+      + '<label class="oplysning-kvittér"><input type="checkbox" id="oplysning-hak">'
+      + '<span>Læst og forstået. Så viser vi den kort herefter.</span></label>';
+    const hak = document.getElementById('oplysning-hak');
+    if (hak) hak.addEventListener('change', () => {
+      if (!hak.checked) return;
+      diaryState.oplysningLaest = true;
+      saveCSDState(diaryState);
+      renderDiaryOplysning();
+    });
+    return;
+  }
+  el.innerHTML = '<p class="oplysning-kort">Dine svar indgår i din journal hos din psykolog, og kun din psykolog kan åbne dem. '
+    + '<button type="button" class="tekst-mere" id="oplysning-mere">Læs det fulde igen</button></p>';
+  document.getElementById('oplysning-mere').addEventListener('click', () => { el.innerHTML = el.dataset.fuld; });
 }
 
 // LAG 2 (SERVER-KLADDEN) — §1 (privatliv, verbatim) + §2 (Art.9-samtykke, verbatim checkbox).
@@ -3127,6 +3245,37 @@ function saveDiaryEntry() {
   showScreen('screen-diary-welcome');
   window.scrollTo(0, 0);
   pushDraft();              // krypter HELE dagbogen → PUT (fire-and-forget; offline-buffer ved fejl)
+  autoSendUgentlig(erNyEntry);
+}
+
+/// 🔴 Viktor 9/8: »der skal ikke være en knap der siger Send opdatering til psykolog, da det
+/// allerede skal ske automatisk når man har udfyldt spørgsmålene«.
+///
+/// PRÆMISSEN HOLDT IKKE, og det ændrede hvad der skulle bygges. MÅLT i kilden før en linje
+/// blev skrevet: `sendTilIngest` kaldes fra PRÆCIS to steder for dagbogen, `finishDiary`
+/// (afslut perioden) og selve den knap der skulle væk. **At gemme en nat sendte ingenting**,
+/// hverken med eller uden auto-send-token. Fjernede jeg kun knappen, ville psykologen først
+/// se noget når klienten afsluttede perioden, altså op til 90 dage senere.
+///
+/// KADENCEN ER UGEN, ikke natten, og det er et valg med en pris: hver forsendelse bærer HELE
+/// dagbogen (`byggDiaryPayload`), og ingest er append-only. Pr. nat ville en 90-dages periode
+/// give 90 kuverter i indbakken, hver større end den før. Ugen er samtidig den enhed
+/// behandlingen kører i, og den `% 7`-kadence koden allerede brugte til uge-kortet.
+///
+/// Uden `it=` i linket findes der ingen automatisk vej overhovedet; da BEHOLDES knappen,
+/// for ellers ville data aldrig nå frem. Knappen er altså ikke fjernet, den er gjort
+/// overflødig dér hvor den faktisk er det.
+async function autoSendUgentlig(erNyEntry) {
+  if (!erNyEntry || !autoSendEnabled()) return;
+  if (diaryState.entries.length % 7 !== 0) return;
+  const status = document.getElementById('diary-update-status');
+  try {
+    const ok = await sendTilIngest(byggDiaryPayload(false), 'soevndagbog');
+    if (ok && status) {
+      status.style.color = 'var(--accent)';
+      status.textContent = 'Ugens søvndagbog er sendt sikkert til din psykolog. Du behøver ikke gøre mere.';
+    }
+  } catch (e) { /* stilhed er rigtigt her: klienten har gemt sin nat, og den ligger sikkert lokalt */ }
 }
 
 function finishDiary() {
