@@ -1287,6 +1287,45 @@ const BASELINE_MAANEDER = ['januar', 'februar', 'marts', 'april', 'maj', 'juni',
 /// Uge-gitterets bredde. 7 = én uge pr. række, som er den enhed behandlingen kører i.
 /// Kan sættes til 14 (to uger pr. række, halvt så mange rækker) uden at røre andet.
 const DIARY_UGE_BREDDE = 7;
+/// Hvor mange udgåede udgaver af SAMME nat der bæres med (Viktor 9/8, rettelses-historik).
+/// Backstop, ikke en forventet grænse: en klient der retter samme nat elleve gange er en
+/// anden slags observation end en der retter én gang, og begge skal kunne aflæses.
+const RETTELSER_MAX = 10;
+
+/// Hvilken nat en dagbogs-dato handler om. En entry dateret 2026-08-09 udfyldes om
+/// morgenen den 9. og beskriver natten DERTIL, altså fra aftenen den 8.
+///
+/// 🔴 Viktor 9/8: »det skal være lidt tydeligere hvad "Udfyld for i går" er sammenlignet
+/// med "Udfyld for i nat" - jeg foreslår, at der står den faktisk dag/nat der er omtales«.
+/// De to gamle etiketter var relative til hinanden og til aflæsningstidspunktet, så de kun
+/// kunne skelnes ved at regne. En ugedag kan ikke misforstås, og datoen lukker den sidste
+/// tvetydighed (to søndage i et 90-dages forløb).
+///
+/// Ren funktion, så prøven kan læse den ÆGTE kilde ud af index.html og køre den. En
+/// genskrevet kopi i prøven ville være grøn præcis i det øjeblik kilden holdt op med at
+/// matche den.
+function nyHistorik(forrigeEntry, historikMax = RETTELSER_MAX) {
+  const forrige = { ...forrigeEntry };
+  const historik = Array.isArray(forrige.tidligere) ? forrige.tidligere : [];
+  const alleredeKappet = forrige.tidligereKappet || 0;
+  delete forrige.tidligere; delete forrige.tidligereKappet;   // ingen rekursiv indlejring
+  const alle = historik.concat([forrige]);
+  return {
+    tidligere: alle.slice(-historikMax),
+    // 🔵 Loftet er en backstop mod at én nat kan vokse uden grænse i en append-only
+    // ingest. Bliver det ramt, SKAL det kunne ses i data: et tavst loft ville aflæses
+    // som »hun rettede tre gange«, når hun rettede tolv.
+    tidligereKappet: alleredeKappet + Math.max(0, alle.length - historikMax),
+  };
+}
+
+const NAT_UGEDAGE = ['søndag', 'mandag', 'tirsdag', 'onsdag', 'torsdag', 'fredag', 'lørdag'];
+function natNavn(datoISO, medDato = true) {
+  const d = new Date(datoISO + 'T12:00:00');
+  if (isNaN(d.getTime())) return null;   // gæt aldrig en dato: ingen etiket er bedre end en forkert
+  const kort = `natten til ${NAT_UGEDAGE[d.getDay()]}`;
+  return medDato ? `${kort} ${d.getDate()}. ${BASELINE_MAANEDER[d.getMonth()]}` : kort;
+}
 
 function dateISO(offsetDays = 0) {
   const d = new Date();
@@ -1835,11 +1874,17 @@ function renderDiaryWelcome() {
     }
   }
 
+  // Viktor 9/8: knappen siger hvilken nat den handler om. Ugedagen står på knappen (kort
+  // nok til én linje på en telefon), datoen står i linjen under, hvor der er plads.
+  const natIDag = natNavn(todayISO(), false);
+  const natIDagLang = natNavn(todayISO());
   if (filledToday) {
-    startBtn.textContent = 'Ret dagens svar';
-    note.textContent = 'Du har allerede udfyldt for i dag. Kom tilbage i morgen, eller ret dagens svar.';
+    startBtn.textContent = natIDag ? `Ret ${natIDag}` : 'Ret dagens svar';
+    note.textContent = natIDagLang
+      ? `Du har udfyldt ${natIDagLang}. Kom tilbage i morgen, eller ret dine svar.`
+      : 'Du har allerede udfyldt for i dag. Kom tilbage i morgen, eller ret dagens svar.';
   } else {
-    startBtn.textContent = 'Udfyld for i nat';
+    startBtn.textContent = natIDag ? `Udfyld ${natIDag}` : 'Udfyld for i nat';
     note.textContent = `Gemt: ${done} ${done === 1 ? 'dag' : 'dage'}. Kom tilbage hver morgen.`;
   }
   startBtn.disabled = false;
@@ -1863,6 +1908,11 @@ function renderDiaryWelcome() {
     const yMissed = !diaryState.entries.find(e => e.date === y);
     const yInPeriod = y >= diaryState.startedAt;
     backfillBtn.style.display = (yMissed && yInPeriod) ? 'block' : 'none';
+    // De to knapper stod før som »Udfyld for i nat« og »Udfyld for i går«, altså to
+    // relative udtryk der kun kunne skelnes ved at regne baglæns fra i dag. Nu bærer de
+    // hver sin ugedag, så forskellen kan ses uden at regne.
+    const natIGaar = natNavn(y, false);
+    if (natIGaar) backfillBtn.textContent = `Udfyld ${natIGaar} (den manglede)`;
   }
 
   // Server-recovery (ITP-wipe): lokal kladde væk, men serveren havde en krypteret.
@@ -2037,16 +2087,25 @@ function startDiaryEntry(forDate, prefillEntry) {
   const src = existing || prefillEntry || null;
   diaryDraft = src ? { ...src } : {};
   delete diaryDraft.date; delete diaryDraft.savedAt;
+  // Rettelses-historikken hører til entry'en, ikke til udkastet. `saveDiaryEntry` bygger
+  // sin entry fra skemaets felter og ville derfor ikke kopiere den alligevel, men et udkast
+  // der bærer sin egen historik er en indlejring der venter på at ske.
+  delete diaryDraft.tidligere; delete diaryDraft.tidligereKappet;
   // INGEN committed defaults (spec-ux-soevndagbog-udfyldning §1+§2-Fælde-C): et
   // urørt valgfrit felt skal forblive ubesvaret, aldrig auto-fyldes med "Nej"/"Intet"
   // — en fantom-default registreres som et falsk svar og forurener kliniske data.
   // Det eneste der forudfylder er `src` ("Samme som i går" / rettelse af eksisterende).
 
-  // Dag-label: "I går" ved backfill, ellers "Dag k".
+  // Dag-label. Viktor 9/8: skærmen hvor svarene faktisk gives, skal sige hvilken nat de
+  // gælder. Dag-nummeret bliver stående (det er klientens fremdrift), og natten står ved
+  // siden af med ugedag og dato. »I går« er væk som selvstændig etiket: den fortalte hvor
+  // langt tilbage man udfyldte, ikke hvad man udfyldte.
   const priorCount = diaryState.entries.filter(e => e.date < diaryFillDate).length;
   const dagNr = existing ? (diaryState.entries.findIndex(e => e.date === diaryFillDate) + 1) : (priorCount + 1);
+  const dagTekst = `Dag ${Math.min(dagNr, diaryState.plannedDays)}`;
+  const natTekst = natNavn(diaryFillDate);
   document.getElementById('diary-form-day').textContent =
-    diaryFillDate === yesterdayISO() ? 'I går' : `Dag ${Math.min(dagNr, diaryState.plannedDays)}`;
+    natTekst ? `${dagTekst} · ${natTekst}` : dagTekst;
   document.getElementById('diary-form-instruction').textContent = diarySkema.instruction;
 
   // "Samme som i går"-genvej: vis hvis der findes en tidligere dag og vi ikke
@@ -3240,8 +3299,26 @@ function saveDiaryEntry() {
   if (kort) diaryState.nudgeKortSet = true;   // persisteres af saveCSDState nedenfor
 
   // Dag-dedup: én entry pr. kalenderdag (overskriv hvis samme dag gemmes igen).
+  //
+  // 🔴 Viktor 9/8: »den nye data der bliver sendt er den jeg ser i SøvnHub, men den gamle
+  // data er stadig gemt. På den måde er det muligt at fange, hvis det er en fejlrettelse
+  // eller bare data vi kan lære fremadrettet om hvad der mon kunne være typiske
+  // fejlindberetninger der blev ændret.«
+  //
+  // Rettelsen ER den gældende udgave (`entry` skrives i pladsen, så hubben viser det nye).
+  // Den udgåede udgave flyttes ned i `entry.tidligere`, ældst først, så en rettelse kan
+  // aflæses som en rettelse i stedet for at forsvinde. Historikken bæres af selve entry'en,
+  // ikke af en sidevogn: så følger den automatisk med hver gang natten sendes, og kan
+  // hverken komme ud af trit med sin egen nat eller overleve dens sletning.
   const idx = diaryState.entries.findIndex(e => e.date === date);
-  if (idx >= 0) diaryState.entries[idx] = entry; else diaryState.entries.push(entry);
+  if (idx >= 0) {
+    const h = nyHistorik(diaryState.entries[idx]);
+    entry.tidligere = h.tidligere;
+    if (h.tidligereKappet > 0) entry.tidligereKappet = h.tidligereKappet;
+    diaryState.entries[idx] = entry;
+  } else {
+    diaryState.entries.push(entry);
+  }
   diaryState.entries.sort((a, b) => a.date.localeCompare(b.date));
 
   // Ugentligt refleksions-kort: kun ved en NY entry der bringer antallet til et

@@ -824,6 +824,25 @@ export function buildPayloadCSD(entries, meta = {}) {
     const out = { date: e.date };
     for (const k of FIELD_KEYS) if (e[k] != null && e[k] !== '') out[k] = e[k];
     if (e.nudgeKort !== undefined) out.nudgeKort = e.nudgeKort;   // Feature B: {id, tekstVersion} | null
+    // Hvornår den GÆLDENDE udgave blev gemt. Uden den kan psykologen se HVAD der blev
+    // rettet, men ikke hvornår, og en rettelse samme morgen er en anden slags hændelse
+    // end en rettelse tre dage efter.
+    if (e.savedAt) out.savedAt = e.savedAt;
+    // 🔴 Rettelses-historik (Viktor 9/8). FIELD_KEYS er en HVIDLISTE, og en hvidliste
+    // dropper TAVST det den ikke kender: uden disse linjer ville de udgåede udgaver blive
+    // gemt trofast på klientens telefon og forsvinde mellem hendes disk og psykologens
+    // skærm. Hver tidligere udgave hvidlistes gennem samme nåleøje som den gældende, så
+    // en rettelse ikke kan blive en bagvej for felter der ellers ikke må eksporteres.
+    if (Array.isArray(e.tidligere) && e.tidligere.length) {
+      out.tidligere = e.tidligere.map((t) => {
+        const v = { date: t.date };
+        if (t.savedAt) v.savedAt = t.savedAt;
+        for (const k of FIELD_KEYS) if (t[k] != null && t[k] !== '') v[k] = t[k];
+        if (t.nudgeKort !== undefined) v.nudgeKort = t.nudgeKort;
+        return v;
+      });
+    }
+    if (e.tidligereKappet) out.tidligereKappet = e.tidligereKappet;   // aldrig et tavst loft
     return out;
   });
 
