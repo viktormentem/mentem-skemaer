@@ -183,6 +183,12 @@
                 text-decoration:underline; cursor:pointer; }
   .oplysning-kvittér { display:flex; gap:9px; align-items:flex-start; margin-top:10px; font-size:13.5px; color:var(--muted); }
   .oplysning-kort { font-size:13.5px; color:var(--muted); }
+  /* Stop-linjen: en linje, ikke en knap. Den skal kunne findes af den der leder efter den,
+     og overses af den der ikke gør. */
+  .diary-stop-linje { margin:18px 0 0; text-align:center; }
+  .diary-stop-linje button { background:none; border:0; padding:6px 8px; font:inherit; font-size:13px;
+                             color:var(--muted); text-decoration:underline; cursor:pointer; }
+  .diary-stop-linje button:hover { color:var(--ink); }
   .diary-uger { display:flex; flex-direction:column; gap:4px; margin-top:14px; }
   /* 46 px, ikke 30: »Uge 13« brækkede i to linjer og gjorde den venstre kant ragget. */
   .diary-uge { display:grid; grid-template-columns:46px auto; align-items:center; gap:10px;
@@ -469,10 +475,14 @@
     <button class="btn-primary" id="diary-start-btn">Udfyld for i nat</button>
     <button class="btn-secondary" id="diary-backfill-btn" style="display:none">Udfyld for i går</button>
     <button class="btn-secondary" id="diary-update-btn" style="display:none">Send opdatering til psykolog</button>
-    <button class="btn-secondary" id="diary-finish-now-btn" style="display:none">Afslut og send til psykolog</button>
     <p class="start-note" id="diary-note"></p>
     <div class="done-status" id="diary-update-status" style="min-height:0"></div>
     <div class="disclaimer" id="diary-privacy"></div>
+    <!-- 🔴 Viktor 9/8: at stoppe forløbet må ALDRIG kunne rammes ved et fejltryk. Derfor
+         står den her, nederst, under privatlivsteksten, som en diskret linje og ikke som en
+         knap i stakken foroven. Tre lag mellem klienten og et uheld: placeringen, at den
+         ikke ligner en handling, og en bekræftelse der siger hvad der sker. -->
+    <p class="diary-stop-linje"><button type="button" id="diary-finish-now-btn" style="display:none">Jeg vil stoppe søvndagbogen</button></p>
     <p class="footer-credit" id="diary-attribution"></p>
     <p class="footer-credit" id="diary-key-fp"></p>
   </div>
@@ -1834,12 +1844,15 @@ function renderDiaryWelcome() {
   }
   startBtn.disabled = false;
 
-  finishNow.style.display = done >= 1 ? 'block' : 'none';
-  if (done >= N) {
-    finishNow.textContent = 'Perioden er fuldført. Send til psykolog';
-    note.textContent = `Du har udfyldt alle ${N} dage. Tryk for at sende til din psykolog.`;
-  } else {
-    finishNow.textContent = 'Afslut og send til psykolog nu';
+  // 🔴 Med auto-send HAR psykologen allerede nattens svar, så det her handler ikke længere om
+  // at sende. Det handler om at STOPPE, og det skal linjen sige. Uden auto-send er den stadig
+  // den eneste leveringsvej, og da må ordlyden ikke love noget andet.
+  finishNow.style.display = done >= 1 ? 'inline' : 'none';
+  finishNow.textContent = autoSendEnabled()
+    ? 'Jeg vil stoppe søvndagbogen'
+    : (done >= N ? 'Perioden er fuldført. Send til psykolog' : 'Afslut og send til psykolog');
+  if (done >= N && !autoSendEnabled()) {
+    note.textContent = `Du har udfyldt alle ${N} dage. Tryk nederst for at sende til din psykolog.`;
   }
 
   // 1-dags backfill-nåde: tillad "udfyld for i går" hvis misset (max 1 dag
@@ -3245,7 +3258,7 @@ function saveDiaryEntry() {
   showScreen('screen-diary-welcome');
   window.scrollTo(0, 0);
   pushDraft();              // krypter HELE dagbogen → PUT (fire-and-forget; offline-buffer ved fejl)
-  autoSendUgentlig(erNyEntry);
+  autoSendEfterNat(erNyEntry);
 }
 
 /// 🔴 Viktor 9/8: »der skal ikke være en knap der siger Send opdatering til psykolog, da det
@@ -3257,24 +3270,33 @@ function saveDiaryEntry() {
 /// hverken med eller uden auto-send-token. Fjernede jeg kun knappen, ville psykologen først
 /// se noget når klienten afsluttede perioden, altså op til 90 dage senere.
 ///
-/// KADENCEN ER UGEN, ikke natten, og det er et valg med en pris: hver forsendelse bærer HELE
-/// dagbogen (`byggDiaryPayload`), og ingest er append-only. Pr. nat ville en 90-dages periode
-/// give 90 kuverter i indbakken, hver større end den før. Ugen er samtidig den enhed
-/// behandlingen kører i, og den `% 7`-kadence koden allerede brugte til uge-kortet.
+/// KADENCEN ER NATTEN (Viktor 9/8, og hans begrundelse vendte min egen indvending). Jeg
+/// havde valgt ugen for at spare kuverter. Ordret: »det er nemlig muligt for klienten at få
+/// sms'er med påmindelser hvis de ikke har udfyldt (...) det er en vigtig trigger for mig at
+/// vide de har udfyldt eller kunne følge med i om de er igang, så jeg evt. kan kontakte dem
+/// hvis de er stoppet.« En nat er altså ikke kun data, den er et LIVSTEGN, og et livstegn
+/// der kommer en gang om ugen kan ikke bruges til at opdage at nogen er faldet fra.
+///
+/// PRISEN, skrevet ud: hver forsendelse bærer HELE dagbogen (`byggDiaryPayload`) og ingest er
+/// append-only, så en 90-dages periode giver op til 90 kuverter, hver større end den før.
+/// Til gengæld er den NYESTE kuvert altid den komplette: falder en nat på gulvet (offline,
+/// lukket fane), henter den næste den ind af sig selv. Der er derfor ingen kø at vedligeholde
+/// og intet tabt, kun et hul i tidsstemplerne der viser præcis det du vil kunne se.
 ///
 /// Uden `it=` i linket findes der ingen automatisk vej overhovedet; da BEHOLDES knappen,
 /// for ellers ville data aldrig nå frem. Knappen er altså ikke fjernet, den er gjort
 /// overflødig dér hvor den faktisk er det.
-async function autoSendUgentlig(erNyEntry) {
+async function autoSendEfterNat(erNyEntry) {
   if (!erNyEntry || !autoSendEnabled()) return;
-  if (diaryState.entries.length % 7 !== 0) return;
   const status = document.getElementById('diary-update-status');
   try {
     const ok = await sendTilIngest(byggDiaryPayload(false), 'soevndagbog');
-    if (ok && status) {
-      status.style.color = 'var(--accent)';
-      status.textContent = 'Ugens søvndagbog er sendt sikkert til din psykolog. Du behøver ikke gøre mere.';
-    }
+    // 🔴 Husets EGEN kvittering, ikke min egen streng. `visSendtKvittering` er nordstjernen
+    // (»klienten ser SAMME kvittering overalt«), og jeg havde bygget en sidste-øjebliks-
+    // variant ved siden af den. Flow-navnet er det eksisterende 'soevndagbog-opdatering',
+    // hvis sekundære linje netop siger »Du kan roligt fortsætte dagbogen« - hvilket er
+    // præcis hvad en nat er: en afsendelse der IKKE afslutter noget.
+    if (ok && status) visSendtKvittering(status, 'soevndagbog-opdatering');
   } catch (e) { /* stilhed er rigtigt her: klienten har gemt sin nat, og den ligger sikkert lokalt */ }
 }
 
@@ -3283,8 +3305,10 @@ function finishDiary() {
   // Send-bekræft (irreversibelt): afslutning lukker perioden + sletter kladden.
   const done = diaryState.entries.length;
   const N = diaryState.plannedDays;
-  const ok = window.confirm(
-    `Du har udfyldt ${done} af ${N} dage.\n\nNår du sender, afsluttes perioden, og kladden lukkes. Er du sikker på, at du vil sende til din psykolog nu?`);
+  const ok = window.confirm(autoSendEnabled()
+    ? `Vil du stoppe din søvndagbog?\n\nDin psykolog får besked om, at du er stoppet, og dagbogen lukker. `
+      + `Du har udfyldt ${done} dage, og de er allerede sendt. Du kan ikke fortryde her i browseren.`
+    : `Du har udfyldt ${done} af ${N} dage.\n\nNår du sender, afsluttes perioden, og kladden lukkes. Er du sikker på, at du vil sende til din psykolog nu?`);
   if (!ok) return;
   const p = document.querySelector('#screen-done p');
   if (p) p.textContent = 'Dine søvndage er nu samlet i én krypteret fil. Tryk nedenfor for at sende filen til din psykolog i den samme SMS-tråd, hvor du fik linket.';

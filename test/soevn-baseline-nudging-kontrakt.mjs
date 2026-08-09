@@ -213,6 +213,36 @@ check('sidste uge er kortere naar perioden ikke gaar op (90 = 12x7 + 6)',
   git(90, 89, true).uger[git(90, 89, true).uger.length - 1].celler.length === 6,
   String(git(90, 89, true).uger[git(90, 89, true).uger.length - 1].celler.length));
 
+// ── Afsendelse og afslutning (Viktor 9/8: livstegn pr. nat · intet fejltryk) ─
+// Strukturelle naale. De maaler kilden, ikke en ren funktion, og det er med vilje: begge
+// egenskaber ER strukturelle (hvornaar kaldes der, og hvor staar knappen i dokumentet).
+console.log('Afsendelse og afslutning:');
+const sendFn = html.match(/async function autoSendEfterNat\([\s\S]*?\n\}/);
+check('autoSendEfterNat() findes', !!sendFn);
+if (sendFn) {
+  check('sender ved HVER nat, ikke kun ugens sidste', !/% *7/.test(sendFn[0]),
+    'kilden gater stadig paa en uge-rest');
+  check('sender kun ved en NY nat (ikke ved en rettelse)', /erNyEntry/.test(sendFn[0]));
+  check('sender kun naar der findes en automatisk vej', /autoSendEnabled\(\)/.test(sendFn[0]));
+  check('en fejlet forsendelse taber ikke natten (hele dagbogen sendes hver gang)',
+    /byggDiaryPayload\(false\)/.test(sendFn[0]), sendFn[0].slice(0, 120));
+}
+// 🔴 Stop-handlingen maa ikke kunne rammes ved et fejltryk: den skal staa EFTER
+// privatlivsteksten i dokumentet, og den maa ikke baere knap-klasserne fra stakken foroven.
+const iStop = html.indexOf('id="diary-finish-now-btn"');
+const iPriv = html.indexOf('id="diary-privacy"');
+const iStart = html.indexOf('id="diary-start-btn"');
+check('stop-linjen staar efter privatlivsteksten', iStop > iPriv && iPriv > 0,
+  JSON.stringify({ iStop, iPriv }));
+check('stop-linjen staar efter dagens knap', iStop > iStart && iStart > 0);
+const stopTag = html.slice(iStop - 120, iStop + 60);
+check('stop-linjen er IKKE stylet som en knap i stakken', !/btn-primary|btn-secondary/.test(stopTag), stopTag);
+// POS-KTRL paa naalen selv: dagens knap BAERER knap-klassen, saa maalingen ovenfor kan
+// skelne de to. Uden den ville »ingen knap-klasse« ogsaa vaere gron paa et tomt dokument.
+check('POS-KTRL: dagens knap baerer stadig btn-primary',
+  /btn-primary[^>]*id="diary-start-btn"|id="diary-start-btn"[^>]*btn-primary/.test(html)
+  || /<button class="btn-primary" id="diary-start-btn"/.test(html));
+
 // ── Drift mod appens konstant ────────────────────────────────────────────────
 // Maalet er appens, ikke denne fils praeference: SRTMotor.minimumBaselineNætter.
 // Er app-repoet ikke til stede, er dette UMAALT. Det skrives ud som UMAALT og taelles
