@@ -166,7 +166,23 @@
   .diary-progress { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:18px 22px; margin-bottom:28px; }
   .diary-progress-label { font-size:13px; font-weight:500; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; }
   .diary-progress-big { font-family:'DM Serif Display',serif; font-size:24px; margin-top:4px; }
-  .diary-dots { display:flex; gap:7px; flex-wrap:wrap; margin-top:14px; }
+  /* Fremdriften er ORGANISERET I UGER, fordi behandlingen kører en uge ad gangen.
+     Før wrappede prikkerne ved den bredde der nu tilfældigvis var plads til (målt: 13 pr.
+     række ved 420 px), så uge 1 lå hen over to rækker og ingen række betød noget. */
+  .diary-uger { display:flex; flex-direction:column; gap:4px; margin-top:14px; }
+  /* 46 px, ikke 30: »Uge 13« brækkede i to linjer og gjorde den venstre kant ragget. */
+  .diary-uge { display:grid; grid-template-columns:46px auto; align-items:center; gap:10px;
+               padding:4px 6px; border-radius:8px; }
+  .diary-uge.nu { background:var(--accent-light, rgba(45,106,79,0.09)); }
+  .diary-uge.fremtid { opacity:0.5; }
+  .diary-uge-nr { font-size:11px; color:var(--muted); text-align:right; letter-spacing:0.02em;
+                  white-space:nowrap; }
+  .diary-uge.nu .diary-uge-nr { color:var(--accent); font-weight:700; }
+  .diary-uge-celler { display:grid; grid-template-columns:repeat(var(--uge-bredde,7), 14px); gap:7px; }
+  .diary-uge-skjulte { font-size:12px; color:var(--muted); padding:2px 0 0 56px; }
+  .diary-uge-skel { display:grid; grid-template-columns:46px auto; gap:10px; margin:3px 0 1px; }
+  .diary-uge-skel span { grid-column:2; font-size:10.5px; color:var(--muted); text-transform:uppercase;
+                         letter-spacing:0.06em; border-top:1px dashed var(--border); padding-top:4px; }
   .diary-dot { width:14px; height:14px; border-radius:50%; background:var(--border); }
   .diary-dot.done { background:var(--accent); }
   .diary-dot.today { box-shadow:0 0 0 2px var(--accent); background:var(--accent-light); }
@@ -415,7 +431,8 @@
     <div class="diary-progress">
       <div class="diary-progress-label">Fremdrift</div>
       <div class="diary-progress-big" id="diary-progress-text">Dag 1</div>
-      <div class="diary-dots" id="diary-dots"></div>
+      <!-- Uge-gitter (Viktor 9/8): behandlingen kører en uge ad gangen, så rækkerne ER uger. -->
+      <div class="diary-uger" id="diary-dots"></div>
       <!-- Baseline-nudging (Viktor 9/8): tæller mod de første 14 nætter, ALDRIG mod perioden. -->
       <div class="diary-baseline" id="diary-baseline" style="display:none"></div>
     </div>
@@ -1236,6 +1253,9 @@ const CSD_DEFAULT_DAYS = 14;
 const BASELINE_MAAL_NAETTER = 14;
 const BASELINE_MAANEDER = ['januar', 'februar', 'marts', 'april', 'maj', 'juni',
   'juli', 'august', 'september', 'oktober', 'november', 'december'];
+/// Uge-gitterets bredde. 7 = én uge pr. række, som er den enhed behandlingen kører i.
+/// Kan sættes til 14 (to uger pr. række, halvt så mange rækker) uden at røre andet.
+const DIARY_UGE_BREDDE = 7;
 
 function dateISO(offsetDays = 0) {
   const d = new Date();
@@ -1300,6 +1320,60 @@ function diaryPlannedDays() {
 }
 function diaryHasToday() {
   return !!(diaryState && diaryState.entries.find(e => e.date === todayISO()));
+}
+
+// ── Fremdriften som UGER, ikke som en stribe prikker ───────────────────────
+// Viktor 9/8: »søvnbehandling kører en uge ad gangen, så gridden burde være 7 eller 14 dage
+// horisontalt, og den igangværende uge skal være markeret anderledes end alle i fremtiden.
+// Det kan nemlig godt se meget uoverskueligt ud med 90 dage.«
+//
+// 🔴 Præmissen holdt, og den var værre end den lød. Prikkerne lå i en flex-wrap uden bredde,
+// så rækken brød dér hvor der tilfældigvis ikke var mere plads: MÅLT til 13 pr. række ved
+// 420 px. Uge 1 lå altså hen over to rækker, og ingen række svarede til noget klinisk.
+// Med 90 dage var resultatet 7 rækker, hvoraf 6 var helt tomme.
+//
+// UGEN ER ENHEDEN, fordi ordinationen er det: et vindue holdes en uge og titreres så.
+// Tre tilstande, ikke to: gået · den uge klienten står i · fremtid. Uden den midterste
+// forsvinder »hvor er jeg nu« i en mur af ens celler.
+//
+// Ren funktion (læses ud af filen og køres af test/soevn-baseline-nudging-kontrakt.mjs).
+function diaryUgeGitter(perioden, gemteNaetter, harUdfyldtIDag, ugeBredde, baselineMaal) {
+  const bredde = ugeBredde > 0 ? ugeBredde : 7;
+  const dage = Math.max(0, perioden);
+  // Hvor mange KOMMENDE uger der tegnes. Resten bliver til én linje, fordi det er dem der
+  // gør fladen uoverskuelig: en 90-dages periode gav 13 rækker, hvoraf 11 var tomme.
+  // 🔴 GÅEDE uger klappes IKKE sammen. De er fyldte, altså noget klienten har gjort, og et
+  // gitter der skjuler sit eget bevis, tager det væk lige når det er værd mest.
+  const ugerFremme = 1;
+  // Hvilken celle er »i dag«: er dagens nat ikke udfyldt endnu, er det den NÆSTE celle.
+  // Er den udfyldt, er det den sidste fyldte. Uden nætter overhovedet er det celle 0.
+  const iDagIndex = harUdfyldtIDag ? Math.max(0, gemteNaetter - 1) : gemteNaetter;
+  const nuUge = Math.min(Math.floor(iDagIndex / bredde), Math.max(0, Math.ceil(dage / bredde) - 1));
+  const uger = [];
+  for (let start = 0; start < dage; start += bredde) {
+    const nr = uger.length;
+    const celler = [];
+    for (let i = start; i < Math.min(start + bredde, dage); i++) {
+      celler.push(i < gemteNaetter ? 'udfyldt'
+        : (i === gemteNaetter && !harUdfyldtIDag ? 'idag' : 'kommende'));
+    }
+    uger.push({
+      nr: nr + 1,
+      tilstand: nr < nuUge ? 'gaaet' : (nr === nuUge ? 'nu' : 'fremtid'),
+      celler,
+      // Skellet tegnes under den uge hvor baseline-målet præcis slutter. Falder målet inde
+      // i en uge, tegnes intet skel: en streg midt i en uge ville påstå en grænse der ikke
+      // følger den enhed resten af gitteret er bygget på.
+      baselineSlutter: baselineMaal > 0 && start + bredde === baselineMaal && dage > baselineMaal,
+    });
+  }
+  // Klap fremtiden sammen, men kun når der er mere end én uge at spare: én skjult uge koster
+  // en linje at fortælle om og sparer en linje at tegne, altså ingenting.
+  const sidsteSynlige = nuUge + ugerFremme;
+  const skjulte = Math.max(0, uger.length - 1 - sidsteSynlige);
+  return skjulte > 1
+    ? { bredde, nuUge, uger: uger.slice(0, sidsteSynlige + 1), skjulte }
+    : { bredde, nuUge, uger, skjulte: 0 };
 }
 
 // ── Baseline-nudging: hvad fremdriften er VÆRD, ikke kun hvor langt den er ──
@@ -1639,10 +1713,39 @@ function renderDiaryWelcome() {
 
   const dotsEl = document.getElementById('diary-dots');
   dotsEl.innerHTML = '';
-  for (let i = 0; i < N; i++) {
-    const dot = document.createElement('div');
-    dot.className = 'diary-dot' + (i < done ? ' done' : (i === done && !filledToday ? ' today' : ''));
-    dotsEl.appendChild(dot);
+  const gitter = diaryUgeGitter(N, done, filledToday, DIARY_UGE_BREDDE, BASELINE_MAAL_NAETTER);
+  for (const uge of gitter.uger) {
+    const raekke = document.createElement('div');
+    raekke.className = 'diary-uge' + (uge.tilstand === 'nu' ? ' nu' : (uge.tilstand === 'fremtid' ? ' fremtid' : ''));
+    const nr = document.createElement('div');
+    nr.className = 'diary-uge-nr';
+    // Den igangværende uge siger sit navn, ikke sit nummer: det er den ene række klienten
+    // skal kunne finde uden at tælle.
+    nr.textContent = uge.tilstand === 'nu' ? 'Nu' : `Uge ${uge.nr}`;
+    const celler = document.createElement('div');
+    celler.className = 'diary-uge-celler';
+    celler.style.setProperty('--uge-bredde', String(gitter.bredde));
+    for (const c of uge.celler) {
+      const dot = document.createElement('div');
+      dot.className = 'diary-dot' + (c === 'udfyldt' ? ' done' : (c === 'idag' ? ' today' : ''));
+      celler.appendChild(dot);
+    }
+    raekke.appendChild(nr); raekke.appendChild(celler);
+    dotsEl.appendChild(raekke);
+    if (uge.baselineSlutter) {
+      const skel = document.createElement('div');
+      skel.className = 'diary-uge-skel';
+      skel.innerHTML = '<span>Her har din psykolog nok</span>';
+      dotsEl.appendChild(skel);
+    }
+  }
+  if (gitter.skjulte > 0) {
+    const mere = document.createElement('div');
+    mere.className = 'diary-uge-skjulte';
+    // Perioden står allerede stort som »Dag 12 af 90«, så linjen her behøver kun at sige
+    // at der ER mere, ikke gentage hvor meget.
+    mere.textContent = `og ${gitter.skjulte} uger mere i dit forløb`;
+    dotsEl.appendChild(mere);
   }
 
   // Baseline-nudgingen. Skjules kun når funktionen selv siger null (SRT leveret), aldrig

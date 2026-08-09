@@ -133,6 +133,68 @@ for (const [navn, r] of [['0 gemte', nud(0, false)], ['11 gemte', nud(11, false)
   check(`${navn}: ingen em dash`, !/—/.test(t), t);
 }
 
+// ── Uge-gitteret (Viktor 9/8: behandlingen koerer en uge ad gangen) ──────────
+// Foer: prikkerne laa i en flex-wrap uden bredde og braekkede dér hvor der tilfaeldigvis
+// ikke var mere plads (MAALT: 13 pr. raekke ved 420 px). Uge 1 laa hen over to raekker.
+console.log('Uge-gitter:');
+const gitMatch = html.match(/function diaryUgeGitter\([\s\S]*?\n\}/);
+check('diaryUgeGitter() findes i index.html', !!gitMatch);
+if (!gitMatch) { console.error('\nINSTRUMENTET ER DOEDT: gitter-funktionen kunne ikke laeses.'); process.exit(3); }
+function git(perioden, gemte, harIDag, bredde = 7, maal = BASELINE_MAAL_NAETTER) {
+  return runInNewContext(`${gitMatch[0]}\ndiaryUgeGitter(p, g, h, b, m);`,
+    { p: perioden, g: gemte, h: harIDag, b: bredde, m: maal }, { timeout: 1000 });
+}
+const g90 = git(90, 11, false);
+check('hver raekke er praecis een uge bred', g90.uger.every(u => u.celler.length === 7 || u === g90.uger[g90.uger.length - 1]),
+  JSON.stringify(g90.uger.map(u => u.celler.length)));
+check('den uge klienten staar i er markeret »nu« - og kun een uge er det',
+  g90.uger.filter(u => u.tilstand === 'nu').length === 1);
+check('11 gemte naetter -> »nu« er uge 2', g90.uger.find(u => u.tilstand === 'nu').nr === 2,
+  String(g90.uger.find(u => u.tilstand === 'nu').nr));
+check('ugen foer er »gaaet«, ugen efter er »fremtid«',
+  g90.uger[0].tilstand === 'gaaet' && g90.uger[2].tilstand === 'fremtid',
+  g90.uger.map(u => u.tilstand).join(','));
+check('dagens celle er markeret »idag« naar natten ikke er udfyldt',
+  g90.uger[1].celler[4] === 'idag', g90.uger[1].celler.join(','));
+check('er dagens nat udfyldt, findes der INGEN »idag«-celle',
+  git(90, 11, true).uger.every(u => !u.celler.includes('idag')));
+
+// 🔴 Det Viktor faktisk klagede over: 90 dage gav 13 raekker, hvoraf 11 var tomme.
+check('90 dage tegner 3 raekker, ikke 13', g90.uger.length === 3, String(g90.uger.length));
+check('resten staar som eet tal, ikke som tomme raekker', g90.skjulte === 10, String(g90.skjulte));
+check('gaaede uger klappes ALDRIG sammen (de baerer det klienten har gjort)',
+  git(90, 60, false).uger.filter(u => u.tilstand === 'gaaet').length === 8,
+  String(git(90, 60, false).uger.filter(u => u.tilstand === 'gaaet').length));
+// NEG-KTRL paa sammenklapningen: en kort periode maa ikke faa en »og 0 uger mere«-linje.
+check('14-dages periode klapper INTET sammen', git(14, 3, false).skjulte === 0);
+// 21 dage = 3 uger. Med »nu« i uge 1 og een uge frem er der praecis EEN uge tilbage at
+// skjule, og saa skal den tegnes: linjen ville koste noejagtig den raekke den sparer.
+// (28 dage giver 2 skjulte og klappes derfor sammen. Graensen er maalt, ikke valgt.)
+check('en enkelt skjult uge klappes ikke sammen (linjen ville koste det den sparer)',
+  git(21, 3, false).skjulte === 0 && git(21, 3, false).uger.length === 3,
+  JSON.stringify({ uger: git(21, 3, false).uger.length, skjulte: git(21, 3, false).skjulte }));
+
+// Baseline-skellet foelger uge-enheden, ellers paastaar det en graense midt i en uge.
+check('skellet ligger efter uge 2 ved 7 pr. raekke (14 naetter)',
+  g90.uger[1].baselineSlutter === true && g90.uger[0].baselineSlutter === false);
+check('ved 14 pr. raekke ligger skellet efter uge 1',
+  git(90, 11, false, 14).uger[0].baselineSlutter === true);
+check('ingen skel naar maalet falder INDE i en uge (10 naetter, 7 pr. raekke)',
+  git(90, 3, false, 7, 10).uger.every(u => !u.baselineSlutter));
+check('ingen skel naar perioden ER baseline (intet efter grænsen at skille fra)',
+  git(14, 3, false).uger.every(u => !u.baselineSlutter));
+
+// POS-KTRL: kan gitteret overhovedet se anderledes ud? 14 pr. raekke skal give halvt saa
+// mange celler pr. uge-objekt, ellers maaler bredde-parameteren ingenting.
+check('POS-KTRL: bredde 14 giver 14 celler i foerste raekke',
+  git(90, 11, false, 14).uger[0].celler.length === 14,
+  String(git(90, 11, false, 14).uger[0].celler.length));
+check('0 naetter gemt -> »nu« er foerste uge, og foerste celle er dagens',
+  git(90, 0, false).uger[0].tilstand === 'nu' && git(90, 0, false).uger[0].celler[0] === 'idag');
+check('sidste uge er kortere naar perioden ikke gaar op (90 = 12x7 + 6)',
+  git(90, 89, true).uger[git(90, 89, true).uger.length - 1].celler.length === 6,
+  String(git(90, 89, true).uger[git(90, 89, true).uger.length - 1].celler.length));
+
 // ── Drift mod appens konstant ────────────────────────────────────────────────
 // Maalet er appens, ikke denne fils praeference: SRTMotor.minimumBaselineNætter.
 // Er app-repoet ikke til stede, er dette UMAALT. Det skrives ud som UMAALT og taelles
