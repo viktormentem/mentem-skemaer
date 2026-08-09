@@ -170,6 +170,11 @@
   .diary-dot { width:14px; height:14px; border-radius:50%; background:var(--border); }
   .diary-dot.done { background:var(--accent); }
   .diary-dot.today { box-shadow:0 0 0 2px var(--accent); background:var(--accent-light); }
+  /* Baseline-nudging: adskilt fra periode-tælleren med en streg, fordi det ER et andet tal. */
+  .diary-baseline { margin-top:16px; padding-top:14px; border-top:1px solid var(--border); }
+  .diary-baseline-stort { font-family:'DM Serif Display',serif; font-size:19px; color:var(--accent); line-height:1.3; }
+  .diary-baseline-detalje { font-size:14px; line-height:1.55; color:var(--ink); margin:6px 0 0; }
+  .diary-baseline-naerhed { font-size:14px; line-height:1.55; color:var(--muted); margin:4px 0 0; }
   .diary-field { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px 22px; margin-bottom:12px; transition:border-color 0.15s; }
   .diary-field.answered { border-color:var(--accent); }
   .diary-q { font-size:15px; font-weight:500; margin-bottom:14px; line-height:1.4; }
@@ -411,6 +416,8 @@
       <div class="diary-progress-label">Fremdrift</div>
       <div class="diary-progress-big" id="diary-progress-text">Dag 1</div>
       <div class="diary-dots" id="diary-dots"></div>
+      <!-- Baseline-nudging (Viktor 9/8): tæller mod de første 14 nætter, ALDRIG mod perioden. -->
+      <div class="diary-baseline" id="diary-baseline" style="display:none"></div>
     </div>
     <!-- LAG 1 (BEHANDLINGEN) — art. 13-oplysningstekst, INGEN checkbox. GDPR-register 1.7
          (Viktor 16/7): selve behandlingen af dagbogs-svarene hviler på journalføringspligten
@@ -1213,6 +1220,23 @@ function showScreen(id) {
 const CSD_LS_KEY = 'mentem_csd_v1';
 const CSD_DEFAULT_DAYS = 14;
 
+// ── BASELINE-MÅLET ER ET ANDET TAL END PERIODEN ────────────────────────────
+// = SRTMotor.minimumBaselineNætter (PsykologInvitation/SRTMotor.swift:211) = 14.
+// Perioden (`diaryState.plannedDays`) er hvor længe dagbogen KØRER; baseline-målet er
+// hvor mange nætter der skal til, før søvnvinduet kan sættes med et roligt grundlag.
+//
+// 🔴 MÅLT 9/8 før en linje blev skrevet, og det væltede den oprindelige ordres præmis:
+// appens standard-link bærer `d=90` (SoevnSendKanaler.standardPeriodeDage), så en klient
+// med 11 gemte nætter ser i dag »Dag 12 af 90« og 90 prikker, hvoraf 11 er fyldt. Ikke
+// »X af 14 dage«. Tallet på klientens skærm peger altså mod 90 og ser derfor ud som om
+// hun knap er begyndt, præcis når hun er tre nætter fra at have det, der skal til.
+// Nudgingen må derfor ALDRIG regne i `plannedDays`: den tæller mod dette mål alene.
+// Det gør den samtidig immun over for at perioden LÅSES ved første åbning (se `?d=`-
+// kontrakten nedenfor): en frossen periode kan ikke forplante sig til budskabet.
+const BASELINE_MAAL_NAETTER = 14;
+const BASELINE_MAANEDER = ['januar', 'februar', 'marts', 'april', 'maj', 'juni',
+  'juli', 'august', 'september', 'oktober', 'november', 'december'];
+
 function dateISO(offsetDays = 0) {
   const d = new Date();
   d.setDate(d.getDate() + testDayOffset + offsetDays);   // testDayOffset = 0 i prod
@@ -1276,6 +1300,53 @@ function diaryPlannedDays() {
 }
 function diaryHasToday() {
   return !!(diaryState && diaryState.entries.find(e => e.date === todayISO()));
+}
+
+// ── Baseline-nudging: hvad fremdriften er VÆRD, ikke kun hvor langt den er ──
+// Viktor 9/8: »det er egentlig information, som er godt for en klient at vide (...) som en
+// positiv nudging, at de er snart færdige (...) og hver dag er med til at sikre at der er nok
+// informationer til at kunne få en god start og ramme rigtigt fra uge 1.«
+//
+// TRE KRAV, der alle er negative og derfor lette at bryde uden at opdage det:
+//  1. ALDRIG pres. Ingen rød måler, ingen streak, ingen »du mangler«. En klient der ikke når
+//     14 nætter skal møde det samme rolige sprog som en der gør.
+//  2. ALDRIG et løfte om at behandlingen ikke kan starte før. Den KAN starte før (behandler-
+//     fladen har en egen dokumenteret start-før-baseline-vej), og det modsatte ville være
+//     forkert over for klienten.
+//  3. ALDRIG klinisk sprog. »ATST«, »søvneffektivitet«, »estimat« hører ikke til her.
+//
+// Regner IKKE i plannedDays (se BASELINE_MAAL_NAETTER ovenfor): perioden er 90 i standard-
+// linket, og »X af 90« er ikke en baseline-nudging, det er en lang vandring.
+// Ren funktion (læses ud af filen og køres af test/soevn-baseline-nudging-kontrakt.mjs).
+function baselineNudging(gemteNaetter, harUdfyldtIDag, srtErAktiv) {
+  if (srtErAktiv) return null;   // ordinationen er leveret: baseline er ikke længere målet
+  const maal = BASELINE_MAAL_NAETTER;
+  const mangler = maal - gemteNaetter;
+  if (mangler <= 0) {
+    // Budskabet SKIFTER, det forsvinder ikke tavst: en flade der bare bliver tom, læses som
+    // at noget gik i stykker, og klienten får aldrig at vide at hun nåede det.
+    return {
+      stort: `Du har udfyldt de første ${maal} nætter`,
+      detalje: 'Din psykolog har nu det, der skal til for at ramme rigtigt fra den første uge. Udfylder du flere nætter, bliver billedet kun tydeligere.',
+      naerhed: null,
+    };
+  }
+  // Sidste af de manglende nætter: er dagens nat ikke udfyldt endnu, kan én af dem klares i dag.
+  const offset = harUdfyldtIDag ? mangler : mangler - 1;
+  let naar;
+  if (offset <= 0) naar = 'allerede i dag';
+  else if (offset === 1) naar = 'i morgen';
+  else {
+    const d = new Date(dateISO(offset) + 'T12:00:00');
+    naar = `omkring ${d.getDate()}. ${BASELINE_MAANEDER[d.getMonth()]}`;
+  }
+  return {
+    stort: gemteNaetter === 0
+      ? `${maal} nætter til en god start`
+      : `${mangler} ${mangler === 1 ? 'nat' : 'nætter'} tilbage af de første ${maal}`,
+    detalje: `Hver nat, du udfylder, gør billedet af din søvn mere præcist. Med de første ${maal} nætter har din psykolog det, der skal til for at ramme rigtigt fra den første uge.`,
+    naerhed: `Udfylder du hver nat, er du igennem dem ${naar}.`,
+  };
 }
 
 // ── M1.6 · SRT ordinations-vindue: render + helpers ────────────────────────
@@ -1572,6 +1643,20 @@ function renderDiaryWelcome() {
     const dot = document.createElement('div');
     dot.className = 'diary-dot' + (i < done ? ' done' : (i === done && !filledToday ? ' today' : ''));
     dotsEl.appendChild(dot);
+  }
+
+  // Baseline-nudgingen. Skjules kun når funktionen selv siger null (SRT leveret), aldrig
+  // tavst: en tom flade og en bevidst tavshed må ikke kunne se ens ud.
+  const blEl = document.getElementById('diary-baseline');
+  if (blEl) {
+    const nud = baselineNudging(done, filledToday, srtAktiv);
+    if (!nud) { blEl.style.display = 'none'; blEl.innerHTML = ''; }
+    else {
+      blEl.style.display = 'block';
+      blEl.innerHTML = '<div class="diary-baseline-stort srt-aloud">' + srtEsc(nud.stort) + '</div>'
+        + '<p class="diary-baseline-detalje srt-aloud">' + srtEsc(nud.detalje) + '</p>'
+        + (nud.naerhed ? '<p class="diary-baseline-naerhed srt-aloud">' + srtEsc(nud.naerhed) + '</p>' : '');
+    }
   }
 
   if (filledToday) {
