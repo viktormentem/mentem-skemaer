@@ -92,6 +92,15 @@ if (renderMatch) {
   check('sammenligner AFTALT_START mod todayISO() som strenge',
         /AFTALT_START\s*>=\s*iDag/.test(blok), 'fandt ingen streng-sammenligning');
   check('har en EGEN tekst for »i dag«', /=== iDag/.test(blok));
+  // 🔴 TILFØJET EFTER EN RENDER, IKKE EFTER EN TANKE. Første udgave af prøven krævede kun
+  // linjen ovenfor, og den var grøn mens siden på selve startdagen sagde »Du behøver ikke
+  // gøre noget før da« — altså det modsatte af hvad klienten skulle. Overskriften havde sin
+  // egen gren; detalje-linjen havde ikke. En sætning der er rigtig i to af tre tilstande,
+  // er forkert i den tredje.
+  check('detalje-linjen forgrener OGSÅ på »i dag« (ikke kun overskriften)',
+        /const detalje\s*=\s*iGang/.test(blok), 'detalje-linjen er den samme i alle tilstande');
+  check('teksten på startdagen beder om den første nat, i stedet for at sige vent',
+        /Udfyld din første nat/.test(blok));
   check('skjuler linjen når starten er passeret (ingen tom kasse)',
         /style\.display\s*=\s*'none'/.test(blok));
   // 🔴 Den eneste Date der må findes i blokken, er den der skriver månedens navn — og den

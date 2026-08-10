@@ -1775,13 +1775,21 @@ function renderDiaryWelcome() {
     const iDag = todayISO();
     if (AFTALT_START && AFTALT_START >= iDag) {
       const d = new Date(AFTALT_START + 'T12:00:00');
-      const naar = AFTALT_START === iDag
+      const iGang = AFTALT_START === iDag;
+      const naar = iGang
         ? 'Din søvnbehandling starter i dag'
         : `Din søvnbehandling starter d. ${d.getDate()}. ${BASELINE_MAANEDER[d.getMonth()]}`;
+      // 🔴 DETALJE-LINJEN SKAL FØLGE TILSTANDEN, IKKE KUN OVERSKRIFTEN. Fanget i en RENDER
+      // 10/8, ikke af en assertion: prøven krævede kun at »i dag« havde sin EGEN overskrift,
+      // og så stod der »Du behøver ikke gøre noget før da« på præcis den dag klienten skal
+      // i gang. En sætning der er rigtig i to af tre tilstande, er forkert i den tredje —
+      // og den tredje var den eneste hvor linjen skulle ændre en handling.
+      const detalje = iGang
+        ? 'Det har du og din psykolog aftalt. Udfyld din første nat i morgen tidlig.'
+        : 'Det har du og din psykolog aftalt. Du behøver ikke gøre noget før da.';
       asEl.style.display = 'block';
       asEl.innerHTML = '<div class="aftalt-start-stort">' + srtEsc(naar) + '</div>'
-        + '<p class="aftalt-start-detalje">Det har du og din psykolog aftalt. '
-        + 'Du behøver ikke gøre noget før da.</p>';
+        + '<p class="aftalt-start-detalje">' + srtEsc(detalje) + '</p>';
     } else {
       asEl.style.display = 'none';
       asEl.innerHTML = '';
