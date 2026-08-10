@@ -1702,6 +1702,16 @@ async function runDiary(id) {
   if (!diaryState.plannedDays) diaryState.plannedDays = diaryPlannedDays();
   if (diaryState.contentVersion == null) diaryState.contentVersion = CONTENT_VERSION;
 
+  // 🔴 VIKTOR-GO 10/8 (spm. 5, svar 1): »Udfyld for i nat« er BEVIDST IKKE gatet af den
+  // aftalte opstartsdato. En klient der selv skriver i ferien, leverer data psykologen kan
+  // bruge, og en spærret knap ville læses som »du må ikke«. De nætter falder før
+  // `startedAt` og tæller derfor ikke i uge-1-kadencen (`diaryDayIndex` klemmer til 0), så
+  // de er gratis: de kan kun tilføje.
+  // 🔵 Backfill-knappen er en anden sag og gates allerede af `yInPeriod` (l.1909), som
+  // måler mod `startedAt`. Den forskel er ikke en inkonsistens: at skrive om i NAT er et
+  // frivilligt livstegn, at fylde huller BAGUD er en periode-handling.
+  // Beslutningen er pinnet i test/soevn-aftalt-start-kontrakt.mjs, så en fremtidig
+  // "oprydning" ikke kan lukke knappen i tavshed.
   document.getElementById('diary-start-btn').addEventListener('click', () => startDiaryEntry(todayISO()));
   document.getElementById('diary-backfill-btn').addEventListener('click', () => startDiaryEntry(yesterdayISO()));
   document.getElementById('diary-finish-now-btn').addEventListener('click', finishDiary);

@@ -111,7 +111,20 @@ if (renderMatch) {
         bareParses.join(' · '));
 }
 
-// ── 5. Kontrakten er den samme i BEGGE ender ─────────────────────────────────
+// ── 5. »Udfyld for i nat« forbliver ÅBEN før den aftalte start ───────────────
+// 🔴 VIKTOR-GO 10/8 (spm. 5, svar 1). Dette er en prøve på en BESLUTNING, ikke på en fejl:
+// adfærden er den samme som før, og netop derfor kunne den lukkes i tavshed af en fremtidig
+// »oprydning« der syntes det var inkonsistent at backfill er gatet og denne ikke er.
+// Begrundelsen, så den næste ikke skal gætte: en klient der selv skriver i ferien, leverer
+// data psykologen kan bruge, og nætterne falder før `startedAt` og tæller derfor ikke i
+// uge-1-kadencen. De kan kun tilføje. En spærret knap ville læses som »du må ikke«.
+const startBtnMatch = html.match(/getElementById\('diary-start-btn'\)\.addEventListener\([^\n]*\n?/);
+check('»Udfyld for i nat«-knappen findes', !!startBtnMatch);
+check('knappen er IKKE gatet af AFTALT_START (Viktor-GO spm. 5 svar 1)',
+      !!startBtnMatch && !startBtnMatch[0].includes('AFTALT_START'),
+      startBtnMatch ? startBtnMatch[0].trim() : 'ikke fundet');
+
+// ── 6. Kontrakten er den samme i BEGGE ender ─────────────────────────────────
 // 🔵 Mentem-siden bygger `&start=` i `buildSoevndagbogUrl` (SMSTemplates.swift). Den har sin
 // egen prøve derovre; her pinnes kun at navnet ikke er drevet. Et parameternavn er den ene
 // ting to repoer ikke kan opdage er blevet uenige om.
