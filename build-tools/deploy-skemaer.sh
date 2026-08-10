@@ -90,8 +90,31 @@ if [ -n "$(git -C "$REPO" status --porcelain)" ]; then
 else
   ref_traef="$(git -C "$REPO" branch -r --contains "$SHA" 2>/dev/null | sed 's/^[ *]*//' || true)"
   findbare="$(printf '%s\n' "$ref_traef" | grep -E "^(${HERKOMST_REMOTES})/" || true)"
+  # 🔴 FINDES DEN NAVNGIVNE HERKOMST-REMOTE OVERHOVEDET HER? (tilføjet 30/7 af INFRA, efter
+  # SECURITY TERMINALs punkt om MJ). Uden dette spørgsmål har afvisningen ÉN formulering til
+  # TO helt forskellige tilstande:
+  #   (a) remoten findes, og SHA'en er ikke på den   <- rigtigt at afvise, og til at rette
+  #   (b) remoten findes slet ikke i dette repo      <- også rigtigt at afvise, men af en HELT
+  #                                                     anden grund, og »commit + push« er så
+  #                                                     et råd der ikke kan følges
+  # Målt i MJ-25c 30/7: 41 refs, alle under `backup-mirror/`, og `origin` findes ikke. Gaten
+  # sagde »findes KUN uden for herkomst-remoten (origin)«, hvilket lyder som om origin fandtes.
+  # **Verdikt rigtigt, begrundelse forkert**, og det er præcis den form der lærer folk at
+  # overstyre frem for at rette. Samme fejlklasse som reconcile-gatens suite-ben, målt samme
+  # formiddag: et værn der siger NO af en grund det ikke har målt.
+  # 🔵 `HERKOMST_REMOTES` bruges som grep-alternation og kan bære flere navne adskilt med `|`.
+  # Derfor splittes den her, frem for at antage ét navn.
+  remotes_her="$(git -C "$REPO" remote 2>/dev/null || true)"
+  navngivne_fundet=""
+  for _r in $(printf '%s' "$HERKOMST_REMOTES" | tr '|' ' '); do
+    if printf '%s\n' "$remotes_her" | grep -qx "$_r"; then
+      navngivne_fundet="$navngivne_fundet $_r"
+    fi
+  done
   if [ -z "$ref_traef" ]; then
     gate_fejl="HEAD ($SHA) findes IKKE på nogen remote"
+  elif [ -z "$navngivne_fundet" ]; then
+    gate_fejl="herkomst-remoten ($HERKOMST_REMOTES) FINDES IKKE i $(basename "$REPO"). Repoets remotes er: $(printf '%s' "$remotes_her" | tr '\n' ' '). Sæt MYCEL_HERKOMST_REMOTES til en remote der findes, eller giv repoet den remote gaten skal spørge"
   elif [ -z "$findbare" ]; then
     # Sig hvad der FAKTISK blev fundet. Uden det ligner afvisningen en fejl i gaten, og en
     # gate man ikke forstår, bliver overstyret frem for rettet.

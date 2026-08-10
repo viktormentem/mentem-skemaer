@@ -359,6 +359,29 @@ koer --dry-run
 assert_afsender_antal "52. to ægte tags fordobles ikke, de erstattes af ét" \
                       "1" '<meta name="mentem-deploy-sha"' "$UD"
 
+# 53-57. NÅR DEN NAVNGIVNE HERKOMST-REMOTE SLET IKKE FINDES I REPOET
+# 🔴 Født af SECURITY TERMINALs punkt 30/7 om MJ, målt af INFRA i MJ-25c: 41 refs, alle under
+# `backup-mirror/`, og `origin` findes ikke. Gaten sagde »findes KUN uden for herkomst-remoten
+# (origin)«, hvilket lyder som om origin fandtes og SHA'en manglede på den. **Verdikt rigtigt,
+# begrundelse forkert**, og rådet »commit + push« kan så ikke følges. Samme fejlklasse som
+# reconcile-gatens suite-ben samme formiddag: et NO af en grund gaten ikke havde målt.
+git -C "$FIX" remote rename origin herkomstloes >/dev/null 2>&1
+koer --dry-run
+assert "53. ukendt herkomst-remote giver stadig rc 3" "3" "$RC"
+assert_har "54. og den siger at remoten IKKE FINDES" "FINDES IKKE" "$UD"
+assert_har "55. og den navngiver repoets faktiske remotes" "herkomstloes" "$UD"
+# 🔴 Den vigtigste af de fem: den GAMLE, misvisende formulering må ikke stå tilbage. Uden
+# denne kunne begge beskeder optræde, og læseren ville stadig få den forkerte.
+assert_har_ikke "56. og IKKE længere »findes KUN uden for«" "findes KUN uden for" "$UD"
+
+# 57. NEGATIV KONTROL: peges gaten på en remote der FINDES, er den grøn igen.
+# Uden den kunne man »fikse« MJ ved at slukke herkomst-kravet for alle, og 53-56 ville
+# stadig stå grønne.
+UD="$(cd "$FIX" && env -u MYCEL_DEPLOY_HERKOMST_GO MYCEL_HERKOMST_REMOTES=herkomstloes \
+      bash build-tools/deploy-skemaer.sh --dry-run 2>&1)"; RC=$?
+assert "57. peget på en remote der FINDES, er gaten grøn igen" "0" "$RC"
+git -C "$FIX" remote rename herkomstloes origin >/dev/null 2>&1
+
 echo ""
 echo "── $ok grønne, $fejl røde ──"
 [ "$fejl" -eq 0 ] || exit 1

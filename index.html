@@ -166,10 +166,57 @@
   .diary-progress { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:18px 22px; margin-bottom:28px; }
   .diary-progress-label { font-size:13px; font-weight:500; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; }
   .diary-progress-big { font-family:'DM Serif Display',serif; font-size:24px; margin-top:4px; }
-  .diary-dots { display:flex; gap:7px; flex-wrap:wrap; margin-top:14px; }
+  /* Fremdriften er ORGANISERET I UGER, fordi behandlingen kører en uge ad gangen.
+     Før wrappede prikkerne ved den bredde der nu tilfældigvis var plads til (målt: 13 pr.
+     række ved 420 px), så uge 1 lå hen over to rækker og ingen række betød noget. */
+  /* Dagens handling som fast bjælke: den må aldrig ligge under folden. MÅLT før den fandtes
+     (420x900, dag 12): knappen begyndte ved 1225 px, altså 325 px at rulle for at gøre det
+     man kom for. Bjælken SPEJLER knappen i siden; den flytter ikke oplysningsteksten, som
+     står hvor den står af en juridisk grund. */
+  .diary-bar { position:fixed; left:0; right:0; bottom:0; z-index:40; padding:12px 20px calc(14px + env(safe-area-inset-bottom));
+               background:var(--bg); border-top:1px solid var(--border); box-shadow:0 -6px 20px rgba(0,0,0,0.07); }
+  .diary-bar .btn-primary { width:100%; margin:0; }
+  .diary-bar-rest { font-size:12.5px; color:var(--muted); text-align:center; margin:8px 0 0; }
+  body.har-diary-bar #screen-diary-welcome .wrap { padding-bottom:112px; }
+  /* Lange tekster: fulde FØRSTE gang, foldet bagefter. Ikke slettet, altid ét tryk væk. */
+  .tekst-mere { background:none; border:0; padding:0; font:inherit; font-weight:600; color:var(--accent);
+                text-decoration:underline; cursor:pointer; }
+  .oplysning-kvittér { display:flex; gap:9px; align-items:flex-start; margin-top:10px; font-size:13.5px; color:var(--muted); }
+  .oplysning-kort { font-size:13.5px; color:var(--muted); }
+  /* Stop-linjen: en linje, ikke en knap. Den skal kunne findes af den der leder efter den,
+     og overses af den der ikke gør. */
+  .diary-stop-linje { margin:18px 0 0; text-align:center; }
+  .diary-stop-linje button { background:none; border:0; padding:6px 8px; font:inherit; font-size:13px;
+                             color:var(--muted); text-decoration:underline; cursor:pointer; }
+  .diary-stop-linje button:hover { color:var(--ink); }
+  .diary-uger { display:flex; flex-direction:column; gap:4px; margin-top:14px; }
+  /* 46 px, ikke 30: »Uge 13« brækkede i to linjer og gjorde den venstre kant ragget. */
+  .diary-uge { display:grid; grid-template-columns:46px auto; align-items:center; gap:10px;
+               padding:4px 6px; border-radius:8px; }
+  .diary-uge.nu { background:var(--accent-light, rgba(45,106,79,0.09)); }
+  .diary-uge.fremtid { opacity:0.5; }
+  .diary-uge-nr { font-size:11px; color:var(--muted); text-align:right; letter-spacing:0.02em;
+                  white-space:nowrap; }
+  .diary-uge.nu .diary-uge-nr { color:var(--accent); font-weight:700; }
+  .diary-uge-celler { display:grid; grid-template-columns:repeat(var(--uge-bredde,7), 14px); gap:7px; }
+  .diary-uge-skjulte { font-size:12px; color:var(--muted); padding:2px 0 0 56px; }
+  .diary-uge-skel { display:grid; grid-template-columns:46px auto; gap:10px; margin:3px 0 1px; }
+  .diary-uge-skel span { grid-column:2; font-size:10.5px; color:var(--muted); text-transform:uppercase;
+                         letter-spacing:0.06em; border-top:1px dashed var(--border); padding-top:4px; }
   .diary-dot { width:14px; height:14px; border-radius:50%; background:var(--border); }
   .diary-dot.done { background:var(--accent); }
   .diary-dot.today { box-shadow:0 0 0 2px var(--accent); background:var(--accent-light); }
+  /* Baseline-nudging: adskilt fra periode-tælleren med en streg, fordi det ER et andet tal. */
+  /* PUNKT 4: den aftalte opstartsdato. Samme accent-familie som baseline-nudgingen, men
+     som et roligt kort og ikke en advarsel: det er en aftale, ikke et problem. */
+  .aftalt-start { background:var(--card); border:1px solid var(--border); border-left:3px solid var(--accent);
+                  border-radius:12px; padding:14px 16px; margin:0 0 18px; }
+  .aftalt-start-stort { font-family:'DM Serif Display',serif; font-size:19px; color:var(--accent); line-height:1.3; }
+  .aftalt-start-detalje { font-size:14px; line-height:1.55; color:var(--muted); margin:6px 0 0; }
+  .diary-baseline { margin-top:16px; padding-top:14px; border-top:1px solid var(--border); }
+  .diary-baseline-stort { font-family:'DM Serif Display',serif; font-size:19px; color:var(--accent); line-height:1.3; }
+  .diary-baseline-detalje { font-size:14px; line-height:1.55; color:var(--ink); margin:6px 0 0; }
+  .diary-baseline-naerhed { font-size:14px; line-height:1.55; color:var(--muted); margin:4px 0 0; }
   .diary-field { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px 22px; margin-bottom:12px; transition:border-color 0.15s; }
   .diary-field.answered { border-color:var(--accent); }
   .diary-q { font-size:15px; font-weight:500; margin-bottom:14px; line-height:1.4; }
@@ -406,11 +453,18 @@
 <div id="screen-diary-welcome" class="screen">
   <div class="wrap">
     <h1>Din <em>søvndagbog</em></h1>
+    <!-- PUNKT 4 (Viktor-GO 10/8): den AFTALTE opstartsdato, over alt andet. Står tom og
+         display:none når der ingen aftale er, så tomrummet ikke lærer øjet at springe
+         stedet over. srt-aloud, så oplæsnings-tilstanden også får den med. -->
+    <div class="aftalt-start srt-aloud" id="aftalt-start" style="display:none"></div>
     <p class="intro" id="diary-intro"></p>
     <div class="diary-progress">
       <div class="diary-progress-label">Fremdrift</div>
       <div class="diary-progress-big" id="diary-progress-text">Dag 1</div>
-      <div class="diary-dots" id="diary-dots"></div>
+      <!-- Uge-gitter (Viktor 9/8): behandlingen kører en uge ad gangen, så rækkerne ER uger. -->
+      <div class="diary-uger" id="diary-dots"></div>
+      <!-- Baseline-nudging (Viktor 9/8): tæller mod de første 14 nætter, ALDRIG mod perioden. -->
+      <div class="diary-baseline" id="diary-baseline" style="display:none"></div>
     </div>
     <!-- LAG 1 (BEHANDLINGEN) — art. 13-oplysningstekst, INGEN checkbox. GDPR-register 1.7
          (Viktor 16/7): selve behandlingen af dagbogs-svarene hviler på journalføringspligten
@@ -431,10 +485,14 @@
     <button class="btn-primary" id="diary-start-btn">Udfyld for i nat</button>
     <button class="btn-secondary" id="diary-backfill-btn" style="display:none">Udfyld for i går</button>
     <button class="btn-secondary" id="diary-update-btn" style="display:none">Send opdatering til psykolog</button>
-    <button class="btn-secondary" id="diary-finish-now-btn" style="display:none">Afslut og send til psykolog</button>
     <p class="start-note" id="diary-note"></p>
     <div class="done-status" id="diary-update-status" style="min-height:0"></div>
     <div class="disclaimer" id="diary-privacy"></div>
+    <!-- 🔴 Viktor 9/8: at stoppe forløbet må ALDRIG kunne rammes ved et fejltryk. Derfor
+         står den her, nederst, under privatlivsteksten, som en diskret linje og ikke som en
+         knap i stakken foroven. Tre lag mellem klienten og et uheld: placeringen, at den
+         ikke ligner en handling, og en bekræftelse der siger hvad der sker. -->
+    <p class="diary-stop-linje"><button type="button" id="diary-finish-now-btn" style="display:none">Jeg vil stoppe søvndagbogen</button></p>
     <p class="footer-credit" id="diary-attribution"></p>
     <p class="footer-credit" id="diary-key-fp"></p>
   </div>
@@ -626,6 +684,28 @@ const srtTn        = params.get('tn') != null ? parseInt(params.get('tn'), 10) :
 const srtMode      = params.get('mode');
 const srtAktiv     = srtTibParam != null && srtWakeParam != null;
 const nudgeFra     = params.get('nudge') === '0';   // Feature B: Viktor-styret fra-slag pr. klient
+
+// ── PUNKT 4 (Viktor-GO 10/8): AFTALT opstartsdato ─────────────────────────
+// Sat af Mentem når Viktor har aftalt at behandlingen først begynder senere (ferie,
+// indlæggelse, eksamen). ISO, LOKAL dato. Kontrakten er `&start=YYYY-MM-DD`.
+//
+// 🔴 FAIL-CLOSED, og det er IKKE husets vane her: `?d=` bruger parseInt (`parseInt("13abc")`
+// giver 13) og `?dato=` bruger `|| ''` — begge fail-open. Formen fandtes ikke og er bygget.
+// Grunden til at den skal være streng: værdien er ikke kun en linje på skærmen, den bliver
+// ankeret for hele uge-1-kadencen nedenfor. En ugyldig dato skal derfor forsvinde helt.
+//
+// 🔴 Regex ALENE er ikke nok: `2026-13-45` og `2026-02-30` matcher `\d{4}-\d{2}-\d{2}`.
+// Derfor rundtur gennem Date og sammenligning med husets egen `dateISO`-form (padStart).
+// `T12:00:00` og ikke `T00:00:00`: middag overlever både tidszone-forskydning og et
+// sommertids-spring, og fladen bruger allerede præcis det idiom (l.1324, l.1489).
+function gyldigISODato(s) {
+  if (typeof s !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const d = new Date(s + 'T12:00:00');
+  if (isNaN(d)) return false;
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}` === s;
+}
+const AFTALT_START = gyldigISODato(params.get('start')) ? params.get('start') : null;
 
 // ── Server draft-store (Mulighed A) ───────────────────────────────────────
 // token = forløbs-id (128-bit, fra Mentem). {BASE} er KONFIGURERBAR (ikke
@@ -1197,6 +1277,13 @@ async function shareEncrypted() {
 
 // ── NAVIGATION ───────────────────────────────────────────────────────────
 function showScreen(id) {
+  // Bjælken bærer dagbogens ene handling og må ikke følge med over på andre skærme.
+  const bar = document.getElementById('diary-bar');
+  if (bar) {
+    const paaForsiden = id === 'screen-diary-welcome';
+    bar.style.display = paaForsiden ? 'block' : 'none';
+    document.body.classList.toggle('har-diary-bar', paaForsiden);
+  }
   if (typeof stopAloud === 'function') stopAloud();   // stop oplæsning ved navigation
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
@@ -1212,6 +1299,65 @@ function showScreen(id) {
 // siden viser ALDRIG TST/SE/scoring (Mentem-side beregner ved decrypt).
 const CSD_LS_KEY = 'mentem_csd_v1';
 const CSD_DEFAULT_DAYS = 14;
+
+// ── BASELINE-MÅLET ER ET ANDET TAL END PERIODEN ────────────────────────────
+// = SRTMotor.minimumBaselineNætter (PsykologInvitation/SRTMotor.swift:211) = 14.
+// Perioden (`diaryState.plannedDays`) er hvor længe dagbogen KØRER; baseline-målet er
+// hvor mange nætter der skal til, før søvnvinduet kan sættes med et roligt grundlag.
+//
+// 🔴 MÅLT 9/8 før en linje blev skrevet, og det væltede den oprindelige ordres præmis:
+// appens standard-link bærer `d=90` (SoevnSendKanaler.standardPeriodeDage), så en klient
+// med 11 gemte nætter ser i dag »Dag 12 af 90« og 90 prikker, hvoraf 11 er fyldt. Ikke
+// »X af 14 dage«. Tallet på klientens skærm peger altså mod 90 og ser derfor ud som om
+// hun knap er begyndt, præcis når hun er tre nætter fra at have det, der skal til.
+// Nudgingen må derfor ALDRIG regne i `plannedDays`: den tæller mod dette mål alene.
+// Det gør den samtidig immun over for at perioden LÅSES ved første åbning (se `?d=`-
+// kontrakten nedenfor): en frossen periode kan ikke forplante sig til budskabet.
+const BASELINE_MAAL_NAETTER = 14;
+const BASELINE_MAANEDER = ['januar', 'februar', 'marts', 'april', 'maj', 'juni',
+  'juli', 'august', 'september', 'oktober', 'november', 'december'];
+/// Uge-gitterets bredde. 7 = én uge pr. række, som er den enhed behandlingen kører i.
+/// Kan sættes til 14 (to uger pr. række, halvt så mange rækker) uden at røre andet.
+const DIARY_UGE_BREDDE = 7;
+/// Hvor mange udgåede udgaver af SAMME nat der bæres med (Viktor 9/8, rettelses-historik).
+/// Backstop, ikke en forventet grænse: en klient der retter samme nat elleve gange er en
+/// anden slags observation end en der retter én gang, og begge skal kunne aflæses.
+const RETTELSER_MAX = 10;
+
+/// Hvilken nat en dagbogs-dato handler om. En entry dateret 2026-08-09 udfyldes om
+/// morgenen den 9. og beskriver natten DERTIL, altså fra aftenen den 8.
+///
+/// 🔴 Viktor 9/8: »det skal være lidt tydeligere hvad "Udfyld for i går" er sammenlignet
+/// med "Udfyld for i nat" - jeg foreslår, at der står den faktisk dag/nat der er omtales«.
+/// De to gamle etiketter var relative til hinanden og til aflæsningstidspunktet, så de kun
+/// kunne skelnes ved at regne. En ugedag kan ikke misforstås, og datoen lukker den sidste
+/// tvetydighed (to søndage i et 90-dages forløb).
+///
+/// Ren funktion, så prøven kan læse den ÆGTE kilde ud af index.html og køre den. En
+/// genskrevet kopi i prøven ville være grøn præcis i det øjeblik kilden holdt op med at
+/// matche den.
+function nyHistorik(forrigeEntry, historikMax = RETTELSER_MAX) {
+  const forrige = { ...forrigeEntry };
+  const historik = Array.isArray(forrige.tidligere) ? forrige.tidligere : [];
+  const alleredeKappet = forrige.tidligereKappet || 0;
+  delete forrige.tidligere; delete forrige.tidligereKappet;   // ingen rekursiv indlejring
+  const alle = historik.concat([forrige]);
+  return {
+    tidligere: alle.slice(-historikMax),
+    // 🔵 Loftet er en backstop mod at én nat kan vokse uden grænse i en append-only
+    // ingest. Bliver det ramt, SKAL det kunne ses i data: et tavst loft ville aflæses
+    // som »hun rettede tre gange«, når hun rettede tolv.
+    tidligereKappet: alleredeKappet + Math.max(0, alle.length - historikMax),
+  };
+}
+
+const NAT_UGEDAGE = ['søndag', 'mandag', 'tirsdag', 'onsdag', 'torsdag', 'fredag', 'lørdag'];
+function natNavn(datoISO, medDato = true) {
+  const d = new Date(datoISO + 'T12:00:00');
+  if (isNaN(d.getTime())) return null;   // gæt aldrig en dato: ingen etiket er bedre end en forkert
+  const kort = `natten til ${NAT_UGEDAGE[d.getDay()]}`;
+  return medDato ? `${kort} ${d.getDate()}. ${BASELINE_MAANEDER[d.getMonth()]}` : kort;
+}
 
 function dateISO(offsetDays = 0) {
   const d = new Date();
@@ -1278,6 +1424,112 @@ function diaryHasToday() {
   return !!(diaryState && diaryState.entries.find(e => e.date === todayISO()));
 }
 
+// ── Fremdriften som UGER, ikke som en stribe prikker ───────────────────────
+// Viktor 9/8: »søvnbehandling kører en uge ad gangen, så gridden burde være 7 eller 14 dage
+// horisontalt, og den igangværende uge skal være markeret anderledes end alle i fremtiden.
+// Det kan nemlig godt se meget uoverskueligt ud med 90 dage.«
+//
+// 🔴 Præmissen holdt, og den var værre end den lød. Prikkerne lå i en flex-wrap uden bredde,
+// så rækken brød dér hvor der tilfældigvis ikke var mere plads: MÅLT til 13 pr. række ved
+// 420 px. Uge 1 lå altså hen over to rækker, og ingen række svarede til noget klinisk.
+// Med 90 dage var resultatet 7 rækker, hvoraf 6 var helt tomme.
+//
+// UGEN ER ENHEDEN, fordi ordinationen er det: et vindue holdes en uge og titreres så.
+// Tre tilstande, ikke to: gået · den uge klienten står i · fremtid. Uden den midterste
+// forsvinder »hvor er jeg nu« i en mur af ens celler.
+//
+// Ren funktion (læses ud af filen og køres af test/soevn-baseline-nudging-kontrakt.mjs).
+function diaryUgeGitter(perioden, gemteNaetter, harUdfyldtIDag, ugeBredde, baselineMaal) {
+  const bredde = ugeBredde > 0 ? ugeBredde : 7;
+  const dage = Math.max(0, perioden);
+  // Hvor mange KOMMENDE uger der tegnes. Resten bliver til én linje, fordi det er dem der
+  // gør fladen uoverskuelig: en 90-dages periode gav 13 rækker, hvoraf 11 var tomme.
+  // 🔴 GÅEDE uger klappes IKKE sammen. De er fyldte, altså noget klienten har gjort, og et
+  // gitter der skjuler sit eget bevis, tager det væk lige når det er værd mest.
+  const ugerFremme = 1;
+  // Hvilken celle er »i dag«: er dagens nat ikke udfyldt endnu, er det den NÆSTE celle.
+  // Er den udfyldt, er det den sidste fyldte. Uden nætter overhovedet er det celle 0.
+  const iDagIndex = harUdfyldtIDag ? Math.max(0, gemteNaetter - 1) : gemteNaetter;
+  const nuUge = Math.min(Math.floor(iDagIndex / bredde), Math.max(0, Math.ceil(dage / bredde) - 1));
+  const uger = [];
+  for (let start = 0; start < dage; start += bredde) {
+    const nr = uger.length;
+    const celler = [];
+    for (let i = start; i < Math.min(start + bredde, dage); i++) {
+      celler.push(i < gemteNaetter ? 'udfyldt'
+        : (i === gemteNaetter && !harUdfyldtIDag ? 'idag' : 'kommende'));
+    }
+    uger.push({
+      nr: nr + 1,
+      tilstand: nr < nuUge ? 'gaaet' : (nr === nuUge ? 'nu' : 'fremtid'),
+      celler,
+      // Skellet tegnes under den uge hvor baseline-målet præcis slutter. Falder målet inde
+      // i en uge, tegnes intet skel: en streg midt i en uge ville påstå en grænse der ikke
+      // følger den enhed resten af gitteret er bygget på.
+      baselineSlutter: baselineMaal > 0 && start + bredde === baselineMaal && dage > baselineMaal,
+    });
+  }
+  // 🔴 ALLERFOERSTE MORGEN (Viktor 9/8): ingen »og N uger mere«. Han læste den som tvivl,
+  // ikke som overblik: »det kan skabe tvivl om hvad der så sker, eller om det er længere tid
+  // end jeg havde regnet med«. På dag 1 har klienten ingen erfaring at måle tallet imod.
+  // Fra dag 2 er linjen retvisende og bliver stående.
+  if (gemteNaetter === 0) return { bredde, nuUge, uger: uger.slice(0, nuUge + ugerFremme + 1), skjulte: 0 };
+  // Klap fremtiden sammen, men kun når der er mere end én uge at spare: én skjult uge koster
+  // en linje at fortælle om og sparer en linje at tegne, altså ingenting.
+  const sidsteSynlige = nuUge + ugerFremme;
+  const skjulte = Math.max(0, uger.length - 1 - sidsteSynlige);
+  return skjulte > 1
+    ? { bredde, nuUge, uger: uger.slice(0, sidsteSynlige + 1), skjulte }
+    : { bredde, nuUge, uger, skjulte: 0 };
+}
+
+// ── Baseline-nudging: hvad fremdriften er VÆRD, ikke kun hvor langt den er ──
+// Viktor 9/8: »det er egentlig information, som er godt for en klient at vide (...) som en
+// positiv nudging, at de er snart færdige (...) og hver dag er med til at sikre at der er nok
+// informationer til at kunne få en god start og ramme rigtigt fra uge 1.«
+//
+// TRE KRAV, der alle er negative og derfor lette at bryde uden at opdage det:
+//  1. ALDRIG pres. Ingen rød måler, ingen streak, ingen »du mangler«. En klient der ikke når
+//     14 nætter skal møde det samme rolige sprog som en der gør.
+//  2. ALDRIG et løfte om at behandlingen ikke kan starte før. Den KAN starte før (behandler-
+//     fladen har en egen dokumenteret start-før-baseline-vej), og det modsatte ville være
+//     forkert over for klienten.
+//  3. ALDRIG klinisk sprog. »ATST«, »søvneffektivitet«, »estimat« hører ikke til her.
+//
+// Regner IKKE i plannedDays (se BASELINE_MAAL_NAETTER ovenfor): perioden er 90 i standard-
+// linket, og »X af 90« er ikke en baseline-nudging, det er en lang vandring.
+// Ren funktion (læses ud af filen og køres af test/soevn-baseline-nudging-kontrakt.mjs).
+function baselineNudging(gemteNaetter, harUdfyldtIDag, srtErAktiv) {
+  if (srtErAktiv) return null;   // ordinationen er leveret: baseline er ikke længere målet
+  const maal = BASELINE_MAAL_NAETTER;
+  const mangler = maal - gemteNaetter;
+  if (mangler <= 0) {
+    // Budskabet SKIFTER, det forsvinder ikke tavst: en flade der bare bliver tom, læses som
+    // at noget gik i stykker, og klienten får aldrig at vide at hun nåede det.
+    return {
+      stort: `Du har udfyldt de første ${maal} nætter`,
+      detalje: 'Din psykolog kan nu se, hvor meget du faktisk sover om natten. Det er tallet, I bruger til at aftale, hvornår du skal gå i seng og stå op. Udfylder du flere nætter, bliver tiderne kun mere præcise.',
+      naerhed: null,
+    };
+  }
+  // Sidste af de manglende nætter: er dagens nat ikke udfyldt endnu, kan én af dem klares i dag.
+  const offset = harUdfyldtIDag ? mangler : mangler - 1;
+  let naar;
+  if (offset <= 0) naar = 'allerede i dag';
+  else if (offset === 1) naar = 'i morgen';
+  else {
+    const d = new Date(dateISO(offset) + 'T12:00:00');
+    naar = `omkring ${d.getDate()}. ${BASELINE_MAANEDER[d.getMonth()]}`;
+  }
+  return {
+    stort: gemteNaetter === 0
+      ? `${maal} nætter til en god start`
+      : `${mangler} ${mangler === 1 ? 'nat' : 'nætter'} tilbage af de første ${maal}`,
+    detalje: `De første ${maal} nætter viser, hvor meget du faktisk sover om natten. Det er tallet, din psykolog bruger til at aftale, hvornår du skal gå i seng og stå op. Jo flere nætter, jo bedre passer tiderne til dig.`,
+    naerhed: `Udfylder du hver nat, er du igennem dem ${naar}.`,
+  };
+}
+
 // ── M1.6 · SRT ordinations-vindue: render + helpers ────────────────────────
 function srtHhmmToMin(t) {
   var p = String(t).split(':');
@@ -1290,6 +1542,15 @@ function srtMinToHhmm(min) {
   min = ((min % 1440) + 1440) % 1440;
   var h = Math.floor(min / 60), m = min % 60;
   return ('0' + h).slice(-2) + ':' + ('0' + m).slice(-2);
+}
+/// Det ordinerede vindue som klokkeslæt, læst af linkets egne parametre (tib + wake).
+/// Samme udregning som påmindelsen øverst i formularen brugte inline; nu ét sted, så de to
+/// flader ikke kan nå frem til hvert sit vindue. null = linket bærer det ikke.
+function srtVindueFraLink() {
+  const tib = parseInt(srtTibParam, 10);
+  const wake = srtHhmmToMin(srtWakeParam);
+  if (isNaN(tib) || wake == null) return null;
+  return { fra: srtMinToHhmm(wake - tib), til: srtWakeParam };
 }
 function srtEsc(x) { return String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 function srtInlineBold(x) { return srtEsc(x).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>'); }
@@ -1406,9 +1667,8 @@ async function runDiary(id) {
   // M1.6: kompakt vindue-reminder øverst i dagbogen (SRT-mode; link tilbage til vinduet).
   if (srtAktiv && !document.getElementById('srt-diary-reminder')) {
     const dWrap = document.querySelector('#screen-diary-form .wrap');
-    const tibV = parseInt(srtTibParam, 10);
-    const wm = srtHhmmToMin(srtWakeParam);
-    const fraTid = (!isNaN(tibV) && wm != null) ? srtMinToHhmm(wm - tibV) : null;
+    const v = srtVindueFraLink();
+    const fraTid = v ? v.fra : null;
     if (fraTid != null && dWrap) {
       const el = document.createElement('div');
       el.className = 'srt-diary-reminder'; el.id = 'srt-diary-reminder';
@@ -1422,7 +1682,23 @@ async function runDiary(id) {
   diarySkema = SKEMAER[id];
   // Eksisterende periode bevares; plannedDays + contentVersion låses ved første
   // åbning (et senere ?d=/ny site-version ændrer ikke en igangværende periode, G2).
-  diaryState = loadCSD() || { startedAt: todayISO(), plannedDays: diaryPlannedDays(), contentVersion: CONTENT_VERSION, dirty: false, entries: [] };
+  // PUNKT 4 (10/8), og det er den halvdel ordren IKKE bad om:
+  //
+  // 🔴 Fladen HAVDE allerede en startdato. `startedAt` er den dag klienten første gang
+  // åbnede linket, gemt i localStorage, og den gater uge-1-kadencen gennem
+  // `diaryDayIndex()` -> `diaryFieldVisible()`. Byggede vi kun den synlige linje, ville
+  // siden have TO startdatoer der er uenige: den synlige lover 24. juni, den usynlige har
+  // allerede talt klienten som værende på dag 23. Målt følge: `di < 7 || di % 7 === 0`
+  // bliver falsk, og SAFETY-feltet (`daytimeSleepiness_0_10`, safety-spec §2) er skjult
+  // HELE første behandlingsuge — tavst.
+  //
+  // 🔵 Det er præcis Mentem-sidens egen fælde spejlvendt: dér stod en aftalt pause som
+  // forsømmelse, her ville en aftalt ventetid stå som fremdrift.
+  //
+  // 🔵 `loadCSD() ||`-vagten stod der i forvejen, så en klient der allerede er i gang,
+  // beholder sin egen dato. Der migreres intet. `diaryDayIndex` har `Math.max(0, ...)`,
+  // så dagene FØR start klemmes til 0 og uge-1-kadencen begynder på den aftalte dag.
+  diaryState = loadCSD() || { startedAt: (AFTALT_START || todayISO()), plannedDays: diaryPlannedDays(), contentVersion: CONTENT_VERSION, dirty: false, entries: [] };
   if (!diaryState.plannedDays) diaryState.plannedDays = diaryPlannedDays();
   if (diaryState.contentVersion == null) diaryState.contentVersion = CONTENT_VERSION;
 
@@ -1484,6 +1760,42 @@ async function deleteDraft() {
 }
 
 function renderDiaryWelcome() {
+  // PUNKT 4 (Viktor-GO 10/8): den AFTALTE opstartsdato, øverst.
+  //
+  // 🔴 INGEN Date-objekt til sammenligningen. Fladen sammenligner allerede ISO-datoer som
+  // STRENGE (`y >= diaryState.startedAt`), og ISO sorterer kronologisk. Uden et Date findes
+  // tidszone-fælden slet ikke: `"2026-06-24" > "2026-06-23"` er sandt uanset hvor klienten
+  // står. Date bruges KUN til at skrive månedens navn.
+  //
+  // 🔴 Tre tilstande, og den tredje er den vigtigste: er starten PASSERET, står der INGEN
+  // linje. En linje der stadig lover en fremtidig start er forkert fra og med dag 1, og det
+  // er netop den tilstand der VARER — resten er forbigående.
+  const asEl = document.getElementById('aftalt-start');
+  if (asEl) {
+    const iDag = todayISO();
+    if (AFTALT_START && AFTALT_START >= iDag) {
+      const d = new Date(AFTALT_START + 'T12:00:00');
+      const iGang = AFTALT_START === iDag;
+      const naar = iGang
+        ? 'Din søvnbehandling starter i dag'
+        : `Din søvnbehandling starter d. ${d.getDate()}. ${BASELINE_MAANEDER[d.getMonth()]}`;
+      // 🔴 DETALJE-LINJEN SKAL FØLGE TILSTANDEN, IKKE KUN OVERSKRIFTEN. Fanget i en RENDER
+      // 10/8, ikke af en assertion: prøven krævede kun at »i dag« havde sin EGEN overskrift,
+      // og så stod der »Du behøver ikke gøre noget før da« på præcis den dag klienten skal
+      // i gang. En sætning der er rigtig i to af tre tilstande, er forkert i den tredje —
+      // og den tredje var den eneste hvor linjen skulle ændre en handling.
+      const detalje = iGang
+        ? 'Det har du og din psykolog aftalt. Udfyld din første nat i morgen tidlig.'
+        : 'Det har du og din psykolog aftalt. Du behøver ikke gøre noget før da.';
+      asEl.style.display = 'block';
+      asEl.innerHTML = '<div class="aftalt-start-stort">' + srtEsc(naar) + '</div>'
+        + '<p class="aftalt-start-detalje">' + srtEsc(detalje) + '</p>';
+    } else {
+      asEl.style.display = 'none';
+      asEl.innerHTML = '';
+    }
+  }
+
   // Feature B: nudge-kort (må aldrig kunne blokere resten af renderet - guard mod manglende felter).
   const nk = document.getElementById('nudge-kort');
   if (nk) {
@@ -1544,7 +1856,22 @@ function renderDiaryWelcome() {
 
   // §3f forventningsstyring (Fase C, UDKAST til Viktor-ratifikation): dagbogen er
   // nyttig uanset hvad oplysningsskemaet viser — klienten skal roligt gå i gang nu.
-  intro.textContent = 'Udfyld dagbogen kort hver morgen for natten, der gik. Det tager et øjeblik. Skriv bare som du husker den. Til sidst samler vi alle dagene i én fil, som du sender til din psykolog. Har du også fået et kort oplysningsskema, kan du trygt gå i gang med dagbogen med det samme: den er nyttig for dit forløb, uanset hvad oplysningsskemaet viser.';
+  // 🔴 Viktor 9/8: den fulde tekst er vigtig FØRSTE gang, »da det er her det er vigtigt at se
+  // det«. Derefter er den kognitiv belastning hver eneste morgen. Den er derfor FOLDET fra
+  // dag 2, ikke slettet: ét tryk væk, og ordlyden er uændret.
+  const introLang = 'Udfyld dagbogen kort hver morgen for natten, der gik. Det tager et øjeblik. Skriv bare som du husker den. Til sidst samler vi alle dagene i én fil, som du sender til din psykolog. Har du også fået et kort oplysningsskema, kan du trygt gå i gang med dagbogen med det samme: den er nyttig for dit forløb, uanset hvad oplysningsskemaet viser.';
+  if (done >= 1) {
+    intro.innerHTML = '<span>Godmorgen. Udfyld for natten, der gik. Det tager et \u00f8jeblik.</span> '
+      + '<button type="button" class="tekst-mere" id="intro-mere">Hvad skal jeg skrive?</button>'
+      + '<span id="intro-lang" hidden></span>';
+    document.getElementById('intro-lang').textContent = ' ' + introLang;
+    document.getElementById('intro-mere').addEventListener('click', () => {
+      const l = document.getElementById('intro-lang'), b = document.getElementById('intro-mere');
+      l.hidden = !l.hidden; b.textContent = l.hidden ? 'Hvad skal jeg skrive?' : 'Skjul igen';
+    });
+  } else {
+    intro.textContent = introLang;
+  }
 
   // Privatlivstekst.
   // - localStorage-variant: v1-tekst i diary-privacy (under knappen, uændret).
@@ -1556,39 +1883,105 @@ function renderDiaryWelcome() {
     ? chipIcon('laas') + '<strong>Privatliv:</strong> Dine svar gemmes kun i denne browser på din egen enhed. De sendes ikke nogen steder undervejs. Udfyld alle dagene på den samme enhed. Når du er klar, ' + (autoSendEnabled() ? 'sendes de sikkert og krypteret direkte til din psykolog, så kun din psykolog kan åbne dem.' : 'samles svarene i én krypteret fil, som kun din psykolog kan åbne, og du sender den selv til sidst.') + ' <strong>Bemærk:</strong> rydder du browseren eller skifter enhed, mistes de dage, du har gemt, og du må starte forfra.'
     : '';
   renderDiaryConsent();
+  renderDiaryOplysning();
 
   // Open-ended: vis reelt dag-tal; "af N" kun mens inden for målet, ellers "(fortsat)".
   const dagNu = done + (filledToday ? 0 : 1);
   document.getElementById('diary-progress-text').textContent =
     dagNu <= N ? `Dag ${dagNu} af ${N}` : `Dag ${dagNu} (fortsat)`;
 
-  // Ugentlig ikke-terminal "Send opdatering"-knap (fortsætter forløbet).
+  // Ugentlig ikke-terminal "Send opdatering"-knap. Med auto-send er den overflødig og VÆK
+  // (Viktor 9/8); uden auto-send er den den eneste vej, og så bliver den stående.
   const updateBtn = document.getElementById('diary-update-btn');
-  if (updateBtn) updateBtn.style.display = done >= 1 ? 'block' : 'none';
+  if (updateBtn) updateBtn.style.display = (done >= 1 && !autoSendEnabled()) ? 'block' : 'none';
 
   const dotsEl = document.getElementById('diary-dots');
   dotsEl.innerHTML = '';
-  for (let i = 0; i < N; i++) {
-    const dot = document.createElement('div');
-    dot.className = 'diary-dot' + (i < done ? ' done' : (i === done && !filledToday ? ' today' : ''));
-    dotsEl.appendChild(dot);
+  const gitter = diaryUgeGitter(N, done, filledToday, DIARY_UGE_BREDDE, BASELINE_MAAL_NAETTER);
+  for (const uge of gitter.uger) {
+    const raekke = document.createElement('div');
+    raekke.className = 'diary-uge' + (uge.tilstand === 'nu' ? ' nu' : (uge.tilstand === 'fremtid' ? ' fremtid' : ''));
+    const nr = document.createElement('div');
+    nr.className = 'diary-uge-nr';
+    // Den igangværende uge siger sit navn, ikke sit nummer: det er den ene række klienten
+    // skal kunne finde uden at tælle.
+    nr.textContent = uge.tilstand === 'nu' ? 'Nu' : `Uge ${uge.nr}`;
+    const celler = document.createElement('div');
+    celler.className = 'diary-uge-celler';
+    celler.style.setProperty('--uge-bredde', String(gitter.bredde));
+    for (const c of uge.celler) {
+      const dot = document.createElement('div');
+      dot.className = 'diary-dot' + (c === 'udfyldt' ? ' done' : (c === 'idag' ? ' today' : ''));
+      celler.appendChild(dot);
+    }
+    raekke.appendChild(nr); raekke.appendChild(celler);
+    dotsEl.appendChild(raekke);
+    if (uge.baselineSlutter) {
+      const skel = document.createElement('div');
+      skel.className = 'diary-uge-skel';
+      skel.innerHTML = '<span>Her har din psykolog nok</span>';
+      dotsEl.appendChild(skel);
+    }
+  }
+  if (gitter.skjulte > 0) {
+    const mere = document.createElement('div');
+    mere.className = 'diary-uge-skjulte';
+    // Perioden står allerede stort som »Dag 12 af 90«, så linjen her behøver kun at sige
+    // at der ER mere, ikke gentage hvor meget.
+    mere.textContent = `og ${gitter.skjulte} uger mere i dit forløb`;
+    dotsEl.appendChild(mere);
   }
 
+  // Baseline-nudgingen. Skjules kun når funktionen selv siger null (SRT leveret), aldrig
+  // tavst: en tom flade og en bevidst tavshed må ikke kunne se ens ud.
+  const blEl = document.getElementById('diary-baseline');
+  if (blEl) {
+    const nud = baselineNudging(done, filledToday, srtAktiv);
+    // 🔴 Viktor 9/8: »ugerne 3 og frem er der blevet etableret et søvnvindue, og det er
+    // oplagt at man kan se hvad det ordinerede søvnvindue er«. Slottet er ledigt af sig selv:
+    // baselineNudging() tier netop når ordinationen er leveret, så de to kan ikke støde sammen.
+    // Tiderne kommer fra linkets egne parametre (samme kilde som påmindelsen i formularen),
+    // ikke fra en ny udregning.
+    const ordVindue = srtAktiv ? srtVindueFraLink() : null;
+    if (ordVindue) {
+      blEl.style.display = 'block';
+      blEl.innerHTML = '<div class="diary-baseline-stort srt-aloud">Dit søvnvindue lige nu</div>'
+        + '<p class="diary-baseline-detalje srt-aloud"><strong>' + srtEsc(ordVindue.fra) + ' til ' + srtEsc(ordVindue.til) + '</strong>'
+        + '. Det er de tider, I har aftalt, at du er i sengen.</p>'
+        + '<p class="diary-baseline-naerhed srt-aloud">Dagbogen viser din psykolog, hvordan det går, så tiderne kan justeres.</p>';
+    } else if (!nud) { blEl.style.display = 'none'; blEl.innerHTML = ''; }
+    else {
+      blEl.style.display = 'block';
+      blEl.innerHTML = '<div class="diary-baseline-stort srt-aloud">' + srtEsc(nud.stort) + '</div>'
+        + '<p class="diary-baseline-detalje srt-aloud">' + srtEsc(nud.detalje) + '</p>'
+        + (nud.naerhed ? '<p class="diary-baseline-naerhed srt-aloud">' + srtEsc(nud.naerhed) + '</p>' : '');
+    }
+  }
+
+  // Viktor 9/8: knappen siger hvilken nat den handler om. Ugedagen står på knappen (kort
+  // nok til én linje på en telefon), datoen står i linjen under, hvor der er plads.
+  const natIDag = natNavn(todayISO(), false);
+  const natIDagLang = natNavn(todayISO());
   if (filledToday) {
-    startBtn.textContent = 'Ret dagens svar';
-    note.textContent = 'Du har allerede udfyldt for i dag. Kom tilbage i morgen, eller ret dagens svar.';
+    startBtn.textContent = natIDag ? `Ret ${natIDag}` : 'Ret dagens svar';
+    note.textContent = natIDagLang
+      ? `Du har udfyldt ${natIDagLang}. Kom tilbage i morgen, eller ret dine svar.`
+      : 'Du har allerede udfyldt for i dag. Kom tilbage i morgen, eller ret dagens svar.';
   } else {
-    startBtn.textContent = 'Udfyld for i nat';
+    startBtn.textContent = natIDag ? `Udfyld ${natIDag}` : 'Udfyld for i nat';
     note.textContent = `Gemt: ${done} ${done === 1 ? 'dag' : 'dage'}. Kom tilbage hver morgen.`;
   }
   startBtn.disabled = false;
 
-  finishNow.style.display = done >= 1 ? 'block' : 'none';
-  if (done >= N) {
-    finishNow.textContent = 'Perioden er fuldført. Send til psykolog';
-    note.textContent = `Du har udfyldt alle ${N} dage. Tryk for at sende til din psykolog.`;
-  } else {
-    finishNow.textContent = 'Afslut og send til psykolog nu';
+  // 🔴 Med auto-send HAR psykologen allerede nattens svar, så det her handler ikke længere om
+  // at sende. Det handler om at STOPPE, og det skal linjen sige. Uden auto-send er den stadig
+  // den eneste leveringsvej, og da må ordlyden ikke love noget andet.
+  finishNow.style.display = done >= 1 ? 'inline' : 'none';
+  finishNow.textContent = autoSendEnabled()
+    ? 'Jeg vil stoppe søvndagbogen'
+    : (done >= N ? 'Perioden er fuldført. Send til psykolog' : 'Afslut og send til psykolog');
+  if (done >= N && !autoSendEnabled()) {
+    note.textContent = `Du har udfyldt alle ${N} dage. Tryk nederst for at sende til din psykolog.`;
   }
 
   // 1-dags backfill-nåde: tillad "udfyld for i går" hvis misset (max 1 dag
@@ -1599,6 +1992,11 @@ function renderDiaryWelcome() {
     const yMissed = !diaryState.entries.find(e => e.date === y);
     const yInPeriod = y >= diaryState.startedAt;
     backfillBtn.style.display = (yMissed && yInPeriod) ? 'block' : 'none';
+    // De to knapper stod før som »Udfyld for i nat« og »Udfyld for i går«, altså to
+    // relative udtryk der kun kunne skelnes ved at regne baglæns fra i dag. Nu bærer de
+    // hver sin ugedag, så forskellen kan ses uden at regne.
+    const natIGaar = natNavn(y, false);
+    if (natIGaar) backfillBtn.textContent = `Udfyld ${natIGaar} (den manglede)`;
   }
 
   // Server-recovery (ITP-wipe): lokal kladde væk, men serveren havde en krypteret.
@@ -1609,9 +2007,64 @@ function renderDiaryWelcome() {
     if (backfillBtn) backfillBtn.style.display = 'none';
   }
 
+  // Dagens handling som fast bjælke. Den spejler knappen i siden, så rækkefølgen af tekst
+  // på siden er urørt; den fjerner kun de 325 px rul der lå mellem klienten og hendes minut.
+  (function tegnDiaryBar() {
+    let bar = document.getElementById('diary-bar');
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.id = 'diary-bar'; bar.className = 'diary-bar';
+      bar.innerHTML = '<button class="btn-primary" id="diary-bar-btn"></button>'
+        + '<p class="diary-bar-rest" id="diary-bar-rest"></p>';
+      document.body.appendChild(bar);
+      document.getElementById('diary-bar-btn')
+        .addEventListener('click', () => document.getElementById('diary-start-btn').click());
+    }
+    document.getElementById('diary-bar-btn').textContent = startBtn.textContent;
+    const nud = baselineNudging(done, filledToday, srtAktiv);
+    const v = srtAktiv ? srtVindueFraLink() : null;
+    document.getElementById('diary-bar-rest').textContent =
+      v ? `Dit vindue: ${v.fra} til ${v.til}` : (nud ? nud.stort : '');
+    document.body.classList.add('har-diary-bar');
+  })();
+
   document.getElementById('diary-attribution').textContent = diarySkema.attribution || '';
   const fp = document.getElementById('diary-key-fp');
   if (fp) fp.textContent = 'Krypteret til din psykologs nøgle · ID ' + aktivKeyId();
+}
+
+/// LAG 1 (oplysningspligten) som noget der kan LÆSES FÆRDIG.
+///
+/// 🔴 Viktor 9/8: teksten er vigtig første gang, »da det er her det er vigtigt at se det«.
+/// Bagefter er den kognitiv belastning hver morgen resten af forløbet.
+///
+/// 🔴 DET ER IKKE ET SAMTYKKE og må aldrig komme til at ligne et. Behandlingen hviler på
+/// journalføringspligten (register 1.7), ikke på klientens ja. Derfor:
+///  - hakket GATER INTET. Alt virker nøjagtig som før, hakket eller ej.
+///  - ordlyden er »Læst og forstået«, aldrig »jeg accepterer«.
+///  - teksten SLETTES ikke, den foldes, og er ét tryk væk resten af forløbet.
+///  - selve afsnittenes ordlyd er uændret (låst tekst, kopieres fra DOM'en).
+/// Kvitteringen er lokal (samme localStorage som dagbogen), fordi den kun styrer visning.
+function renderDiaryOplysning() {
+  const el = document.getElementById('diary-oplysning');
+  if (!el) return;
+  if (!el.dataset.fuld) el.dataset.fuld = el.innerHTML;   // den låste ordlyd, gemt én gang
+  if (!(diaryState && diaryState.oplysningLaest)) {
+    el.innerHTML = el.dataset.fuld
+      + '<label class="oplysning-kvittér"><input type="checkbox" id="oplysning-hak">'
+      + '<span>Læst og forstået. Så viser vi den kort herefter.</span></label>';
+    const hak = document.getElementById('oplysning-hak');
+    if (hak) hak.addEventListener('change', () => {
+      if (!hak.checked) return;
+      diaryState.oplysningLaest = true;
+      saveCSDState(diaryState);
+      renderDiaryOplysning();
+    });
+    return;
+  }
+  el.innerHTML = '<p class="oplysning-kort">Dine svar indgår i din journal hos din psykolog, og kun din psykolog kan åbne dem. '
+    + '<button type="button" class="tekst-mere" id="oplysning-mere">Læs det fulde igen</button></p>';
+  document.getElementById('oplysning-mere').addEventListener('click', () => { el.innerHTML = el.dataset.fuld; });
 }
 
 // LAG 2 (SERVER-KLADDEN) — §1 (privatliv, verbatim) + §2 (Art.9-samtykke, verbatim checkbox).
@@ -1718,16 +2171,25 @@ function startDiaryEntry(forDate, prefillEntry) {
   const src = existing || prefillEntry || null;
   diaryDraft = src ? { ...src } : {};
   delete diaryDraft.date; delete diaryDraft.savedAt;
+  // Rettelses-historikken hører til entry'en, ikke til udkastet. `saveDiaryEntry` bygger
+  // sin entry fra skemaets felter og ville derfor ikke kopiere den alligevel, men et udkast
+  // der bærer sin egen historik er en indlejring der venter på at ske.
+  delete diaryDraft.tidligere; delete diaryDraft.tidligereKappet;
   // INGEN committed defaults (spec-ux-soevndagbog-udfyldning §1+§2-Fælde-C): et
   // urørt valgfrit felt skal forblive ubesvaret, aldrig auto-fyldes med "Nej"/"Intet"
   // — en fantom-default registreres som et falsk svar og forurener kliniske data.
   // Det eneste der forudfylder er `src` ("Samme som i går" / rettelse af eksisterende).
 
-  // Dag-label: "I går" ved backfill, ellers "Dag k".
+  // Dag-label. Viktor 9/8: skærmen hvor svarene faktisk gives, skal sige hvilken nat de
+  // gælder. Dag-nummeret bliver stående (det er klientens fremdrift), og natten står ved
+  // siden af med ugedag og dato. »I går« er væk som selvstændig etiket: den fortalte hvor
+  // langt tilbage man udfyldte, ikke hvad man udfyldte.
   const priorCount = diaryState.entries.filter(e => e.date < diaryFillDate).length;
   const dagNr = existing ? (diaryState.entries.findIndex(e => e.date === diaryFillDate) + 1) : (priorCount + 1);
+  const dagTekst = `Dag ${Math.min(dagNr, diaryState.plannedDays)}`;
+  const natTekst = natNavn(diaryFillDate);
   document.getElementById('diary-form-day').textContent =
-    diaryFillDate === yesterdayISO() ? 'I går' : `Dag ${Math.min(dagNr, diaryState.plannedDays)}`;
+    natTekst ? `${dagTekst} · ${natTekst}` : dagTekst;
   document.getElementById('diary-form-instruction').textContent = diarySkema.instruction;
 
   // "Samme som i går"-genvej: vis hvis der findes en tidligere dag og vi ikke
@@ -2921,8 +3383,26 @@ function saveDiaryEntry() {
   if (kort) diaryState.nudgeKortSet = true;   // persisteres af saveCSDState nedenfor
 
   // Dag-dedup: én entry pr. kalenderdag (overskriv hvis samme dag gemmes igen).
+  //
+  // 🔴 Viktor 9/8: »den nye data der bliver sendt er den jeg ser i SøvnHub, men den gamle
+  // data er stadig gemt. På den måde er det muligt at fange, hvis det er en fejlrettelse
+  // eller bare data vi kan lære fremadrettet om hvad der mon kunne være typiske
+  // fejlindberetninger der blev ændret.«
+  //
+  // Rettelsen ER den gældende udgave (`entry` skrives i pladsen, så hubben viser det nye).
+  // Den udgåede udgave flyttes ned i `entry.tidligere`, ældst først, så en rettelse kan
+  // aflæses som en rettelse i stedet for at forsvinde. Historikken bæres af selve entry'en,
+  // ikke af en sidevogn: så følger den automatisk med hver gang natten sendes, og kan
+  // hverken komme ud af trit med sin egen nat eller overleve dens sletning.
   const idx = diaryState.entries.findIndex(e => e.date === date);
-  if (idx >= 0) diaryState.entries[idx] = entry; else diaryState.entries.push(entry);
+  if (idx >= 0) {
+    const h = nyHistorik(diaryState.entries[idx]);
+    entry.tidligere = h.tidligere;
+    if (h.tidligereKappet > 0) entry.tidligereKappet = h.tidligereKappet;
+    diaryState.entries[idx] = entry;
+  } else {
+    diaryState.entries.push(entry);
+  }
   diaryState.entries.sort((a, b) => a.date.localeCompare(b.date));
 
   // Ugentligt refleksions-kort: kun ved en NY entry der bringer antallet til et
@@ -2939,6 +3419,46 @@ function saveDiaryEntry() {
   showScreen('screen-diary-welcome');
   window.scrollTo(0, 0);
   pushDraft();              // krypter HELE dagbogen → PUT (fire-and-forget; offline-buffer ved fejl)
+  autoSendEfterNat(erNyEntry);
+}
+
+/// 🔴 Viktor 9/8: »der skal ikke være en knap der siger Send opdatering til psykolog, da det
+/// allerede skal ske automatisk når man har udfyldt spørgsmålene«.
+///
+/// PRÆMISSEN HOLDT IKKE, og det ændrede hvad der skulle bygges. MÅLT i kilden før en linje
+/// blev skrevet: `sendTilIngest` kaldes fra PRÆCIS to steder for dagbogen, `finishDiary`
+/// (afslut perioden) og selve den knap der skulle væk. **At gemme en nat sendte ingenting**,
+/// hverken med eller uden auto-send-token. Fjernede jeg kun knappen, ville psykologen først
+/// se noget når klienten afsluttede perioden, altså op til 90 dage senere.
+///
+/// KADENCEN ER NATTEN (Viktor 9/8, og hans begrundelse vendte min egen indvending). Jeg
+/// havde valgt ugen for at spare kuverter. Ordret: »det er nemlig muligt for klienten at få
+/// sms'er med påmindelser hvis de ikke har udfyldt (...) det er en vigtig trigger for mig at
+/// vide de har udfyldt eller kunne følge med i om de er igang, så jeg evt. kan kontakte dem
+/// hvis de er stoppet.« En nat er altså ikke kun data, den er et LIVSTEGN, og et livstegn
+/// der kommer en gang om ugen kan ikke bruges til at opdage at nogen er faldet fra.
+///
+/// PRISEN, skrevet ud: hver forsendelse bærer HELE dagbogen (`byggDiaryPayload`) og ingest er
+/// append-only, så en 90-dages periode giver op til 90 kuverter, hver større end den før.
+/// Til gengæld er den NYESTE kuvert altid den komplette: falder en nat på gulvet (offline,
+/// lukket fane), henter den næste den ind af sig selv. Der er derfor ingen kø at vedligeholde
+/// og intet tabt, kun et hul i tidsstemplerne der viser præcis det du vil kunne se.
+///
+/// Uden `it=` i linket findes der ingen automatisk vej overhovedet; da BEHOLDES knappen,
+/// for ellers ville data aldrig nå frem. Knappen er altså ikke fjernet, den er gjort
+/// overflødig dér hvor den faktisk er det.
+async function autoSendEfterNat(erNyEntry) {
+  if (!erNyEntry || !autoSendEnabled()) return;
+  const status = document.getElementById('diary-update-status');
+  try {
+    const ok = await sendTilIngest(byggDiaryPayload(false), 'soevndagbog');
+    // 🔴 Husets EGEN kvittering, ikke min egen streng. `visSendtKvittering` er nordstjernen
+    // (»klienten ser SAMME kvittering overalt«), og jeg havde bygget en sidste-øjebliks-
+    // variant ved siden af den. Flow-navnet er det eksisterende 'soevndagbog-opdatering',
+    // hvis sekundære linje netop siger »Du kan roligt fortsætte dagbogen« - hvilket er
+    // præcis hvad en nat er: en afsendelse der IKKE afslutter noget.
+    if (ok && status) visSendtKvittering(status, 'soevndagbog-opdatering');
+  } catch (e) { /* stilhed er rigtigt her: klienten har gemt sin nat, og den ligger sikkert lokalt */ }
 }
 
 function finishDiary() {
@@ -2946,8 +3466,10 @@ function finishDiary() {
   // Send-bekræft (irreversibelt): afslutning lukker perioden + sletter kladden.
   const done = diaryState.entries.length;
   const N = diaryState.plannedDays;
-  const ok = window.confirm(
-    `Du har udfyldt ${done} af ${N} dage.\n\nNår du sender, afsluttes perioden, og kladden lukkes. Er du sikker på, at du vil sende til din psykolog nu?`);
+  const ok = window.confirm(autoSendEnabled()
+    ? `Vil du stoppe din søvndagbog?\n\nDin psykolog får besked om, at du er stoppet, og dagbogen lukker. `
+      + `Du har udfyldt ${done} dage, og de er allerede sendt. Du kan ikke fortryde her i browseren.`
+    : `Du har udfyldt ${done} af ${N} dage.\n\nNår du sender, afsluttes perioden, og kladden lukkes. Er du sikker på, at du vil sende til din psykolog nu?`);
   if (!ok) return;
   const p = document.querySelector('#screen-done p');
   if (p) p.textContent = 'Dine søvndage er nu samlet i én krypteret fil. Tryk nedenfor for at sende filen til din psykolog i den samme SMS-tråd, hvor du fik linket.';
