@@ -38,6 +38,7 @@ const FACIT_SCREENING_SVAR = {
   },
   kontraindikationer: ['parasomnier'],
   koen: 'kvinde',
+  alder: 58,
   fritekst: 'Jeg går nogle gange i søvne.',
 };
 
@@ -179,7 +180,20 @@ try {
   await shot('screening-8-bmi-beregner.png');
   await page.click('#a11y-next');
 
-  await svarTrin('alderOver50', 'ja');
+  // ── Alder (12/8): TALFELT, ikke et ja/nej. alderOver50 afledes af tallet. ──
+  await page.waitForSelector('#scr-alder', { state: 'visible', timeout: 6000 });
+  check(await page.locator('#scr-alder').count() === 1
+    && await page.locator('#scr-alderOver50-ja').count() === 0,
+    '12/8: alders-trinnet er et TALFELT (det gamle ja/nej-item findes ikke mere)');
+  await page.fill('#scr-alder', '58');
+  await shot('screening-10-alder.png');
+  // 🔴 INGEN AUTO-FREM fra et talfelt (samme regel som BMI-beregneren): et tal har intet
+  // klik-oejeblik der viser at klienten er FAERDIG med at taste, og en auto-frem efter
+  // "5" ville stjaele trinnet fra en der var paa vej til at skrive "58". Klienten
+  // trykker selv Naeste - praecis som her.
+  const stadigAlderstrin = await page.locator('#a11y-step-head').textContent();
+  check(/Spørgsmål 12 af 15/.test(stadigAlderstrin), '12/8: INGEN auto-frem fra alders-feltet', stadigAlderstrin);
+  await page.click('#a11y-next');
   // Halsomfang: "Ved ikke" (kontrakt: null — aldrig et tavst nej).
   await page.waitForSelector('#scr-halsomfangOver40-vedikke', { state: 'visible', timeout: 6000 });
   check(await page.locator('#scr-halsomfangOver40-vedikke').count() === 1, 'halsomfang HAR Ved ikke-mulighed');
@@ -199,6 +213,33 @@ try {
   await page.waitForSelector('#instrument-fields textarea', { state: 'visible', timeout: 6000 });
   await page.waitForSelector('#instrument-submit:not([disabled])', { timeout: 6000 });
   check(true, 'submit ENABLED ved 14/14 besvarede');
+  // 🔴 ALDERS-GATEN MAALT HER OG IKKE VED SIT EGET TRIN. Ved trinnet er de senere
+  // spoergsmaal ubesvarede, saa knappen er disabled uanset alderen: en check der
+  // ville staa groen selv hvis alderen slet ikke gatede noget. Her er POS-KTRL'en
+  // lige ovenfor (knappen ER aaben), saa naar den lukker, er det ALDEREN der lukker den.
+  // Stepperen skjuler de andre trin, saa vi gaar TILBAGE til alders-trinnet (12 af 15)
+  // ad den vej klienten selv ville gaa - Forrige, ikke et DOM-indgreb.
+  for (let i = 0; i < 3; i++) await page.click('#a11y-prev');
+  await page.waitForSelector('#scr-alder', { state: 'visible', timeout: 4000 });
+  await page.fill('#scr-alder', '');
+  // NB: knappen er SKJULT paa alle andre end sidste trin, saa der maales paa
+  // .disabled-EGENSKABEN og ikke paa synlighed - ellers maalte proeven stepperen.
+  // Maalt DIREKTE efter fill: input-handleren koerer synkront paa event'et, saa der er
+  // intet at vente paa. (Foerste form brugte waitForFunction og flakkede - en ventetid
+  // paa noget der allerede var sket.)
+  check(await page.locator('#instrument-submit').isDisabled(),
+    '12/8: tomt alders-felt LUKKER submit-gaten (POS-KTRL: den var aaben lige ovenfor)');
+  // Uden for spaendet (130 > SCREENING_ALDER_MAX=129, som spejler Swift-guarden).
+  // 🔵 '5x8' kan IKKE bruges som proeve: browserens egen number-input afviser bogstaver,
+  // saa den ville maale CHROME og ikke min validering.
+  await page.fill('#scr-alder', '130');
+  check(await page.locator('#instrument-submit').isDisabled(),
+    '12/8: alder uden for spaendet (130) holder gaten lukket');
+  await page.fill('#scr-alder', '58');
+  check(!(await page.locator('#instrument-submit').isDisabled()),
+    '12/8: gyldig alder aabner gaten igen');
+  for (let i = 0; i < 3; i++) await page.click('#a11y-next');
+  await page.waitForSelector('#instrument-fields textarea', { state: 'visible', timeout: 4000 });
   const prog = await page.locator('#instrument-progress-current').textContent();
   check(/^15 af 15$/.test(prog.trim()), 'fremdrift følger positionen: 15 af 15 på sidste trin', prog);
   const head15 = await page.locator('#a11y-step-head').textContent();
@@ -214,6 +255,7 @@ try {
   const reviewTekst = await page.locator('#instrument-review-list').textContent();
   check(/Ved ikke/.test(reviewTekst), 'review viser Ved ikke-svaret');
   check(/Kvinde/.test(reviewTekst), 'review viser køns-svaret som label (Kvinde)');
+  check(/58 år/.test(reviewTekst), '12/8: review viser alderen MED enhed (58 år), ikke et bart tal');
   check(!/170/.test(reviewTekst), 'review lækker ikke beregner-tal (højde 170 vises ikke)');
   check(/Jeg går nogle gange i søvne\./.test(reviewTekst), 'review viser fritekst');
   await shot('screening-5-review.png');

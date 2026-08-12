@@ -12,6 +12,8 @@ import {
   SOEVN_SCREENING,
   SOEVN_SCREENING_SCHEMA_TYPE,
   SCREENING_KLINIKER_KEYS,
+  SCREENING_ALDER_MIN,
+  SCREENING_ALDER_MAX,
   buildPayloadScreening,
 } from '../mentem-skema-core.js';
 
@@ -27,7 +29,9 @@ function eq(name, got, want) {
 console.log('soevn-screening kontrakt (facit = SoevnFaseCTests.testScreeningSvarPayloadRoundtrip):');
 
 // ── FACIT (verbatim fra Swift-testen; nøgle-rækkefølge = STOPBang-feltorden).
-// Æ2 (2/7): koen bæres råt (kvinde) + koenMand AFLEDT (kvinde → false). ──
+// Æ2 (2/7): koen bæres råt (kvinde) + koenMand AFLEDT (kvinde → false).
+// 12/8: alder bæres råt (58) + alderOver50 AFLEDT (58 > 50 → true) PÅ SIN GAMLE PLADS
+// i stopBang, så wire-formen på stopBang er byte-identisk med før. ──
 const FACIT_SCREENING_SVAR = {
   stopBang: {
     snorken: true, observeretApnoe: false, dagtraethed: true, hypertension: false,
@@ -35,16 +39,18 @@ const FACIT_SCREENING_SVAR = {
   },
   kontraindikationer: ['parasomnier'],
   koen: 'kvinde',
+  alder: 58,
   fritekst: 'Jeg går nogle gange i søvne.',
 };
 
 // Klient-svar der SKAL producere facit (parasomnier ja, alt andet nej; STOP-Bang
-// 3 ja-svar; halsomfang "ved ikke" = null; køn = kvinde → koenMand afledt false).
+// 3 ja-svar; halsomfang "ved ikke" = null; køn = kvinde → koenMand afledt false;
+// alder 58 → alderOver50 afledt true).
 const svar = {
   bipolarMani: false, epilepsiAnfald: false, parasomnier: true,
   betydeligFaldrisiko: false, erhvervschauffoer: false, natarbejde: false,
   snorken: true, observeretApnoe: false, dagtraethed: true, hypertension: false,
-  bmiOver35: false, alderOver50: true, halsomfangOver40: null, koen: 'kvinde',
+  bmiOver35: false, alder: 58, halsomfangOver40: null, koen: 'kvinde',
   fritekst: 'Jeg går nogle gange i søvne.',
 };
 
@@ -105,9 +111,9 @@ eq('fritekst trimmes', trimmet.data.screeningSvar.fritekst, 'hej');
 eq('kontraItems-keys = SoevnKontraindikation-rawValues (klient-delen, UDEN suicidalitet)',
   SOEVN_SCREENING.kontraItems.map((it) => it.key),
   ['bipolarMani', 'epilepsiAnfald', 'parasomnier', 'betydeligFaldrisiko', 'erhvervschauffoer', 'natarbejde']);
-eq('stopBangItems-keys = 7 direkte STOPBang-felter + koen-item (koenMand AFLEDES)',
+eq('stopBangItems-keys = 6 direkte STOPBang-felter + alder-item + koen-item (2 AFLEDES)',
   SOEVN_SCREENING.stopBangItems.map((it) => it.key),
-  ['snorken', 'observeretApnoe', 'dagtraethed', 'hypertension', 'bmiOver35', 'alderOver50', 'halsomfangOver40', 'koen']);
+  ['snorken', 'observeretApnoe', 'dagtraethed', 'hypertension', 'bmiOver35', 'alder', 'halsomfangOver40', 'koen']);
 check('kun halsomfang har vedIkke-mulighed',
   SOEVN_SCREENING.stopBangItems.filter((it) => it.vedIkke).map((it) => it.key).join(',') === 'halsomfangOver40');
 
@@ -129,6 +135,36 @@ const medBmiTal = buildPayloadScreening({ ...svar, hoejde: 183, vaegt: 120, bmi:
 const medBmiJson = JSON.stringify(medBmiTal);
 check('hoejde/vaegt/bmi-keys emitteres ALDRIG (kun kendte item-keys læses)',
   !/hoejde|vaegt|"bmi"/.test(medBmiJson) && !/183|120|35\.8/.test(medBmiJson));
+
+// ── 9. Alder (12/8): tallet bæres råt + alderOver50 AFLEDES af det ────────
+// 🔴 SKELLET ER GRUNDEN TIL AT DENNE SEKTION FINDES. Mentems exit-gate skifter norm ved
+// 65, STOP-Bang ved 50. Et »over 50«-svar kan ikke svare på 65-skellet, så de to skel
+// prøves hver for sig - ellers ville en afledning der ramte det forkerte skel se grøn ud.
+const alderCases = [[50, false], [51, true], [64, true], [65, true], [0, false], [129, true]];
+for (const [a, over] of alderCases) {
+  const p = buildPayloadScreening({ ...svar, alder: a }).data.screeningSvar;
+  check(`alder ${a} → alderOver50 = ${over} + alder bevaret råt på wiren`,
+    p.stopBang.alderOver50 === over && p.alder === a,
+    `(fik alderOver50=${p.stopBang.alderOver50}, alder=${p.alder})`);
+}
+check('65-skellet kan AFGØRES af tallet (64 og 65 er skelnelige på wiren)',
+  buildPayloadScreening({ ...svar, alder: 64 }).data.screeningSvar.alder === 64
+  && buildPayloadScreening({ ...svar, alder: 65 }).data.screeningSvar.alder === 65);
+eq('alderOver50 står stadig på sin GAMLE plads i stopBang-rækkefølgen (wire-form uændret)',
+  Object.keys(buildPayloadScreening(svar).data.screeningSvar.stopBang),
+  ['snorken', 'observeretApnoe', 'dagtraethed', 'hypertension', 'bmiOver35', 'alderOver50', 'halsomfangOver40', 'koenMand']);
+const udenAlder = { ...svar }; delete udenAlder.alder;
+check('manglende alder kaster (paakraevet_mangler) - aldrig et tavst gæt',
+  kaster(() => buildPayloadScreening(udenAlder))?.code === 'paakraevet_mangler');
+// 🔵 Etiketten bruger String(), IKKE JSON.stringify: den sidste gør NaN til "null", så to
+// forskellige prøver ville stå med samme navn i loggen og se ud som en dublet.
+for (const ugyldig of ['58', 58.5, -1, 130, NaN, true, null]) {
+  const e = kaster(() => buildPayloadScreening({ ...svar, alder: ugyldig }));
+  check(`ugyldig alder ${typeof ugyldig}:${String(ugyldig)} kaster`, e != null, `(fik ingen fejl)`);
+}
+check('spændet spejler Swift-guarden (SoevnAlder.spænd: >= 0 og < 130)',
+  SCREENING_ALDER_MIN === 0 && SCREENING_ALDER_MAX === 129,
+  `(fik ${SCREENING_ALDER_MIN}..${SCREENING_ALDER_MAX})`);
 
 console.log('');
 if (failures > 0) { console.error(`SOEVN-SCREENING-KONTRAKT FAILED: ${failures} fejl`); process.exit(1); }
