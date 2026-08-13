@@ -36,12 +36,19 @@ function check(cond, label, extra = '') { if (cond) log('  OK ', label); else { 
 
 // ── Draft-store-attrap: tæller PUT/DELETE mod /api/soevn-draft/{token} ──
 const seen = { PUT: 0, DELETE: 0, GET: 0 };
+// Periode-headeren pr. PUT (13-08-2026). Serveren fastfryser kladdens levetid efter den,
+// og en kilde-prøve kan kun se at klienten BYGGER headeren, aldrig at browseren SENDER den.
+// 🔵 Attrappen er SAMME ORIGIN som siden, så preflight udløses ikke her: dette måler
+// fetch-vejen, ikke CORS. CORS-siden måles i soevn-periode-header-kontrakt.mjs mod
+// serverens egen Access-Control-Allow-Headers.
+const putPerioder = [];
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.mjs': 'text/javascript; charset=utf-8', '.json': 'application/json' };
 const server = http.createServer((req, res) => {
   const p = decodeURIComponent(req.url.split('?')[0]);
   if (p.startsWith('/api/soevn-draft/')) {
     seen[req.method] = (seen[req.method] || 0) + 1;
+    if (req.method === 'PUT') putPerioder.push(req.headers['x-soevn-periode-dage'] ?? null);
     // GET = syncDraftOnLoad(). 200 m. tom body = "ingen kladde at gendanne" (recoveredBlob='' → falsy).
     // Bevidst IKKE 404: et fejl-svar ville logge en browser-console-error og gøre
     // zero-console-errors-assertionen nedenfor blind for ægte fejl.
@@ -97,7 +104,11 @@ log('\nsøvndagbog: Art.9-samtykke (register 1.7) — runtime');
 log(`site=${SITE} (LOCAL_ONLY=false-rewrite: den sti samtykket findes for)\n`);
 
 const tok = 'a'.repeat(32);
-await page.goto(`${SITE}/?s=soevndagbog&t=${tok}&api=${encodeURIComponent(SITE)}`, { waitUntil: 'load' });
+// `d=90` er appens standard-periode, og den er BEVIDST forskellig fra webbens
+// CSD_DEFAULT_DAYS (14): ellers kunne periode-header-assertionen nedenfor ikke skelne
+// »klienten sendte forløbets egen periode« fra »klienten sendte sit eget default«.
+const PERIODE = 90;
+await page.goto(`${SITE}/?s=soevndagbog&t=${tok}&d=${PERIODE}&api=${encodeURIComponent(SITE)}`, { waitUntil: 'load' });
 await page.waitForSelector('#screen-diary-welcome.active');
 
 // ── LAG 1 (art. 13) — oplysningsteksten om BEHANDLINGEN, uden checkbox ──
@@ -117,6 +128,12 @@ check(await lsConsent() === true, 'lag 2: samtykke registreret ved ét klik');
 await udfyldDag();
 check(await lsEntries() === 1, 'dag 1 gemt lokalt');
 check(seen.PUT >= 1, 'server-kladde PUT\'et mens samtykket var givet', `PUT=${seen.PUT}`);
+// TTL-kontrakten, målt på det serveren FAKTISK modtog. Uden headeren fastfryser
+// draftstore-workeren kladden på fallbackets 45 dage, altså sletning midt i et
+// 90-dages forløb: tavst datatab hos klienten, ingen fejl noget sted.
+check(putPerioder.length > 0 && putPerioder.every((p) => p === String(PERIODE)),
+  `art. 5(1)(e): hver PUT bar forloebets egen periode (X-Soevn-Periode-Dage: ${PERIODE})`,
+  `modtaget: ${JSON.stringify(putPerioder)}`);
 
 // ── ART. 7(3): tilbagetrækning skal være LIGE SÅ LET som at give ──
 // Det bevises ved at checkboxen er NÅBAR og operabel MENS dagbogen er i gang (= efter
