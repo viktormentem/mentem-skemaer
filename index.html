@@ -1420,6 +1420,29 @@ function diaryPlannedDays() {
   if (dParam && dParam > 0 && dParam <= 90) return dParam;   // ?d= ved første åbning
   return CSD_DEFAULT_DAYS;
 }
+
+// ── TTL-kontrakten med draftstore-workeren (`X-Soevn-Periode-Dage`) ───────────
+// Serveren (workers/soevn-draftstore/worker.js:65-125, 13-08-2026) fastfryser kladdens
+// levetid ved FØRSTE skrivning til `periode + 7` dage, og falder tilbage til de gamle
+// 45 dage når headeren mangler. Indtil denne linje sendte klienten den ikke: et
+// 90-dages forløb fik 45 dage, altså sletning af server-kladden MENS klienten stadig
+// førte dagbog. Retentionen så lukket ud i dokumentet og var åben i praksis.
+// Headeren står allerede i serverens `Access-Control-Allow-Headers`, og PUT'en udløser
+// i forvejen preflight pga. `application/json`, så den koster 0 nye rundture.
+//
+// 🔴 Samme regel som `?d=` ovenfor, og af samme grund: uden for appens interval sendes
+// der INTET frem for et klampet tal. Værdien her stammer ikke fra URL'en men fra
+// `diaryState.plannedDays` i localStorage, altså fra en tilstand der kan være skrevet
+// af en ældre site-version eller redigeret i hånden. Sendes den ikke, beholder serveren
+// nøjagtig dagens adfærd; derfor kan snittet kun forkorte eller korrekt forlænge.
+// Grænsen 90 SKAL være den samme som `diaryPlannedDays()`s, ellers kunne en periode
+// være gyldig at føre dagbog i og ugyldig at opbevare. Det vogtes af
+// test/soevn-periode-header-kontrakt.mjs, som læser begge tal ud af denne fil.
+const PERIODE_HEADER_NAVN = 'X-Soevn-Periode-Dage';
+function periodeHeaderVaerdi(dage) {
+  if (!Number.isInteger(dage) || dage < 1 || dage > 90) return null;
+  return String(dage);
+}
 function diaryHasToday() {
   return !!(diaryState && diaryState.entries.find(e => e.date === todayISO()));
 }
@@ -1739,7 +1762,14 @@ async function pushDraft() {
       forloebId: draftToken, contentVersion: diaryState.contentVersion,
       consent: diaryState.consent });   // D2: samtykke-record INDE i ciphertext
     const container = await mentemEncrypt(keyCheck.key, payload, keyCheck.keyId);
-    const res = await fetch(draftUrl(), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(container) });
+    // Periode-headeren afgør serverens retention (se PERIODE_HEADER_NAVN ovenfor).
+    // Den sendes på HVER PUT, ikke kun den første: serveren fryser selv tallet ved
+    // første skrivning, og en klient der mister sin række til udløb skal kunne
+    // genstarte den med den rigtige periode i stedet for med fallbackets 45 dage.
+    const headers = { 'Content-Type': 'application/json' };
+    const periode = periodeHeaderVaerdi(diaryState.plannedDays);
+    if (periode !== null) headers[PERIODE_HEADER_NAVN] = periode;
+    const res = await fetch(draftUrl(), { method: 'PUT', headers, body: JSON.stringify(container) });
     diaryState.dirty = !res.ok;
   } catch (e) { diaryState.dirty = true; }   // offline → retry ved næste load
   saveCSDState(diaryState);
