@@ -565,8 +565,20 @@ SKEMAER['soevn-baseline'] = SOEVN_BASELINE;
 //     stopBang: { snorken, observeretApnoe, dagtraethed, hypertension, bmiOver35,
 //                 alderOver50, halsomfangOver40 (bool|null = "ved ikke"), koenMand },
 //     kontraindikationer: [SoevnKontraindikation-rawValues med JA-svar],
+//     alder (heltal, klientens alder ved forløbsstart; se ALDER nedenfor),
 //     fritekst (valgfri streng, udelades når tom),
 //   }
+//
+// ALDER (Viktor-svar 12/8, valg 1: »det skal være i det spørgeskema som klienter udfylder
+// når de starter med søvnbehandling«). Klienten oplyser sin ALDER som et tal, og
+// stopBang.alderOver50 AFLEDES af den (alder > 50), nøjagtig samme mønster som Æ2's
+// koen → koenMand. Wire-formen på stopBang er derfor UÆNDRET (samme 8 felter, samme
+// rækkefølge); alderen kommer som et NYT søskende-felt ved siden af stopBang.
+// 🔵 HVORFOR ET TAL FREM FOR ET JA/NEJ MERE: Mentems exit-gate (Soevnberegning.exitGate)
+// skifter søvnnorm ved 65 år, ikke ved 50, og på ægte data VENDER den dom (alder 40 =
+// opfyldt, alder 70 = ikke opfyldt på uændrede tal). Et »over 50«-svar kan ikke svare på
+// et 65-skel. Ét tal svarer på begge, så klienten får ikke ét spørgsmål mere - han får
+// det samme spørgsmål stillet så det kan bruges. Aldrig fødselsdato (dataminimering).
 // Item-keys er WIRE-VÆRDIER (Swift-enum-rawValues / STOPBang-felter) — RØR DEM ALDRIG.
 // Klinisk kilde: soevn/screening-tjekliste-ordlyd-2026-06-01.md (Del A + STOP-Bang, Chung 2008).
 //
@@ -605,7 +617,11 @@ export const SOEVN_SCREENING = {
         vaegtLabel: 'Vægt', vaegtUnit: 'kg',
         privatliv: 'Højde og vægt bliver på din enhed og sendes ikke til nogen.',
       } },
-    { key: 'alderOver50', text: 'Er du over 50 år?' },
+    // Alder som TAL (Viktor-svar 12/8): STOP-Bang-booleanen alderOver50 afledes af tallet
+    // og bliver stående på sin plads i wire-rækkefølgen (`afledt` sætter den her i loopet).
+    { key: 'alder', text: 'Hvor gammel er du?', talFelt: { unit: 'år', label: 'Alder' },
+      afledt: { key: 'alderOver50', over: 50 },
+      hint: 'Skriv hvor mange år du er fyldt.' },
     { key: 'halsomfangOver40', text: 'Er dit halsomfang mere end 40 cm?', vedIkke: true, hint: 'Mål eventuelt med et målebånd rundt om halsen. Ved du det ikke, vælger du bare Ved ikke.' },
     // Æ2 (Viktor-ratificeret 2/7): køns-spørgsmål erstatter "Er du en mand?". Wire =
     // screeningSvar.koen (mand/kvinde/andet) + AFLEDT stopBang.koenMand (mand=ja,
@@ -971,13 +987,35 @@ function screeningFejl(code, felt) {
 // det rå svar sendes med i screeningSvar.koen (Mentem viser det råt + flager "andet" GUL).
 export const SCREENING_KOEN_VALG = ['mand', 'kvinde', 'andet'];
 
+// Alderens tilladte spænd. SPEJLER Swift-siden ORDRET (SoevnKlinikerPrefStore.swift,
+// SoevnAlder.spænd: `guard vedStart >= 0, vedStart < 130`) - en alder web-siden slipper
+// igennem, men Mentem afviser, ville blive tavst tabt på vej til gaten.
+// 🔴 FAIL-SAFE-RETNINGEN ER BRED, IKKE SNÆVER. Et for snævert spænd BLOKERER en ægte
+// klient i at sende skemaet (hård fejl, klient-side og usynlig for Viktor); et for bredt
+// spænd slipper en tastefejl igennem, som Viktor SER i review og som gatens egen guard
+// fanger. Derfor sættes grænsen hvor Swift-guarden allerede står, ikke ved et gæt på
+// hvor gamle klienter »plejer« at være.
+export const SCREENING_ALDER_MIN = 0;
+export const SCREENING_ALDER_MAX = 129;
+
 export function buildPayloadScreening(svar = {}, meta = {}) {
   for (const k of SCREENING_KLINIKER_KEYS) {
     if (k in svar) throw screeningFejl('klinikerItemForbudt', k);
   }
+  // Alderen valideres FØR loopet, fordi dens afledte STOP-Bang-boolean sættes INDE i
+  // loopet - på itemets egen plads, så wire-rækkefølgen på stopBang er uændret.
+  const alder = svar.alder;
+  if (alder == null || alder === '') throw screeningFejl('paakraevet_mangler', 'alder');
+  if (typeof alder !== 'number' || !Number.isInteger(alder)
+      || alder < SCREENING_ALDER_MIN || alder > SCREENING_ALDER_MAX) {
+    throw screeningFejl('ugyldig_tal', 'alder');
+  }
   const stopBang = {};
   for (const f of SOEVN_SCREENING.stopBangItems) {
     if (f.koensValg) continue;                                           // Æ2: koenMand afledes nedenfor
+    // Alder: tallet sendes råt som screeningSvar.alder (nedenfor), og STOP-Bang-
+    // booleanen afledes HER, så den bevarer sin plads blandt de 8 felter.
+    if (f.talFelt) { stopBang[f.afledt.key] = (alder > f.afledt.over); continue; }
     const v = svar[f.key];
     if (f.vedIkke && v === null) { stopBang[f.key] = null; continue; }   // "Ved ikke" → null (aldrig nej)
     if (v !== true && v !== false) throw screeningFejl('paakraevet_mangler', f.key);
@@ -997,7 +1035,7 @@ export function buildPayloadScreening(svar = {}, meta = {}) {
     if (v !== true && v !== false) throw screeningFejl('paakraevet_mangler', f.key);
     if (v === true) kontraindikationer.push(f.key);
   }
-  const screeningSvar = { stopBang, kontraindikationer, koen };
+  const screeningSvar = { stopBang, kontraindikationer, koen, alder };
   const fritekst = (typeof svar.fritekst === 'string') ? svar.fritekst.trim() : '';
   if (fritekst) screeningSvar.fritekst = fritekst;
 

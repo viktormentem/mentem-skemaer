@@ -615,7 +615,7 @@ import { SKEMAER, SKEMA_ORDER, OFFENTLIGT_KLAR, buildPayload, buildPayloadCSD, b
          CSD_SOEVNDAGBOG, SOEVN_BASELINE, CONTENT_VERSION, kryptoStoettet,
          PINNED_PUBKEY, PINNED_KEY_ID, resolveRecipientKey,
          INSTRUMENTER, instrumentFeltOrden, buildInstrumentMycel,
-         SOEVN_SCREENING, buildPayloadScreening,
+         SOEVN_SCREENING, buildPayloadScreening, SCREENING_ALDER_MIN, SCREENING_ALDER_MAX,
          SENDT_KVITTERING_PRIMAER, sendtKvitteringSekundaer, SEND_SIKKERT_CTA,
          SRT_VINDUE_TEKST, SOEVN_F2,
          parseFormuleringFragment, renderFormulering,
@@ -3033,8 +3033,10 @@ function runScreening(id) {
       ...it, stem: skema.stopBangStem, required: true,
       // Æ2: køns-itemet bærer sine EGNE optioner (mand/kvinde/andet, string-values).
       // "Ved ikke" KUN på halsomfang (kontrakt: null = ved ikke; tæller aldrig som nej).
-      options: it.koensValg ? it.options
-        : (it.vedIkke ? [...JA_NEJ, { label: 'Ved ikke', value: null }] : JA_NEJ),
+      // Alders-itemet er et TAL og har derfor INGEN optioner (talFelt-grenen nedenfor).
+      options: it.talFelt ? null
+        : (it.koensValg ? it.options
+          : (it.vedIkke ? [...JA_NEJ, { label: 'Ved ikke', value: null }] : JA_NEJ)),
     })),
     { ...skema.fritekst, stem: '', options: null, required: false },
   ];
@@ -3123,7 +3125,15 @@ function runScreening(id) {
         fs.appendChild(hint);
       }
 
-      if (!item.options) {
+      if (item.talFelt) {
+        // Alder (Viktor-svar 12/8): ét tal frem for et ja/nej. Samme commit-mekanik som
+        // BMI-beregnerens felter (svar sættes ved input, ingen auto-frem), fordi et tal
+        // ikke har et klik-øjeblik hvor man kan se at klienten er FÆRDIG med at taste:
+        // en auto-frem efter "4" ville stjæle trinnet fra en der var på vej til at
+        // skrive "45". 🔴 Et ugyldigt/tomt felt SLETTER svaret frem for at gemme et
+        // halvt tal - ellers kunne submit-gaten åbne på en tastefejl.
+        fs.appendChild(byggAlderFelt(item, fs));
+      } else if (!item.options) {
         // Fritekst (valgfri): textarea, gemmes ved input; tom = udeladt af payload.
         const ta = document.createElement('textarea');
         ta.rows = 4;
@@ -3154,6 +3164,32 @@ function runScreening(id) {
       }
       wrap.appendChild(fs);
     });
+  }
+
+  // Alders-felt: ét talfelt. Gyldigt heltal i spændet → svaret gemmes; alt andet
+  // (tomt, komma, uden for spænd) → svaret SLETTES, så submit-gaten aldrig åbner på et
+  // ugyldigt tal. Spændet er web-sidens spejl af Swift-guarden (SCREENING_ALDER_*).
+  function byggAlderFelt(item, fs) {
+    const boks = document.createElement('div');
+    boks.style.cssText = 'display:flex;align-items:center;gap:8px;margin-top:6px';
+    const inp = document.createElement('input');
+    inp.type = 'number'; inp.inputMode = 'numeric'; inp.step = '1';
+    inp.min = SCREENING_ALDER_MIN; inp.max = SCREENING_ALDER_MAX;
+    inp.id = 'scr-' + item.key;
+    inp.setAttribute('aria-label', item.text);
+    inp.style.cssText = 'width:110px;font:inherit;padding:10px;border:1.5px solid var(--line, #ccc);border-radius:10px';
+    const u = document.createElement('span');
+    u.className = 'diary-unit'; u.textContent = item.talFelt.unit;
+    inp.addEventListener('input', () => {
+      const raa = inp.value.trim();
+      const n = /^\d+$/.test(raa) ? parseInt(raa, 10) : NaN;
+      const gyldig = Number.isInteger(n) && n >= SCREENING_ALDER_MIN && n <= SCREENING_ALDER_MAX;
+      if (gyldig) { svar[item.key] = n; fs.classList.add('answered'); }
+      else { delete svar[item.key]; fs.classList.remove('answered'); }
+      opdaterScrFremdrift();
+    });
+    boks.appendChild(inp); boks.appendChild(u);
+    return boks;
   }
 
   // Æ1 BMI-beregner: fold-ud med højde (cm) + vægt (kg) → viser BMI + sætter ja/nej-
@@ -3281,7 +3317,13 @@ function runScreening(id) {
       q.className = 'instrument-review-q';
       q.innerHTML = `<span class="question-num" aria-hidden="true">${stepIndex + 1}.</span>` + instrEsc(item.text);
       const ans = document.createElement('p');
-      if (!item.options) {
+      if (item.talFelt) {
+        // Tallet vises MED sin enhed ("45 år"). Et bart tal i en liste af Ja/Nej-svar
+        // kan ikke selv fortælle hvad det er svaret på, når klienten skimmer review'et.
+        const gyldigt = Number.isInteger(v);
+        ans.className = 'instrument-review-a' + (gyldigt ? '' : ' tom');
+        ans.textContent = gyldigt ? (v + ' ' + item.talFelt.unit) : 'Ikke besvaret';
+      } else if (!item.options) {
         const t = (typeof v === 'string') ? v.trim() : '';
         ans.className = 'instrument-review-a' + (t ? '' : ' tom');
         ans.textContent = t || 'Ikke udfyldt (valgfrit)';
