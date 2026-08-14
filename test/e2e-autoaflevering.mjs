@@ -301,14 +301,25 @@ log('');
   const efter = await page.evaluate(() => {
     const head = document.getElementById('a11y-step-head');
     const r = head ? head.getBoundingClientRect() : null;
-    return { y: window.scrollY, headTop: r ? r.top : null, vh: window.innerHeight };
+    const bar = Array.from(document.querySelectorAll('.form-progress'))
+      .find((el) => el.offsetParent !== null && el.getBoundingClientRect().height > 0);
+    return {
+      y: window.scrollY, headTop: r ? r.top : null, vh: window.innerHeight,
+      barH: bar ? Math.round(bar.getBoundingClientRect().height) : 0,
+    };
   });
   log('SAG D  rulning ved trin-skifte');
   check(foerste === 0, 'trin 1 starter i dokumenttoppen (introen skal laeses)', 'y=' + foerste);
   check(efter.y > 0, 'trin 2 rullede IKKE tilbage til toppen', 'y=' + efter.y);
-  check(efter.headTop !== null && efter.headTop >= 0 && efter.headTop < efter.vh * 0.5,
-    'spoergsmaalsoverskriften staar i den oeverste halvdel af skaermen',
-    'headTop=' + efter.headTop + ' vh=' + efter.vh);
+  // 🔴 STRAMMET 14/8 efter See-it. Foerste form kraevede kun »oeverste halvdel«, og
+  //    headTop = 12 opfyldte det - men den KLAEBENDE bjaelke er 50 px hoej, saa
+  //    overskriften laa BAG den. Proeven var groen og skaermen var forkert.
+  //    Kravet er nu at overskriften ligger UNDER bjaelken, altsaa faktisk synlig.
+  check(efter.barH > 0, 'den klaebende bjaelke blev fundet (ellers maaler naeste linje intet)',
+    'barH=' + efter.barH);
+  check(efter.headTop !== null && efter.headTop >= efter.barH && efter.headTop < efter.vh * 0.5,
+    'spoergsmaalsoverskriften staar UNDER bjaelken og i oeverste halvdel',
+    'headTop=' + efter.headTop + ' barH=' + efter.barH + ' vh=' + efter.vh);
   await ctx.close();
 }
 

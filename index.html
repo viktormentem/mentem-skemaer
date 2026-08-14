@@ -832,6 +832,21 @@ async function sendTilIngest(payload, schemaType) {
 // i markuppen; her sætter vi kun status-teksten (ingen tal, ingen emoji).
 function visSendtKvittering(statusEl, flow) {
   if (!statusEl) return;
+  // 🔴 FUNDET AF BILLEDET, ikke af en prøve (14/8). Da auto-afleveringen kom, stod der
+  // pludselig TO hakker og TO »sendt«-sætninger på samme skærm: skærmens eget statiske
+  // hak plus ledeteksten »Dine svar sendes nu ...«, og nedenunder kvitteringens animerede
+  // hak plus »Dine svar er sendt ...«. Begge var rigtige hver for sig - det ene er et
+  // LØFTE, det andet er et FAKTUM - men de beskriver samme handling i to tider, og en
+  // skærm der siger det samme to gange, læses som om der er sket to ting.
+  // Løftet og det statiske hak hører til mens vi sender; når kvitteringen lander,
+  // er de ikke længere sande, de er bare stadig på skærmen.
+  const skaerm = statusEl.closest ? statusEl.closest('.screen') : null;
+  if (skaerm) {
+    const statiskHak = skaerm.querySelector('.done-mark');
+    if (statiskHak) statiskHak.hidden = true;
+    const ledetekst = skaerm.querySelector('.done-wrap > p');
+    if (ledetekst) ledetekst.hidden = true;
+  }
   statusEl.style.color = 'var(--accent)';
   statusEl.textContent = '';
   // Animeret mark FOERST: cirklen tegner (sendt) -> hakket slaar ind (modtaget).
@@ -2774,8 +2789,16 @@ function rulTilSpoergsmaal(i, head) {
   // Fremskridtsbjælken er `position:sticky; top:0`, så den ville dække overskriften hvis
   // vi rullede præcis til den. Højden MÅLES frem for at skrives: et tal i en konstant
   // her ville tie når bjælken skifter højde (den brydes i to linjer på smalle skærme).
-  const bar = document.querySelector('.form-progress');
-  const barH = (bar && bar.offsetParent !== null) ? bar.getBoundingClientRect().height : 0;
+  //
+  // 🔴 OG DEN SKAL FINDES BLANDT FLERE. Min første form var `querySelector('.form-progress')`,
+  // og der er FIRE af dem i dokumentet, én pr. skærm. Den første i dokumentrækkefølge
+  // hører til en SKJULT skærm, så højden blev 0, og overskriften »Spørgsmål X af Y« landede
+  // BAG bjælken. **En vælger der ikke siger hvilken skærm, er et gæt om at der kun er én.**
+  // 🔵 Prøven kunne ikke se det: den krævede at overskriften lå i øverste halvdel, og 12 px
+  // opfylder det fint. Det var See-it-billedet der fandt det.
+  const bar = Array.from(document.querySelectorAll('.form-progress'))
+    .find((el) => el.offsetParent !== null && el.getBoundingClientRect().height > 0);
+  const barH = bar ? bar.getBoundingClientRect().height : 0;
   const y = head.getBoundingClientRect().top + window.pageYOffset - barH - 12;
   window.scrollTo(0, Math.max(0, y));
 }
