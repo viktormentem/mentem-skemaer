@@ -119,6 +119,27 @@ check(await page.$eval('#diary-oplysning a[href*="privatlivspolitik"]', (a) => !
 check(await page.$('#diary-oplysning input[type=checkbox]') === null,
   'lag 1: INGEN checkbox paa behandlings-oplysningen (register 1.3)');
 
+// ── LAG 1, kvitteringen: den er en KNAP, og den folder ────────────────────────────
+// 🔴 Tilfoejet 14/8 fordi stien var UTESTET. Kontrollen blev aendret fra checkbox til knap
+//    (register 1.3: formen maa ikke ligne et samtykke), og INTET bevis daekkede at
+//    fold-adfaerden overlevede skiftet. En rettelse uden en proeve er en paastand.
+const kvitKnap = await page.$('#oplysning-hak');
+check(kvitKnap !== null, 'lag 1: kvitteringen findes');
+check(await page.$eval('#oplysning-hak', (e) => e.tagName.toLowerCase()).catch(() => '?') === 'button',
+  'lag 1: kvitteringen er en KNAP, ikke et hak');
+// POS-KTRL: den fulde tekst SKAL staa foer der trykkes. Uden dette led ville en flade der
+// aldrig renderer noget, bestaa fold-testen nedenfor.
+const fuldFoer = await page.$eval('#diary-oplysning', (e) => e.textContent.trim().length).catch(() => 0);
+check(fuldFoer > 200, 'lag 1 POS-KTRL: den fulde oplysning staar FOER kvittering', `${fuldFoer} tegn`);
+await page.click('#oplysning-hak');
+const kortEfter = await page.$eval('#diary-oplysning', (e) => e.textContent.trim().length).catch(() => 0);
+check(kortEfter > 0 && kortEfter < fuldFoer, 'lag 1: ét tryk FOLDER teksten til kortform',
+  `${fuldFoer} -> ${kortEfter} tegn`);
+check(await page.$('#oplysning-mere') !== null, 'lag 1: kortformen tilbyder "Laes det fulde igen"');
+await page.click('#oplysning-mere');
+const fuldIgen = await page.$eval('#diary-oplysning', (e) => e.textContent.trim().length).catch(() => 0);
+check(fuldIgen >= fuldFoer - 60, 'lag 1: den fulde tekst kan hentes tilbage', `${fuldIgen} tegn`);
+
 // ── LAG 2 (art. 9(2)(a)) — samtykket til server-kladden ──
 check(await page.$('#diary-consent-cb') !== null, 'lag 2: samtykke-checkbox findes FOER dagbogs-start');
 await page.click('#diary-consent-cb');

@@ -181,7 +181,10 @@
   /* Lange tekster: fulde FØRSTE gang, foldet bagefter. Ikke slettet, altid ét tryk væk. */
   .tekst-mere { background:none; border:0; padding:0; font:inherit; font-weight:600; color:var(--accent);
                 text-decoration:underline; cursor:pointer; }
-  .oplysning-kvittér { display:flex; gap:9px; align-items:flex-start; margin-top:10px; font-size:13.5px; color:var(--muted); }
+  .oplysning-kvittér { display:flex; gap:9px; align-items:center; margin-top:10px; font-size:13.5px; color:var(--muted); flex-wrap:wrap; }
+  .oplysning-kvit-knap { background:var(--flade,#fff); border:1.5px solid var(--accent); border-radius:8px;
+    padding:6px 13px; font:inherit; font-weight:600; font-size:13.5px; color:var(--accent); cursor:pointer; flex:none; }
+  .oplysning-kvit-knap:hover { background:var(--accent-light); }
   .oplysning-kort { font-size:13.5px; color:var(--muted); }
   /* Stop-linjen: en linje, ikke en knap. Den skal kunne findes af den der leder efter den,
      og overses af den der ikke gør. */
@@ -2080,8 +2083,15 @@ function renderDiaryWelcome() {
 ///
 /// 🔴 DET ER IKKE ET SAMTYKKE og må aldrig komme til at ligne et. Behandlingen hviler på
 /// journalføringspligten (register 1.7), ikke på klientens ja. Derfor:
-///  - hakket GATER INTET. Alt virker nøjagtig som før, hakket eller ej.
+///  - kvitteringen GATER INTET. Alt virker nøjagtig som før, trykket eller ej.
 ///  - ordlyden er »Læst og forstået«, aldrig »jeg accepterer«.
+///  🔴 OG KONTROLLEN ER EN KNAP, IKKE ET HAK (rettet 14/8, e2e-dagbog-samtykke var RØD).
+///     Ordlyden var altid rigtig; formen var ikke. Et afkrydsningsfelt ved siden af en
+///     oplysning om behandlingen LIGNER en tilladelse klienten kan nægte, og det kan hun
+///     ikke: behandlingen hviler på journalføringspligten. Register 1.3 forbyder en
+///     samtykke-checkbox for selve databehandlingen, og prøven håndhæver det på FORMEN
+///     frem for på ordlyden, netop fordi en læser ser formen først.
+///     En knap gør nøjagtig det samme arbejde uden at kunne læses som et samtykke.
 ///  - teksten SLETTES ikke, den foldes, og er ét tryk væk resten af forløbet.
 ///  - selve afsnittenes ordlyd er uændret (låst tekst, kopieres fra DOM'en).
 /// Kvitteringen er lokal (samme localStorage som dagbogen), fordi den kun styrer visning.
@@ -2091,11 +2101,11 @@ function renderDiaryOplysning() {
   if (!el.dataset.fuld) el.dataset.fuld = el.innerHTML;   // den låste ordlyd, gemt én gang
   if (!(diaryState && diaryState.oplysningLaest)) {
     el.innerHTML = el.dataset.fuld
-      + '<label class="oplysning-kvittér"><input type="checkbox" id="oplysning-hak">'
-      + '<span>Læst og forstået. Så viser vi den kort herefter.</span></label>';
+      + '<p class="oplysning-kvittér">'
+      + '<button type="button" class="oplysning-kvit-knap" id="oplysning-hak">Læst og forstået</button>'
+      + '<span>Så viser vi den kort herefter.</span></p>';
     const hak = document.getElementById('oplysning-hak');
-    if (hak) hak.addEventListener('change', () => {
-      if (!hak.checked) return;
+    if (hak) hak.addEventListener('click', () => {
       diaryState.oplysningLaest = true;
       saveCSDState(diaryState);
       renderDiaryOplysning();
