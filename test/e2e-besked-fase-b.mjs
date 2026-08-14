@@ -5,7 +5,9 @@
 // it=-token og INTERCEPTER POST /submit i Playwright (fulfill {status:'received'}).
 // Beviser LIVE i den rigtige index.html:
 //   (AUTO)  ?s=soevn-baseline&it=<fake>&ingestpk=<frisk X25519>&ingestapi=<any>
-//           → K4: send-knappen viser "Send sikkert" (auto-send-sti sand)
+//           → K4: send-knappen viser "Send sikkert" (auto-send-sti sand) og er SKJULT:
+//                 svarene afleveres uden et klik (Viktor 14/8). Etiketten maales
+//                 alligevel, fordi knappen kommer tilbage hvis afleveringen fejler.
 //           → K3: kvitteringen = den ene fælles primære "Dine svar er sendt sikkert
 //                 og krypteret til din psykolog. Tak!" (genbrugelig komponent)
 //   (PROD)  samme side UDEN it= → autoSendEnabled=false
@@ -107,9 +109,17 @@ const consoleErrors = [];
   await page.goto(url, { waitUntil: 'load' });
   await udfyldBaseline(page);
   const cta = await page.$eval('#share-btn', (b) => b.textContent.trim());
+  // 🔵 Etiketten maales stadig, og den er ikke blevet ligegyldig: knappen KOMMER TILBAGE
+  //    naar auto-afleveringen fejler, og saa skal der staa noget sandt paa den.
   check(cta === 'Send sikkert', 'K4 AUTO: send-knap = "Send sikkert"', `fik "${cta}"`);
   await shot(page, 'faseb-auto-cta-send-sikkert.png');
-  await page.click('#share-btn');
+  // 🔴 KONTRAKTEN ER AENDRET 14/8 (Viktor): i auto-tilstand SKAL svarene afsted uden et
+  //    klik. Denne proeve klikkede foer, og klikket var et MIDDEL til at naa kvitteringen,
+  //    ikke et samtykke-krav (se filens eget hoved: den beviser etiketten og copy'en).
+  //    Vi klikker derfor ikke laengere - vi maaler at kvitteringen kommer af sig selv,
+  //    og at der ikke staar en knap tilbage som klienten tror hun mangler at trykke paa.
+  const knapSkjult = await page.$eval('#share-btn', (b) => b.hidden || b.offsetParent === null);
+  check(knapSkjult === true, 'K4 AUTO: knappen er skjult (intet at trykke paa)', `hidden=${knapSkjult}`);
   await page.waitForFunction(() => {
     const s = document.getElementById('done-status');
     return s && /sendt sikkert og krypteret/i.test(s.textContent || '');
