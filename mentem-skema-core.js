@@ -535,10 +535,21 @@ export const SOEVN_BASELINE = {
   id: 'soevn-baseline', kind: 'baseline', title: 'Kort baseline om din søvn', short: 'Baseline', icon: 'maane',
   badge: 'udfyldes én gang',
   instruction: 'Et kort engangsskema om din søvn og dine vaner. Det hjælper din psykolog med at tilpasse forløbet til dig. Der er ingen rigtige eller forkerte svar.',
+  // 🔴 ALDER + KOEN ER FJERNET HERFRA (Viktor-GO 14/8, spm. 10). De stod ogsaa i
+  // SOEVN-SCREENINGEN (l.622 + l.630 foer denne aendring), og de to skemaer sendes i SAMME
+  // opstarts-SMS, saa klienten blev spurgt om det samme to gange.
+  // FLIP  vender HVIS nogen laeser baseline.alder / baseline.koen STRUKTURERET i Mentem
+  // MAALT grep paa baselineSvar|SoevnBaselineIngest x alder|koen i PsykologInvitation -> 0
+  //       POS-KTRL alderOver50|alderVedForloebsstart -> 45 (naalen KAN se en laeser)
+  //       NEG-KTRL zzqxqAlder -> 0.  SoevnBaselineImport laeser kun categories/baseline/
+  //       baselineType/token, altsaa ingen felt-noegler overhovedet.
+  // 🔴 SCREENINGENS egne alder+koen er UROERLIGE: de fodrer stopBang.alderOver50,
+  //    stopBang.koenMand og SoevnKlinikerPref.alderVedForloebsstart, og dermed exit-gatens
+  //    aldersnorm (ratificeret 12/8). Fjernes de DER, er det en klinisk regression.
+  // 🟡 GRAENSEN SKREVET UD: baseline kan sendes ALENE (raekke-bundne gensend paa et
+  //    eksisterende forloeb). En klient der KUN faar baseline, bliver derefter ikke spurgt
+  //    om alder og koen noget sted. Det er en vurdering, ikke en maaling.
   fields: [
-    { key: 'alder',            kind: 'number', text: 'Hvor gammel er du?', unit: 'år', min: 0, max: 120 },
-    { key: 'koen',             kind: 'radio',  text: 'Køn',
-      options: ['Kvinde', 'Mand', 'Andet / vil ikke oplyse'] },
     { key: 'undertype',        kind: 'radio',  text: 'Hvad passer bedst på dine søvnvanskeligheder?',
       options: ['Svært ved at falde i søvn i starten af natten', 'Vågner meget i løbet af natten', 'Vågner for tidligt om morgenen', 'En blanding'] },
     { key: 'varighed',         kind: 'radio',  text: 'Hvor længe har du haft søvnvanskeligheder?',

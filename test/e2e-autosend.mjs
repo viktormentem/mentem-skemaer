@@ -121,7 +121,17 @@ async function udfyldBaselineOgSend(page) {
   // fyld kun hvis synligt; baseline-clientName forbliver tom (round-trip af '').
   const nameEl = await page.$('#patient-name');
   if (nameEl && await nameEl.isVisible()) await nameEl.fill('SYN Testperson');
-  await page.click('#share-btn');
+  // 🔴 KONTRAKTEN AENDREDE SIG 14/8 (`86051f4`, Viktor): med `it=` starter afleveringen af
+  //    sig selv, og knappen skjules (`index.html:917-918` saetter `data-auto-igang="1"`).
+  //    Denne fil klikkede ubetinget og stod derfor og ventede 30 s paa et skjult element.
+  //    Soesterproeven `e2e-besked-fase-b.mjs` blev rettet samme dag; denne blev glemt, og
+  //    fejlen var USYNLIG fordi harnessen i forvejen ikke kunne starte (`migrate:local`
+  //    navngav en D1 der blev omdoebt 20/6). To doede maalere ovenpaa hinanden: den yderste
+  //    skjulte den inderste.
+  //    Vi klikker derfor kun naar der ER noget at klikke paa. PROD-benet (uden `it=`) har
+  //    stadig knappen, og at den vej stadig kraever et klik, er selve prod-kontrakten.
+  const knapSynlig = await page.$eval('#share-btn', (b) => !b.hidden && b.offsetParent !== null);
+  if (knapSynlig) await page.click('#share-btn');
 }
 
 let chromium;
@@ -206,7 +216,12 @@ if (rec) {
 if (plain) {
   check(Array.isArray(plain.categories) && plain.categories.includes('soevn-baseline'), 'DECRYPT: payload.categories = [soevn-baseline]', JSON.stringify(plain.categories));
   check(plain.therapistName === 'Viktor Nielsen', 'DECRYPT: therapistName bevaret', plain.therapistName);
-  check(plain.baseline && plain.baseline.alder === 42, 'DECRYPT: udfyldt baseline.alder == 42 (web→submit→D1→pull→decrypt grøn)', JSON.stringify(plain.baseline));
+  // 14/8 (spm. 10): alder + koen er fjernet fra baselinen: screeningen ejer dem, og begge
+  // skemaer sendes i samme opstarts-SMS. Repraesentanten for »et udfyldt felt overlever hele
+  // kredsloebet« er nu `undertype`: riggen ovenfor saetter FOERSTE radio pr. navn-gruppe
+  // (index.html:3951 `name="${f.key}" value="${label}"`), saa vaerdien er skemaets foerste option.
+  check(plain.baseline && plain.baseline.undertype === 'Svært ved at falde i søvn i starten af natten', 'DECRYPT: udfyldt baseline.undertype round-trip (web→submit→D1→pull→decrypt grøn)', JSON.stringify(plain.baseline));
+  check(plain.baseline && !('alder' in plain.baseline) && !('koen' in plain.baseline), 'DECRYPT: baseline spørger IKKE om alder/køn (screeningen ejer dem)', JSON.stringify(plain.baseline));
   check(typeof plain.baseline.vanligOpvaagning === 'string' && plain.baseline.vanligOpvaagning === '07:00', 'DECRYPT: time-felt vanligOpvaagning == 07:00 round-trip', plain.baseline && plain.baseline.vanligOpvaagning);
   check(plain.clientName === '', 'DECRYPT: clientName tom (baseline har ingen navne-felt) round-trip', JSON.stringify(plain.clientName));
   check(plain.baselineType === 'soevn-intake', 'DECRYPT: baselineType = soevn-intake', plain.baselineType);
