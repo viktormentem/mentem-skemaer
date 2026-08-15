@@ -77,7 +77,12 @@ async function stempelFraSiden(url) {
     return {
       stempel: m.afsenderStempel(),
       baselineAfsender: m.buildPayloadBaseline({}, {}).afsender,
+      // 🔴 `alder` tilfoejet 15/8, samme grund som i afsender-stempel-kontrakt.mjs:
+      // screeningen fik feltet som PAAKRAEVET 12/8, og begge fiksturer er fra 26/7.
+      // Proeven har kastet `paakraevet_mangler:alder` siden da, uset, fordi ingen
+      // automatik koerer den. `alderOver50` er den AFLEDTE STOP-Bang-vaerdi, ikke raatallet.
       screeningDataHarFelt: 'afsender' in m.buildPayloadScreening({
+        alder: 58,
         snorken: true, observeretApnoe: false, dagtraethed: true, hypertension: false,
         bmiOver35: false, alderOver50: true, halsomfangOver40: null, koen: 'kvinde',
         bipolarMani: false, epilepsiAnfald: false, parasomnier: false,
