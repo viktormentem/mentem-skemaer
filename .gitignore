@@ -2,3 +2,8 @@
 # ville herkomst-gaten i build-tools/deploy-skemaer.sh nægte enhver deploy efter den første:
 # træet ville være urent af værktøjets eget aftryk. Målt 2026-07-26 (INFRA).
 .wrangler/
+
+# Seeit-optagelser fra test-harnesser (inbox-enroll-seeit, inbox-fase2-seeit).
+# De skabes i repo-roden ved hver koersel og gjorde traeet urent, hvilket faar
+# deploy-skemaer.sh herkomst-gate til at afvise en ellers ren udrulning (maalt 15/8).
+.seeit-*/
