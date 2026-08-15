@@ -59,6 +59,19 @@ check(`led 4: alle ${fetches} draft-fetch har en draftEnabled-gate (${gates} gat
 // ellers laese som »alle er gatet«.
 check('POS-KTRL: der FINDES draft-fetches at maale paa', fetches >= 3, `fandt ${fetches}`);
 
+// ── 2b. Kladdens noegle laeses fra `dt`, med `t` som fallback ────────────────
+// 🔴 Foer 15/8 laeste web'en KUN `t`, og `t` baerer et v1-ingest-token for et klient-bundet
+// forloeb. 32-hex-testen fejlede derfor altid, og server-kladden var UOPNAAELIG for en
+// rigtig klient uanset `LOCAL_ONLY`. Mentem sender nu kladdens EGET id i `&dt=`.
+// 🔵 `t`-fallbacken er ikke pynt: ad-hoc-sends uden klient har intet v1 og baerer stadig
+// 32-hex i `t`. Formaterne er disjunkte, saa der er intet at gaette om.
+const dl = html.match(/const draftToken = [^;]+;/);
+check('draftToken-linjen kunne laeses', !!dl);
+if (dl) {
+  check('kladden laeses fra `dt` FOERST', /params\.get\('dt'\)\s*\|\|/.test(dl[0]), dl[0]);
+  check('`t` bevares som fallback for ad-hoc', /\|\|\s*params\.get\('t'\)/.test(dl[0]), dl[0]);
+}
+
 // ── 3. Kontaktens position er en Viktor-beslutning ───────────────────────────
 // 🟡 Ikke en dom over vaerdien, men et krav om at den er EKSPLICIT og laesbar. Skifter
 // den, skal det ske i en commit nogen har skrevet med vilje.

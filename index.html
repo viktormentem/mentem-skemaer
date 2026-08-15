@@ -788,7 +788,17 @@ function serverTilladtForForloeb() {
   return diaryState.serverTilladt === true;         // frosset ved foerste gemning
 }
 const DRAFT_API_BASE = 'https://mentem-soevn-draftstore.mentem-mycel.workers.dev';
-const draftToken = params.get('t');
+// 🔴 `dt` FOERST, `t` som fallback (15/8, Viktor-GO). Kladdens noegle og ingest-tokenet
+// er TO forskellige ting, og de kunne ikke bo i samme parameter:
+//   `t` baerer et v1-ingest-token for et klient-bundet forloeb (capability, Ed25519-signeret)
+//   kladden slaas op paa forloebets 32-hex id, og BAADE workeren (`TOKEN_RE`, worker.js:45)
+//   OG Mentem selv (`SoevnDraftClient.diaryStatus(token: f.token)`) bruger netop det id.
+// Foer denne parameter var server-kladden derfor UNAAELIG for en rigtig klient: `t` bar et
+// v1-token, 32-hex-testen fejlede, og `draftEnabled()` var falsk uanset `LOCAL_ONLY`.
+// 🔵 `t`-fallbacken er ikke bagudkompatibilitet for syns skyld: ad-hoc-sends UDEN klient
+// har intet v1 og baerer stadig 32-hex i `t` (`linkToken = ingestToken ?? token`).
+// De to formater er disjunkte, saa der er ingen tvetydighed at gaette om.
+const draftToken = params.get('dt') || params.get('t');
 const apiOverride = params.get('api');
 function draftBase() { if (!serverTilladtForForloeb()) return ''; return ((apiOverride || DRAFT_API_BASE || '').trim()).replace(/\/+$/, ''); }
 function draftEnabled() { return !!(draftToken && /^[0-9a-f]{32}$/.test(draftToken) && draftBase()); }
