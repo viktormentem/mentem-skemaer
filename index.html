@@ -726,8 +726,29 @@ const AFTALT_START = gyldigISODato(params.get('start')) ? params.get('start') : 
 // bevidste "G3-fri" prod-variant. draftBase()='' → draftEnabled() false →
 // pushDraft()/pullDraft()/deleteDraft() strukturelt døde (alle fetch-kald gatet
 // på draftEnabled, verificeret), så INGEN klient-data rammer nogen server. Server-
-// resume (LOCAL_ONLY=false-vejen) = v2, afventer DPO + G3-DPA. Skift IKKE til
-// false uden G3-DPA + Viktor whole-range-GO.
+// resume (LOCAL_ONLY=false-vejen) = v2.
+//
+// 🔴 RETTET 15/8: her stod »afventer DPO + G3-DPA«. Begge halvdele er FORAELDEDE, og
+// saetningen sendte to laesere paa jagt efter en aftale der findes. Den var sand da den
+// blev skrevet 15/6, og husets registre afgjorde spoergsmaalet 21/6 og 27/6, altsaa EFTER.
+// **En kodekommentar der var sand da den blev skrevet, er den farligste form for navn.**
+//
+//   DPA      Projekt_Praksis/kanonisk/registre/gdpr-register-kanonisk-2026-06-27.md
+//            8.1  Cloudflare Customer DPA v6.4 (3/4-2026) + EU SCC 2021/914 + DPF: PAA PLADS
+//            8.5  »Kraever soevn-draftstore ny DPA/DPIA? NEJ, samme zero-knowledge
+//                 Cloudflare/EU + samme konto -> eksisterende DPA v6.4 daekker.
+//                 Kun tilfoej art. 30.«
+//   art. 30  soevn/art30-fortegnelse-soevn-draftstore-2026-06-03.md
+//            Status: »Indfoert (adopteret af dataansvarlig)«. TTL 45 dage. EU-residency.
+//            Altsaa ogsaa gjort, tre maaneder foer dette blev laest.
+//   DPO      solo-psykolog er som udgangspunkt IKKE DPO-pligtig (DP/Datatilsynet).
+//   grundlag registrets 1.7 (27/6): art. 9(2)(a) jf. §7 stk. 1, IKKE 9(2)(h) , fordi
+//            kladden fejler noedvendigheds-testen naar localStorage-varianten allerede
+//            findes. Samtykke-blokken ER bygget; den renderer bare intet mens flaget er sat.
+//
+// ⇒ DET DER MANGLER ER ET VIKTOR-GO, ikke en aftale. Skift IKKE til false uden det:
+//   flippet aendrer hvad en klients data goer, og kohorte-gaten nedenfor er bygget til
+//   netop at goere det trygt (nye forloeb faar serveren, igangvaerende bliver lokale).
 const LOCAL_ONLY = true;
 
 // ── OVERGANGEN: server-vejen aabnes PR. FORLOEB, ikke pr. deploy ────────────────────────
