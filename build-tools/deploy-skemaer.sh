@@ -233,6 +233,40 @@ if [ "$copied" -lt 12 ]; then
 fi
 
 if [ -n "$DRY_RUN" ]; then
+# ── 4b. DOMÆNE-DÆKNING: hvor mange flader rammer denne udrulning egentlig? ───────────────────
+#
+# 🔴 FØDT 15/8: `svar.mycel.dk` var tilføjet som custom domain på DETTE Pages-projekt, og
+# MJ BUILDER opdagede det ved at hente den ægte link-forhåndsvisning ind i en mock. Et
+# Pages-projekt serverer ALLE sine domæner samme deployment, så vores udrulning publicerede
+# også til MJ's klient-svar-vært og til `overblik.mycel.dk`. Repoets `CNAME` erklærer ÉN
+# vært; deployet ramte FIRE. Scriptet talte dem aldrig.
+#
+# 🟡 DEN RAPPORTERER, DEN SPÆRRER IKKE, og det er et målt valg efter husets egen
+# to-tilfælde-tabel: en ratchet med registreret gæld må gerne udvides, men en BLOKERENDE
+# vagt der gøres bredere i samme sekund som den finder tre kendte afvigelser, er en
+# kollektiv straf lavet ud af en måling. Udrulningen skal kunne køre i dag.
+#
+# 🔵 UMÅLT er ikke grønt: kan listen ikke hentes (token udløbet, netværk), siges det som
+# UMÅLT frem for at tie. wranglers oauth-token lever 3597 s.
+ventet_domaene="$(cat "$REPO/CNAME" 2>/dev/null | tr -d '[:space:]')"
+dom_json="$(npx --yes wrangler pages project list 2>/dev/null | grep -F "$PROJECT" | head -1)"
+if [ -z "$dom_json" ] || [ -z "$ventet_domaene" ]; then
+  echo "🟡 DOMÆNE-DÆKNING: UMÅLT (kunne ikke læse projektets domæneliste eller CNAME)."
+else
+  # Tæl kommaseparerede domæner i projekt-kolonnen. `pages.dev` er projektets eget og tælles med.
+  domaener="$(printf '%s' "$dom_json" | awk -F'│' '{print $3}' | tr -d ' ')"
+  antal="$(printf '%s' "$domaener" | tr ',' '\n' | grep -c .)"
+  fremmede="$(printf '%s' "$domaener" | tr ',' '\n' | grep -v "^${ventet_domaene}$" | grep -v '\.pages\.dev$' | tr '\n' ' ')"
+  if [ -z "$fremmede" ]; then
+    echo "🟢 DOMÆNE-DÆKNING: $antal domæne(r), og kun \`$ventet_domaene\` + projektets eget pages.dev."
+  else
+    echo "🟡 DOMÆNE-DÆKNING: denne udrulning rammer $antal domæner, ikke kun \`$ventet_domaene\`."
+    echo "   Fremmede værter på projektet: $fremmede"
+    echo "   De får ALLE dette deployment. Er en af dem en anden lanes produkt, publicerer"
+    echo "   du på deres flade. Fjernelse sker i Cloudflare-dashboardet (wrangler kan det ikke)."
+  fi
+fi
+
   echo "── DRY-RUN: deployer IKKE. ($copied filer verificeret rene.) ──"
   exit 0
 fi
