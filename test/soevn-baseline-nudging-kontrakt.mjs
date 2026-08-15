@@ -243,6 +243,52 @@ check('POS-KTRL: dagens knap baerer stadig btn-primary',
   /btn-primary[^>]*id="diary-start-btn"|id="diary-start-btn"[^>]*btn-primary/.test(html)
   || /<button class="btn-primary" id="diary-start-btn"/.test(html));
 
+// ── OVERSKRIFTEN OG NUDGINGEN SKAL REGNE I SAMME TAL (Viktor-GO 2026-08-15) ──
+//
+// 🔴 DET VAR PRAECIS DET DE IKKE GJORDE. Nudgingen regnede i BASELINE_MAAL_NAETTER (14),
+// mens overskriften regnede i `N` = `diaryState.plannedDays` = 90 i standard-linket.
+// Klienten fik dermed to forskellige tal om den samme opgave, og opstarts-SMS'en siger
+// et TREDJE sted »hver morgen i 14 naetter«. Uden denne proeve kan de to glide fra
+// hinanden igen uden at nogen ser det: de staar 600 linjer fra hinanden i samme fil.
+console.log('Overskrift mod nudging:');
+const overskrift = html.match(
+  /diary-progress-text'\)\.textContent\s*=\s*([\s\S]{0,220}?);/);
+check('overskrifts-udtrykket kunne laeses ud af kilden', !!overskrift);
+if (overskrift) {
+  const u = overskrift[1];
+  check('overskriften taeller mod BASELINE_MAAL_NAETTER',
+    u.includes('BASELINE_MAAL_NAETTER'), u.replace(/\s+/g, ' ').trim());
+  // 🔴 NEG-KTRL paa den fejl der lige er rettet: `plannedDays` maa ikke tilbage i
+  // udtrykket. Uden denne linje ville »indeholder BASELINE_MAAL_NAETTER« vaere gron
+  // selv hvis BEGGE tal stod der, altsaa praecis en halv rettelse.
+  check('overskriften naevner IKKE plannedDays laengere',
+    !/plannedDays/.test(u), u.replace(/\s+/g, ' ').trim());
+  // Maalet er et MAAL og ikke et loft: efter det skal overskriften blive ved.
+  check('overskriften har stadig sin (fortsat)-gren efter maalet',
+    /\(fortsat\)/.test(u), u.replace(/\s+/g, ' ').trim());
+}
+// 🟡 GRAENSEN SKREVET UD: gitteret SKAL blive ved med at regne i perioden. Saettes
+// ogsaa det til 14, ser dagbogen ud som om den slutter der, og det er ikke sandt.
+check('uge-gitteret tegner stadig PERIODEN, ikke maalet',
+  /diaryUgeGitter\(N,/.test(html),
+  'diaryUgeGitter skal stadig faa N (plannedDays) som foerste argument');
+// 🔴 POS-KTRL paa naalen selv, og den FOERSTE udgave var doed. Den spurgte om der
+// FANDTES en `const N = diaryState.plannedDays;` et sted i filen, og det goer der: ogsaa
+// i `finishDiary()`, 1750 linjer laengere nede. Mutationsriggen fangede det ved at
+// omdoebe render-funktionens N og se proeven blive GRON paa naboens deklaration.
+// **En naal der spoerger »findes det nogen steder« kan ikke svare paa »er DET her rigtigt«.**
+// Nu bindes den til stedet: den sidste `const N = ...` FOER gitter-kaldet er den der
+// gaelder, fordi det er den funktion kaldet staar i.
+const iGitter = html.indexOf('diaryUgeGitter(N,');
+check('gitter-kaldet kunne findes', iGitter > 0);
+if (iGitter > 0) {
+  const foer = html.slice(0, iGitter);
+  const sidsteN = foer.lastIndexOf('const N = ');
+  check('POS-KTRL: render-funktionens EGEN N er perioden', sidsteN > 0
+    && /^const N = diaryState\.plannedDays;/.test(foer.slice(sidsteN)),
+    foer.slice(sidsteN, sidsteN + 60).split('\n')[0]);
+}
+
 // ── Drift mod appens konstant ────────────────────────────────────────────────
 // Maalet er appens, ikke denne fils praeference: SRTMotor.minimumBaselineNætter.
 // Er app-repoet ikke til stede, er dette UMAALT. Det skrives ud som UMAALT og taelles
