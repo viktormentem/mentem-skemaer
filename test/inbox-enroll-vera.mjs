@@ -22,7 +22,25 @@ const WORKER_DIR = process.env.WORKER_DIR
   || path.resolve(new URL('.', import.meta.url).pathname, '../../PsykologInvitation/ingest-worker');
 
 // Worker-artefakter (modpart): software-authenticator + syntetisk Ed25519-token-noegle.
-const { SoftwareAuthenticator } = await import(path.join(WORKER_DIR, 'test/webauthn-authenticator.mjs'));
+//
+// 🔴 UMAALT FREM FOR ROED (15/8). `webauthn-authenticator.mjs` ligger paa den ULANDEDE gren
+// `feat/klient-inbox-fase2-swift-udgaaende-2026-07-14` (committet 13/7) og findes IKKE i
+// kanonisk `ingest-worker/test/`. Uden denne kontrol kaster importen »Cannot find module«,
+// og en folketaelling over harnesserne klassificerer den som DOED , altsaa som noget der er
+// i stykker. Den er ikke i stykker, den er FOR TIDLIG: den proever Fase 2, som ikke er
+// landet endnu.
+// 🔵 Samme disciplin som husets »exit 0 maa aldrig daekke over jeg kan ikke«, spejlvendt:
+// **en roed dom der betyder »ikke relevant endnu« er lige saa misvisende som et falsk groent.**
+// rc 3 = UMAALT, med aarsagen skrevet ud, saa den naeste ikke skal gentage opklaringen.
+const _authFil = path.join(WORKER_DIR, 'test/webauthn-authenticator.mjs');
+if (!fs.existsSync(_authFil)) {
+  console.error('UMAALT: ' + _authFil + ' findes ikke.');
+  console.error('  Den bor paa den ULANDEDE gren feat/klient-inbox-fase2-swift-udgaaende-2026-07-14.');
+  console.error('  Denne harness proever Fase 2 og kan foerst koere naar den gren er landet.');
+  console.error('  Ingen dom afgivet. Saet WORKER_DIR= mod et trae der har filen for at koere den.');
+  process.exit(3);
+}
+const { SoftwareAuthenticator } = await import(_authFil);
 const keyFile = path.join(WORKER_DIR, 'test/.synthetic-key.json');
 if (!fs.existsSync(keyFile)) { console.error('Mangler worker-synth-noegle:', keyFile, '- koer `npm run gen-key` i ingest-worker.'); process.exit(2); }
 const synth = JSON.parse(fs.readFileSync(keyFile));

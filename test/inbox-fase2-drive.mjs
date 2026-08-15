@@ -18,7 +18,21 @@ const RP_ORIGIN = process.env.RP_ORIGIN || 'http://localhost:5173';
 const WORKER_DIR = process.env.WORKER_DIR
   || path.resolve(new URL('.', import.meta.url).pathname, '../../PsykologInvitation/ingest-worker');
 
-const { SoftwareAuthenticator } = await import(path.join(WORKER_DIR, 'test/webauthn-authenticator.mjs'));
+// 🔴 UMAALT FREM FOR ROED (15/8), samme grund som i inbox-enroll-vera.mjs:
+// `webauthn-authenticator.mjs` bor paa den ULANDEDE gren
+// `feat/klient-inbox-fase2-swift-udgaaende-2026-07-14` (13/7) og findes ikke i kanonisk
+// `ingest-worker/test/`. Uden kontrollen kaster importen »Cannot find module«, og harnessen
+// laeses som DOED. Den er ikke i stykker, den er FOR TIDLIG.
+// 🔵 En roed dom der betyder »ikke relevant endnu« er lige saa misvisende som et falsk groent.
+const _authFil = path.join(WORKER_DIR, 'test/webauthn-authenticator.mjs');
+if (!fs.existsSync(_authFil)) {
+  console.error('UMAALT: ' + _authFil + ' findes ikke.');
+  console.error('  Den bor paa den ULANDEDE gren feat/klient-inbox-fase2-swift-udgaaende-2026-07-14.');
+  console.error('  Denne harness proever Fase 2 og kan foerst koere naar den gren er landet.');
+  console.error('  Ingen dom afgivet. Saet WORKER_DIR= mod et trae der har filen for at koere den.');
+  process.exit(3);
+}
+const { SoftwareAuthenticator } = await import(_authFil);
 const keyFile = path.join(WORKER_DIR, 'test/.synthetic-key.json');
 if (!fs.existsSync(keyFile)) { console.error('Mangler worker-synth-noegle:', keyFile); process.exit(2); }
 const synth = JSON.parse(fs.readFileSync(keyFile));
