@@ -1845,7 +1845,21 @@ async function runDiary(id) {
   // så dagene FØR start klemmes til 0 og uge-1-kadencen begynder på den aftalte dag.
   // `serverTilladt` fryses HER, sammen med startedAt, og aldrig igen. `loadCSD() ||`-vagten
   // betyder at et igangvaerende forloeb beholder sin egen beslutning: der migreres intet.
-  diaryState = loadCSD() || { startedAt: (AFTALT_START || todayISO()), plannedDays: diaryPlannedDays(), contentVersion: CONTENT_VERSION, dirty: false, entries: [], serverTilladt: true };
+  //
+  // 🔴 RETTET 15/8: her stod `serverTilladt: true` HARDKODET, og det er en ladt faelde.
+  // Feltet fryses ved FOERSTE gemning, ogsaa mens `LOCAL_ONLY` er sat. Enhver dagbog
+  // paabegyndt siden kohorte-gaten gik live (14/8-koden, udrullet 15/8 ca. kl. 11) har
+  // derfor allerede `true` liggende i sin localStorage , mens klienten laeste
+  // »De sendes ikke nogen steder undervejs«. Den dag flaget flippes, ville netop de
+  // klienter faa HELE deres akkumulerede dagbog sendt, og det er praecis den skade
+  // kohorte-gaten blev bygget for at forhindre. Gaten daekkede doeren, ikke vinduet.
+  // ⇒ Fryser nu den vaerdi der FAKTISK gjaldt (`!LOCAL_ONLY`), ikke en konstant.
+  //   flag sat  -> false -> forbliver lokal for evigt (Viktor 15/8: »de gamle med
+  //                lokallagring skal fortsaette som det er nu«)
+  //   flag af   -> true  -> serveren, som tilsigtet for nye forloeb
+  // 🔵 Klassen: **et felt der hedder »hvad var tilladt«, skal gemme hvad der VAR tilladt,
+  // ikke hvad vi haaber der bliver tilladt.**
+  diaryState = loadCSD() || { startedAt: (AFTALT_START || todayISO()), plannedDays: diaryPlannedDays(), contentVersion: CONTENT_VERSION, dirty: false, entries: [], serverTilladt: !LOCAL_ONLY };
   if (!diaryState.plannedDays) diaryState.plannedDays = diaryPlannedDays();
   if (diaryState.contentVersion == null) diaryState.contentVersion = CONTENT_VERSION;
 
