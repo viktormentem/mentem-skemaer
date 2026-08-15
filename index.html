@@ -2029,10 +2029,30 @@ function renderDiaryWelcome() {
   renderDiaryConsent();
   renderDiaryOplysning();
 
-  // Open-ended: vis reelt dag-tal; "af N" kun mens inden for målet, ellers "(fortsat)".
+  // Open-ended: vis reelt dag-tal; "af <mål>" kun mens inden for målet, ellers "(fortsat)".
+  //
+  // 🔴 TÆLLER MOD BASELINE-MÅLET, IKKE MOD PERIODEN (Viktor-GO 2026-08-15). Før stod her
+  // `N`, altså `diaryState.plannedDays` = 90 i standard-linket. Klienten fik dermed TO
+  // forskellige tal om den samme opgave: opstarts-SMS'en siger »hver morgen i 14 nætter«
+  // (`SMSTemplates.soevnOpstart`), og skærmen sagde »Dag 12 af 90«. Filens eget hoved
+  // (`BASELINE_MAAL_NAETTER`) havde allerede skrevet hvorfor det er forkert: tallet
+  // »ser ud som om hun knap er begyndt, præcis når hun er tre nætter fra at have det,
+  // der skal til«. Nudgingen regnede allerede i 14; overskriften var den sidste rest.
+  //
+  // 🟡 `N` BLIVER STÅENDE og bruges videre af uge-gitteret nedenfor, hvor det er den
+  // rigtige størrelse: gitteret tegner PERIODEN og markerer målet i den. Sattes `N`
+  // selv til 14, ville dagbogen se ud som om den slutter der, og det er ikke sandt.
+  // Ordren sagde »én linje«, og det er den her: udtrykket, ikke deklarationen.
+  //
+  // 🟢 »14« er et MÅL og ikke et loft, og fladen siger det allerede med ord:
+  // `(fortsat)`-grenen herunder bliver ved efter målet, `baselineNudging()` skriver
+  // »Udfylder du flere nætter, bliver tiderne kun mere præcise«, og nudgingen forsvinder
+  // først når SRT er aktiv. Ingen konstant er ændret; 90 er stadig linkets levetid.
   const dagNu = done + (filledToday ? 0 : 1);
   document.getElementById('diary-progress-text').textContent =
-    dagNu <= N ? `Dag ${dagNu} af ${N}` : `Dag ${dagNu} (fortsat)`;
+    dagNu <= BASELINE_MAAL_NAETTER
+      ? `Dag ${dagNu} af ${BASELINE_MAAL_NAETTER}`
+      : `Dag ${dagNu} (fortsat)`;
 
   // Ugentlig ikke-terminal "Send opdatering"-knap. Med auto-send er den overflødig og VÆK
   // (Viktor 9/8); uden auto-send er den den eneste vej, og så bliver den stående.
