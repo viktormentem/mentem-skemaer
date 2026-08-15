@@ -181,7 +181,10 @@
   /* Lange tekster: fulde FØRSTE gang, foldet bagefter. Ikke slettet, altid ét tryk væk. */
   .tekst-mere { background:none; border:0; padding:0; font:inherit; font-weight:600; color:var(--accent);
                 text-decoration:underline; cursor:pointer; }
-  .oplysning-kvittér { display:flex; gap:9px; align-items:flex-start; margin-top:10px; font-size:13.5px; color:var(--muted); }
+  .oplysning-kvittér { display:flex; gap:9px; align-items:center; margin-top:10px; font-size:13.5px; color:var(--muted); flex-wrap:wrap; }
+  .oplysning-kvit-knap { background:var(--flade,#fff); border:1.5px solid var(--accent); border-radius:8px;
+    padding:6px 13px; font:inherit; font-weight:600; font-size:13.5px; color:var(--accent); cursor:pointer; flex:none; }
+  .oplysning-kvit-knap:hover { background:var(--accent-light); }
   .oplysning-kort { font-size:13.5px; color:var(--muted); }
   /* Stop-linjen: en linje, ikke en knap. Den skal kunne findes af den der leder efter den,
      og overses af den der ikke gør. */
@@ -726,10 +729,47 @@ const AFTALT_START = gyldigISODato(params.get('start')) ? params.get('start') : 
 // resume (LOCAL_ONLY=false-vejen) = v2, afventer DPO + G3-DPA. Skift IKKE til
 // false uden G3-DPA + Viktor whole-range-GO.
 const LOCAL_ONLY = true;
+
+// ── OVERGANGEN: server-vejen aabnes PR. FORLOEB, ikke pr. deploy ────────────────────────
+// 🔴 HVORFOR DEN FINDES (14/8). Der er EEN index.html paa EEN host, saa et globalt flip
+//    ville ramme klienter der er MIDT i et forloeb. Og `pushDraft()` sender HELE den
+//    akkumulerede dagbog, ikke kun den nye dag. En klient paa dag 10 der siger ja, ville
+//    derfor sende ti dage, hvoraf de ni blev skrevet under den localStorage-tekst hun
+//    faktisk fik at laese: »De sendes ikke nogen steder undervejs.«
+//    Det er ikke en fejl i PUT'en. Det er den rigtige adfaerd anvendt paa den forkerte kohorte.
+//
+// 🟢 MAALT 14/8 i `MentemSoevnForloeb` (UserDefaults, ikke-PII): 23 forloeb, 15 aktive,
+//    heraf **2 dagbogs-forloeb stadig inden for deres periode**. Begge startet 24-07-2026,
+//    begge 90 dage, begge slut **22-10-2026**. POS-KTRL paa dato-konverteringen: aeldste
+//    2026-06-06, nyeste 2026-08-03, altsaa plausible.
+//    ⇒ Overgangen har en KENDT udloebsdato. Efter 22-10-2026 er der intet tilbage at
+//    skaerme, og hele dette led kan slettes. Skriv ikke en migration der lever evigt.
+//
+// 🔵 NOEGLEN ER FORLOEBET, ikke URL'en. En parameter kan tabes (samme grund som at
+//    LOCAL_ONLY blev bagt ind frem for at vaere en query-param), og `startedAt` kan ikke.
+//    Beslutningen FRYSES i diaryState ved foerste gemning, praecis som `plannedDays` og
+//    `contentVersion` allerede fryses, saa den ikke kan drive senere i forloebet.
+// 🔴 SKELNEN ER »FINDES DER ALLEREDE EN STATE«, IKKE EN DATO. Foerste udgave sammenlignede
+//    `startedAt` med en cutover-dato, og en mutant afsloerede at datoen baade var utestet OG
+//    forkert: et HELT NYT link med en tilbagedateret `?start=` ville have faaet den lokale
+//    vej, selv om klienten aldrig har set nogen af de to tekster. Datoen svarede paa
+//    »hvornaar begyndte forloebet nominelt«, og spoergsmaalet er »har hun allerede skrevet
+//    dage under det gamle loefte«.
+//    `loadCSD() ||`-vagten udtrykker det praecist i forvejen: en eksisterende state bevares
+//    uroert, og feltet saettes KUN naar en ny state foedes. **Fravaeret af feltet ER kohorten.**
+//    Feltet blev indfoert 14-08-2026; enhver state uden det er aeldre end den dag.
+//
+// 🔴 FAIL-SAFE-RETNINGEN ER MOD DET GAMLE LOEFTE. Kan vi ikke afgoere det, bliver vi lokale.
+//    At gaette den anden vej ville uploade data under et loefte om det modsatte.
+function serverTilladtForForloeb() {
+  if (LOCAL_ONLY) return false;                     // global hovedafbryder, uaendret
+  if (!diaryState) return false;                    // ingen state endnu = ingen server
+  return diaryState.serverTilladt === true;         // frosset ved foerste gemning
+}
 const DRAFT_API_BASE = 'https://mentem-soevn-draftstore.mentem-mycel.workers.dev';
 const draftToken = params.get('t');
 const apiOverride = params.get('api');
-function draftBase() { if (LOCAL_ONLY) return ''; return ((apiOverride || DRAFT_API_BASE || '').trim()).replace(/\/+$/, ''); }
+function draftBase() { if (!serverTilladtForForloeb()) return ''; return ((apiOverride || DRAFT_API_BASE || '').trim()).replace(/\/+$/, ''); }
 function draftEnabled() { return !!(draftToken && /^[0-9a-f]{32}$/.test(draftToken) && draftBase()); }
 function draftUrl() { return `${draftBase()}/api/soevn-draft/${draftToken}`; }
 
@@ -792,6 +832,21 @@ async function sendTilIngest(payload, schemaType) {
 // i markuppen; her sætter vi kun status-teksten (ingen tal, ingen emoji).
 function visSendtKvittering(statusEl, flow) {
   if (!statusEl) return;
+  // 🔴 FUNDET AF BILLEDET, ikke af en prøve (14/8). Da auto-afleveringen kom, stod der
+  // pludselig TO hakker og TO »sendt«-sætninger på samme skærm: skærmens eget statiske
+  // hak plus ledeteksten »Dine svar sendes nu ...«, og nedenunder kvitteringens animerede
+  // hak plus »Dine svar er sendt ...«. Begge var rigtige hver for sig - det ene er et
+  // LØFTE, det andet er et FAKTUM - men de beskriver samme handling i to tider, og en
+  // skærm der siger det samme to gange, læses som om der er sket to ting.
+  // Løftet og det statiske hak hører til mens vi sender; når kvitteringen lander,
+  // er de ikke længere sande, de er bare stadig på skærmen.
+  const skaerm = statusEl.closest ? statusEl.closest('.screen') : null;
+  if (skaerm) {
+    const statiskHak = skaerm.querySelector('.done-mark');
+    if (statiskHak) statiskHak.hidden = true;
+    const ledetekst = skaerm.querySelector('.done-wrap > p');
+    if (ledetekst) ledetekst.hidden = true;
+  }
   statusEl.style.color = 'var(--accent)';
   statusEl.textContent = '';
   // Animeret mark FOERST: cirklen tegner (sendt) -> hakket slaar ind (modtaget).
@@ -830,9 +885,49 @@ function saetSikkerSendLabel(btn, fallbackTekst) {
 
 // #F privatlivstekst: når auto-send er aktiv, lover vi "sendes direkte" i st.f.
 // "intet gemmes / du sender selv". Gated på autoSendEnabled → prod-tekst uændret uden it=.
+// 🔵 Vælgeren er `[data-autosend]` og ikke `.disc-body[data-autosend]` (14/8): afslutnings-
+// skærmens ledetekst skal også kunne skifte, og en klasse i en vælger er en skjult
+// begrænsning på hvem der må bruge mekanismen. Alle hidtidige bærere har `disc-body`,
+// så bredden er en overmængde og ændrer intet bestående.
 function gatePrivacyTekst() {
   if (!autoSendEnabled()) return;
-  document.querySelectorAll('.disc-body[data-autosend]').forEach((el) => { el.innerHTML = el.getAttribute('data-autosend'); });
+  document.querySelectorAll('[data-autosend]').forEach((el) => { el.innerHTML = el.getAttribute('data-autosend'); });
+}
+
+// ── AUTO-AFLEVERING: klienten skal ikke bede om at blive færdig ─────────────
+// 🔴 VIKTOR 14/8, ordret: »Når alle besvarelser er på plads og klienten får beskeden
+// "Tak. Du er færdig", så skal det sendes automatisk og ikke først når en klient trykker
+// på "Send sikkert". Det skaber unødvendige fejl hvor klienter tror de er færdige når de
+// faktisk mangler at trykke.«
+//
+// 🟢 Maskineriet fandtes allerede. `autoSendEnabled()` var SAND for hans egne links
+// (footer-ID `2af28306` = `INGEST_KEY_ID`, aflæst på hans skærmbillede). Det var kun
+// IGANGSÆTTELSEN der lå hos klienten. Vi bygger altså ikke en ny kanal, vi fjerner et klik.
+//
+// 🔴 KNAPPEN MÅ IKKE BARE FJERNES, og det er ikke forsigtighed men to målte tilfælde:
+//   1. Links UDEN v1-token: `autoSendEnabled()` er falsk, og fil-stien går gennem
+//      `navigator.share`/download, som browseren KUN tillader inden for en brugerhandling.
+//      Et automatisk forsøg dér ville blive afvist af browseren og efterlade klienten
+//      uden vej ud. Den sti er derfor rørt fri.
+//   2. Auto-afleveringen kan fejle (offline, worker nede). Så skal knappen TILBAGE med
+//      en ærlig besked. En tavs blindgyde er værre end det klik vi fjerner.
+function startAutoAflevering(btnId, koer) {
+  if (!autoSendEnabled()) return;              // manuel sti helt uændret
+  const btn = document.getElementById(btnId);
+  if (!btn || btn.dataset.autoIgang === '1') return;   // aldrig to gange
+  btn.dataset.autoIgang = '1';
+  btn.hidden = true;
+  koer(true);
+}
+
+// Auto-afleveringen nåede ikke frem. Giv klienten knappen tilbage frem for at lade
+// hende stå på en skærm der siger "færdig" uden at være det.
+function visAutoSendFejlede(statusEl, btn) {
+  if (btn) { btn.hidden = false; btn.disabled = false; delete btn.dataset.autoIgang; }
+  if (statusEl) {
+    statusEl.style.color = '#c0392b';
+    statusEl.textContent = 'Dine svar blev ikke sendt. Måske er forbindelsen ustabil. Tryk på knappen for at sende dem.';
+  }
 }
 
 // SIKKERHED: krypteringsnøglen er PINNED i koden (ikke fra ?pk=). Et ?pk= i
@@ -1163,8 +1258,12 @@ function startForm() {
 
 // ── AFSLUTNING + KRYPTERET DELING (nul-score) ───────────────────────────────
 function goDone() {
+  const p = document.querySelector('#screen-done p');
+  if (p && autoSendEnabled()) p.textContent =
+    'Dine svar sendes nu sikkert og krypteret til din psykolog. Du behøver ikke gøre mere.';
   saetSikkerSendLabel(document.getElementById('share-btn'), 'Send filen til din psykolog');
   showScreen('screen-done'); window.scrollTo(0, 0);
+  startAutoAflevering('share-btn', shareEncrypted);
 }
 
 // ════════════════════════════════════════════════════════════════════════
@@ -1241,7 +1340,7 @@ function visFilFallbackUI(statusEl, blob, filename, containerJSON) {
   a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
 }
 
-async function shareEncrypted() {
+async function shareEncrypted(auto = false) {
   const status = document.getElementById('done-status');
   const btn = document.getElementById('share-btn');
   // SIKKERHED: nægt at kryptere hvis linket peger på en ukendt nøgle.
@@ -1268,6 +1367,8 @@ async function shareEncrypted() {
   if (autoSendEnabled()) {
     const ok = await sendTilIngest(payload, 'batteri');
     if (ok) { visSendtKvittering(status, 'batteri'); return; }
+    // Se `startAutoAflevering`: fil-stien kræver en brugerhandling.
+    if (auto) { visAutoSendFejlede(status, btn); return; }
   }
   // TRIN 2 — levering (deling el. robust download/kopiér-fallback; aldrig fastlås).
   const filename = `mentem-skema-${new Date().toISOString().slice(0, 10)}.json`;
@@ -1721,7 +1822,9 @@ async function runDiary(id) {
   // 🔵 `loadCSD() ||`-vagten stod der i forvejen, så en klient der allerede er i gang,
   // beholder sin egen dato. Der migreres intet. `diaryDayIndex` har `Math.max(0, ...)`,
   // så dagene FØR start klemmes til 0 og uge-1-kadencen begynder på den aftalte dag.
-  diaryState = loadCSD() || { startedAt: (AFTALT_START || todayISO()), plannedDays: diaryPlannedDays(), contentVersion: CONTENT_VERSION, dirty: false, entries: [] };
+  // `serverTilladt` fryses HER, sammen med startedAt, og aldrig igen. `loadCSD() ||`-vagten
+  // betyder at et igangvaerende forloeb beholder sin egen beslutning: der migreres intet.
+  diaryState = loadCSD() || { startedAt: (AFTALT_START || todayISO()), plannedDays: diaryPlannedDays(), contentVersion: CONTENT_VERSION, dirty: false, entries: [], serverTilladt: true };
   if (!diaryState.plannedDays) diaryState.plannedDays = diaryPlannedDays();
   if (diaryState.contentVersion == null) diaryState.contentVersion = CONTENT_VERSION;
 
@@ -1919,7 +2022,8 @@ function renderDiaryWelcome() {
   //   OVER knappen (så "som beskrevet ovenfor" i §2 reelt peger på §1 ovenfor).
   //   diary-privacy tømmes for at undgå dublet. Se renderDiaryConsent().
   const priv = document.getElementById('diary-privacy');
-  if (priv) priv.innerHTML = LOCAL_ONLY
+  // Samme gate som samtykket: teksten skal love det forloebet FAKTISK goer.
+  if (priv) priv.innerHTML = !serverTilladtForForloeb()
     ? chipIcon('laas') + '<strong>Privatliv:</strong> Dine svar gemmes kun i denne browser på din egen enhed. De sendes ikke nogen steder undervejs. Udfyld alle dagene på den samme enhed. Når du er klar, ' + (autoSendEnabled() ? 'sendes de sikkert og krypteret direkte til din psykolog, så kun din psykolog kan åbne dem.' : 'samles svarene i én krypteret fil, som kun din psykolog kan åbne, og du sender den selv til sidst.') + ' <strong>Bemærk:</strong> rydder du browseren eller skifter enhed, mistes de dage, du har gemt, og du må starte forfra.'
     : '';
   renderDiaryConsent();
@@ -2080,8 +2184,15 @@ function renderDiaryWelcome() {
 ///
 /// 🔴 DET ER IKKE ET SAMTYKKE og må aldrig komme til at ligne et. Behandlingen hviler på
 /// journalføringspligten (register 1.7), ikke på klientens ja. Derfor:
-///  - hakket GATER INTET. Alt virker nøjagtig som før, hakket eller ej.
+///  - kvitteringen GATER INTET. Alt virker nøjagtig som før, trykket eller ej.
 ///  - ordlyden er »Læst og forstået«, aldrig »jeg accepterer«.
+///  🔴 OG KONTROLLEN ER EN KNAP, IKKE ET HAK (rettet 14/8, e2e-dagbog-samtykke var RØD).
+///     Ordlyden var altid rigtig; formen var ikke. Et afkrydsningsfelt ved siden af en
+///     oplysning om behandlingen LIGNER en tilladelse klienten kan nægte, og det kan hun
+///     ikke: behandlingen hviler på journalføringspligten. Register 1.3 forbyder en
+///     samtykke-checkbox for selve databehandlingen, og prøven håndhæver det på FORMEN
+///     frem for på ordlyden, netop fordi en læser ser formen først.
+///     En knap gør nøjagtig det samme arbejde uden at kunne læses som et samtykke.
 ///  - teksten SLETTES ikke, den foldes, og er ét tryk væk resten af forløbet.
 ///  - selve afsnittenes ordlyd er uændret (låst tekst, kopieres fra DOM'en).
 /// Kvitteringen er lokal (samme localStorage som dagbogen), fordi den kun styrer visning.
@@ -2091,11 +2202,11 @@ function renderDiaryOplysning() {
   if (!el.dataset.fuld) el.dataset.fuld = el.innerHTML;   // den låste ordlyd, gemt én gang
   if (!(diaryState && diaryState.oplysningLaest)) {
     el.innerHTML = el.dataset.fuld
-      + '<label class="oplysning-kvittér"><input type="checkbox" id="oplysning-hak">'
-      + '<span>Læst og forstået. Så viser vi den kort herefter.</span></label>';
+      + '<p class="oplysning-kvittér">'
+      + '<button type="button" class="oplysning-kvit-knap" id="oplysning-hak">Læst og forstået</button>'
+      + '<span>Så viser vi den kort herefter.</span></p>';
     const hak = document.getElementById('oplysning-hak');
-    if (hak) hak.addEventListener('change', () => {
-      if (!hak.checked) return;
+    if (hak) hak.addEventListener('click', () => {
       diaryState.oplysningLaest = true;
       saveCSDState(diaryState);
       renderDiaryOplysning();
@@ -2127,7 +2238,12 @@ function renderDiaryConsent() {
   // Vises kun i server-pathen (ikke localStorage-variant) og kun ved gyldig nøgle.
   // NB: prod kører LOCAL_ONLY=true → hele blokken renderer INTET i dag (der er ingen
   // server-kladde at samtykke til). Blokken er den server-wirede v2-stis samtykke.
-  if (LOCAL_ONLY || !keyCheck.ok) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  // 🔴 GATER PAA FORLOEBET, ikke paa det globale flag (14/8). Et foer-cutover-forloeb kan
+  //    ALDRIG naa serveren (draftBase() er tom), saa at vise det et samtykke ville vaere at
+  //    bede om lov til noget der ikke kan ske. Vaerre: klienten fik den localStorage-tekst
+  //    der siger »De sendes ikke nogen steder undervejs«, og en samtykke-boks midt i
+  //    forloebet ville laese som en aendring af de vilkaar hun sagde ja til.
+  if (!serverTilladtForForloeb() || !keyCheck.ok) { el.style.display = 'none'; el.innerHTML = ''; return; }
   el.style.display = 'block';
   const accepted = consentAccepted();
   // §1 — VERBATIM. §2 — VERBATIM (☐ → ægte checkbox). Ramme-linjen + status-linjen er
@@ -2656,6 +2772,37 @@ function updateDiaryProgress() {
 // gangen; data-bindingen (diaryDraft) er uændret, så svar bevares på tværs af
 // Næste/Forrige. "Spørgsmål X af Y" læses FØRST (fokuseres + aria-live), fokus
 // flyttes til trinnets overskrift, aktivt trin bærer aria-current="step".
+// ── Hvor et trin-skift lander på skærmen ────────────────────────────────────
+// 🔴 VIKTOR 14/8, ordret: skemaet "ryger op til toppen hver gang man har besvaret, så
+// man skal scrolle ned igen så man kan se det nye spørgsmål, hvilket er forstyrrende."
+// Årsagen var `window.scrollTo(0, 0)` ved HVERT trin. Toppen af dokumentet er logo,
+// overskrift og introtekst; spørgsmålet lå under folden hver gang.
+//
+// 🔵 ÉT sted, ikke to. `showDiaryStep` og `showStep` bar den samme hale ordret, og en
+// rettelse i kun den ene ville se færdig ud og være halv. Dagbogen udfyldes hver morgen
+// i 14 nætter, så friktionen dér er den dyreste af de to selv om den ikke blev meldt.
+//
+// Første trin beholder dokumenttoppen med vilje: dér SKAL introen læses, og der er
+// intet forrige svar at komme videre fra.
+function rulTilSpoergsmaal(i, head) {
+  if (i === 0 || !head) { window.scrollTo(0, 0); return; }
+  // Fremskridtsbjælken er `position:sticky; top:0`, så den ville dække overskriften hvis
+  // vi rullede præcis til den. Højden MÅLES frem for at skrives: et tal i en konstant
+  // her ville tie når bjælken skifter højde (den brydes i to linjer på smalle skærme).
+  //
+  // 🔴 OG DEN SKAL FINDES BLANDT FLERE. Min første form var `querySelector('.form-progress')`,
+  // og der er FIRE af dem i dokumentet, én pr. skærm. Den første i dokumentrækkefølge
+  // hører til en SKJULT skærm, så højden blev 0, og overskriften »Spørgsmål X af Y« landede
+  // BAG bjælken. **En vælger der ikke siger hvilken skærm, er et gæt om at der kun er én.**
+  // 🔵 Prøven kunne ikke se det: den krævede at overskriften lå i øverste halvdel, og 12 px
+  // opfylder det fint. Det var See-it-billedet der fandt det.
+  const bar = Array.from(document.querySelectorAll('.form-progress'))
+    .find((el) => el.offsetParent !== null && el.getBoundingClientRect().height > 0);
+  const barH = bar ? bar.getBoundingClientRect().height : 0;
+  const y = head.getBoundingClientRect().top + window.pageYOffset - barH - 12;
+  window.scrollTo(0, Math.max(0, y));
+}
+
 function teardownDiaryStepper() {
   document.querySelectorAll('.a11y-step-head, .a11y-stepnav').forEach(el => el.remove());
   document.querySelectorAll('#diary-fields > *').forEach(el => { el.hidden = false; el.removeAttribute('aria-current'); });
@@ -2719,10 +2866,20 @@ function showDiaryStep(i, moveFocus = true) {
   if (prev) prev.disabled = i === 0;
   if (next) next.style.display = last ? 'none' : '';
   if (save) save.style.display = last ? '' : 'none';
-  window.scrollTo(0, 0);
+  rulTilSpoergsmaal(i, head);
   // Fokus til "Spørgsmål X af Y" → skærmlæser læser fremskridtet FØRST, derefter
   // navigerer brugeren til selve spørgsmålet. rAF: efter layout/visibility-skift.
-  if (moveFocus && head) requestAnimationFrame(() => { try { head.focus(); } catch (e) {} });
+  // 🟡 `preventScroll` er et VÆRN, ikke en kur, og det er målt frem for påstået.
+  // `head.tabIndex = -1` gør overskriften fokuserbar, og `.focus()` ruller normalt selv
+  // sit mål ind i billedet. Jeg skrev først at det var den anden af to årsager. Mutant M4
+  // (fjern `preventScroll`) OVERLEVEDE: prøven forblev grøn, fordi `rulTilSpoergsmaal`
+  // netop har sat overskriften i billedet, så fokus intet har at rulle. **Værnet bærer
+  // altså ikke i dag.** Det bliver stående, fordi det bærer i samme sekund rulningen
+  // ændrer sig, og fordi et ækvivalent led er billigere end den fejl det dækker. Men det
+  // står her som ækvivalent, ikke som bevist.
+  if (moveFocus && head) requestAnimationFrame(() => {
+    try { head.focus({ preventScroll: true }); } catch (e) { try { head.focus(); } catch (e2) {} }
+  });
 }
 
 // ════════════════════════════════════════════════════════════════════════
@@ -2784,10 +2941,20 @@ function showStep(i, moveFocus = true) {
     const lb = document.getElementById(cfg.lastBtnId);
     if (lb) lb.style.display = last ? (cfg.lastBtnShow || '') : 'none';
   }
-  window.scrollTo(0, 0);
+  rulTilSpoergsmaal(i, head);
   // Fokus til "Spørgsmål X af Y" → skærmlæser læser fremskridtet FØRST, derefter
   // navigerer brugeren til selve spørgsmålet. rAF: efter layout/visibility-skift.
-  if (moveFocus && head) requestAnimationFrame(() => { try { head.focus(); } catch (e) {} });
+  // 🟡 `preventScroll` er et VÆRN, ikke en kur, og det er målt frem for påstået.
+  // `head.tabIndex = -1` gør overskriften fokuserbar, og `.focus()` ruller normalt selv
+  // sit mål ind i billedet. Jeg skrev først at det var den anden af to årsager. Mutant M4
+  // (fjern `preventScroll`) OVERLEVEDE: prøven forblev grøn, fordi `rulTilSpoergsmaal`
+  // netop har sat overskriften i billedet, så fokus intet har at rulle. **Værnet bærer
+  // altså ikke i dag.** Det bliver stående, fordi det bærer i samme sekund rulningen
+  // ændrer sig, og fordi et ækvivalent led er billigere end den fejl det dækker. Men det
+  // står her som ækvivalent, ikke som bevist.
+  if (moveFocus && head) requestAnimationFrame(() => {
+    try { head.focus({ preventScroll: true }); } catch (e) { try { head.focus(); } catch (e2) {} }
+  });
 }
 
 function instrumentStepperCfg() {
@@ -3382,21 +3549,28 @@ function runScreening(id) {
   document.getElementById('instrument-review-submit').addEventListener('click', () => {
     if (REQ_KEYS.some((k) => svar[k] === undefined)) return;
     const p = document.querySelector('#screen-done p');
+    // 🔴 Ledeteksten lovede et klik der ikke længere findes i auto-tilstand. En skærm der
+    // siger "Tryk nedenfor" uden en knap nedenfor, er værre end den knap vi fjernede.
     if (p) p.textContent = autoSendEnabled()
-      ? 'Dine svar er klar. Tryk nedenfor for at sende dem sikkert og krypteret til din psykolog.'
+      ? 'Dine svar sendes nu sikkert og krypteret til din psykolog. Du behøver ikke gøre mere.'
       : 'Dine svar er nu samlet i én krypteret fil. Tryk nedenfor for at sende filen til din psykolog i den samme SMS-tråd, hvor du fik linket.';
     const btn = document.getElementById('share-btn');
     saetSikkerSendLabel(btn, 'Send filen til din psykolog');
     showScreen('screen-done');
     window.scrollTo(0, 0);
+    startAutoAflevering('share-btn', shareScreeningEncrypted);
   });
   document.getElementById('instrument-review-back').addEventListener('click', () => {
     showScreen('screen-instrument'); window.scrollTo(0, 0); showStep(trinItems.length - 1);
   });
 
-  document.getElementById('share-btn').addEventListener('click', shareScreeningEncrypted);
+  // 🔴 IKKE `addEventListener('click', shareScreeningEncrypted)`. Handleren tager nu
+  // `auto`, og et klik ville sende Event-objektet ind som første argument - et objekt er
+  // sandt, så HVERT manuelt klik ville blive læst som en auto-aflevering og ende i
+  // fejl-grenen i stedet for fil-stien. Pakket ind, så argumentet er vores og ikke DOM'ens.
+  document.getElementById('share-btn').addEventListener('click', () => shareScreeningEncrypted(false));
 
-  async function shareScreeningEncrypted() {
+  async function shareScreeningEncrypted(auto = false) {
     const status = document.getElementById('done-status');
     const btn = document.getElementById('share-btn');
     if (!keyCheck.ok) {
@@ -3424,6 +3598,10 @@ function runScreening(id) {
         visSendtKvittering(status, 'soevn-screening');
         return;
       }
+      // 🔴 Fejlede den AUTOMATISKE aflevering, må vi ikke falde videre til fil-stien:
+      // `navigator.share`/download kræver en brugerhandling, og uden et klik ville
+      // browseren afvise den tavst. Giv knappen tilbage i stedet.
+      if (auto) { visAutoSendFejlede(status, btn); return; }
     }
     // TRIN 2 — levering (deling el. robust download/kopiér-fallback; aldrig fastlås).
     const filename = `mentem-soevn-screening-${new Date().toISOString().slice(0, 10)}.json`;
@@ -3682,7 +3860,8 @@ function runBaseline(id) {
   baselineSkema = SKEMAER[id];
   document.getElementById('baseline-start-btn').addEventListener('click', startBaseline);
   document.getElementById('baseline-finish-btn').addEventListener('click', finishBaseline);
-  document.getElementById('share-btn').addEventListener('click', shareBaselineEncrypted);
+  // Indpakket: se begrundelsen ved screening-bindingen (Event-objektet er sandt).
+  document.getElementById('share-btn').addEventListener('click', () => shareBaselineEncrypted(false));
   renderBaselineWelcome();
   showScreen('screen-baseline-welcome');
 }
@@ -3811,13 +3990,16 @@ function finishBaseline() {
   const req = baselineSkema.fields.filter(f => !f.optional);
   if (req.some(f => { const v = baselineDraft[f.key]; return v == null || v === ''; })) return;
   const p = document.querySelector('#screen-done p');
-  if (p) p.textContent = 'Dine svar er nu samlet i én krypteret fil. Tryk nedenfor for at sende filen til din psykolog i den samme SMS-tråd, hvor du fik linket.';
+  if (p) p.textContent = autoSendEnabled()
+    ? 'Dine svar sendes nu sikkert og krypteret til din psykolog. Du behøver ikke gøre mere.'
+    : 'Dine svar er nu samlet i én krypteret fil. Tryk nedenfor for at sende filen til din psykolog i den samme SMS-tråd, hvor du fik linket.';
   saetSikkerSendLabel(document.getElementById('share-btn'), 'Send filen til din psykolog');
   showScreen('screen-done');
   window.scrollTo(0, 0);
+  startAutoAflevering('share-btn', shareBaselineEncrypted);
 }
 
-async function shareBaselineEncrypted() {
+async function shareBaselineEncrypted(auto = false) {
   const status = document.getElementById('done-status');
   const btn = document.getElementById('share-btn');
   if (!keyCheck.ok) {
@@ -3846,6 +4028,9 @@ async function shareBaselineEncrypted() {
   if (autoSendEnabled()) {
     const ok = await sendTilIngest(payload, 'soevn-baseline');
     if (ok) { visSendtKvittering(status, 'soevn-baseline'); return; }
+    // Se `startAutoAflevering`: fil-stien kræver en brugerhandling, så en fejlet
+    // AUTOMATISK aflevering må give knappen tilbage frem for at falde videre.
+    if (auto) { visAutoSendFejlede(status, btn); return; }
   }
   // TRIN 2 — levering (deling el. robust download/kopiér-fallback; aldrig fastlås).
   const filename = `mentem-soevn-baseline-${new Date().toISOString().slice(0, 10)}.json`;
@@ -3873,7 +4058,8 @@ if (formuleringAktiv) {
   renderInstrument(instrumentId);
 } else {
   document.getElementById('finish-btn').addEventListener('click', goDone);
-  document.getElementById('share-btn').addEventListener('click', shareEncrypted);
+  // Indpakket: se begrundelsen ved screening-bindingen (Event-objektet er sandt).
+  document.getElementById('share-btn').addEventListener('click', () => shareEncrypted(false));
   renderWelcome();
 }
 gatePrivacyTekst();   // #F: flip statiske privatlivs-discl. til "sendes direkte" når it= aktiv (no-op uden it=)

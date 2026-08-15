@@ -293,12 +293,23 @@ check('baseline kind=baseline', SKEMAER['soevn-baseline'].kind === 'baseline');
 check('baseline IKKE i SKEMA_ORDER', !SKEMA_ORDER.includes('soevn-baseline'));
 check('SOEVN_BASELINE === SKEMAER[soevn-baseline]', SOEVN_BASELINE === SKEMAER['soevn-baseline']);
 const blKeys = SOEVN_BASELINE.fields.map(f => f.key);
-for (const k of ['alder','koen','undertype','varighed','substans','lure','vanligOpvaagning']) {
+for (const k of ['undertype','varighed','substans','lure','vanligOpvaagning']) {
   check(`baseline-felt: ${k}`, blKeys.includes(k));
+}
+// RATCHET (Viktor-GO 14/8, spm. 10): alder og koen spoerges KUN i soevn-screeningen, aldrig
+// her. De to skemaer sendes i samme opstarts-SMS. Uden denne NEG-KTRL kunne felterne komme
+// tilbage i tavshed, og loekken ovenfor ville stadig vaere groen: den maaler kun at de
+// felter der SKAL vaere der, ER der, ikke at der ikke er kommet flere.
+for (const k of ['alder','koen']) {
+  check(`baseline SPOERGER IKKE om ${k} (screeningen ejer det)`, !blKeys.includes(k));
 }
 check('baseline INGEN alder i daglig CSD', !CSD_SOEVNDAGBOG.fields.some(f => f.key === 'alder'));
 
 console.log('buildPayloadBaseline:');
+// 🔵 alder + koen bliver BEVIDST staaende i kalderens svar-objekt, selv om de ikke laengere
+// er felter: buildPayloadBaseline itererer SOEVN_BASELINE.fields, saa den er den eneste
+// autoritet over hvad der forlader browseren. Uden dem her ville prøven ikke kunne se
+// forskel paa »feltet er fjernet« og »kalderen holdt bare op med at sende det«.
 const blAnswers = {
   alder: 67, koen: 'Kvinde', undertype: 'Vågner for tidligt om morgenen',
   varighed: '3 måneder eller mere',
@@ -310,7 +321,12 @@ check('bl version 1', bl.version === 1);
 check('bl categories = [soevn-baseline]', JSON.stringify(bl.categories) === JSON.stringify(['soevn-baseline']));
 check('bl baselineType', bl.baselineType === 'soevn-intake');
 check('bl exportedAt no-frac', ISO_NOFRAC.test(bl.exportedAt));
-check('bl bevarer felter', bl.baseline.alder === 67 && bl.baseline.vanligOpvaagning === '06:30');
+check('bl bevarer felter', bl.baseline.undertype === 'Vågner for tidligt om morgenen' && bl.baseline.vanligOpvaagning === '06:30');
+// DATA-MINIMERING (spm. 10): kalderen sendte alder + koen med; feltlisten er autoriteten,
+// saa de maa ikke naa payloaden. POS-KTRL er linjen ovenover: samme objekt, samme kald,
+// og de felter der ER i listen, kommer igennem, saa et tomt `baseline` ville ikke kunne
+// snige denne check groen igennem.
+check('bl DROPPER alder + koen selv naar kalderen sender dem', !('alder' in bl.baseline) && !('koen' in bl.baseline));
 check('bl substans struktureret bevaret', bl.baseline.substans && bl.baseline.substans.koffein[0].antalEnheder === 2 && bl.baseline.substans.koffein[0].tidspunkt === 'Morgen');
 check('bl substans natFlag bevaret', bl.baseline.substans.natFlag === false);
 check('bl INGEN scoring (nul-score)', bl.questionnaireScores === undefined && bl.baseline.score === undefined);
@@ -324,7 +340,7 @@ const blConsentForsoeg = { accepted: true, timestamp: '2026-07-15T09:00:00Z', ve
 const blMedMetaConsent = buildPayloadBaseline(blAnswers, { name: 'Baseline Klient', consent: blConsentForsoeg });
 check('bl ignorerer meta.consent (samtykke er ikke retsgrundlag her)', !('consent' in blMedMetaConsent));
 const blRT = await nodeDecrypt(await mentemEncrypt(recipientPubB64, bl), recipient.privateKey);
-check('bl round-trip baseline bevaret', blRT.baseline.alder === 67 && blRT.baseline.koen === 'Kvinde');
+check('bl round-trip baseline bevaret', blRT.baseline.undertype === 'Vågner for tidligt om morgenen' && blRT.baseline.lure === 'Ja, 30-60 min');
 const blRTc = await nodeDecrypt(await mentemEncrypt(recipientPubB64, blMedMetaConsent), recipient.privateKey);
 check('bl INTET consent efter decode (Journal Audit ser intet samtykke)', !('consent' in blRTc));
 
