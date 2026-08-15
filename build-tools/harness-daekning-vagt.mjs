@@ -38,10 +38,19 @@ const DOED = [
   [/Mangler worker-dir|kr(æ|ae)ver en k(ø|oe)rende worker/i, 'worker koerer ikke'],
   [/command not found/i, 'manglende binaer'],
 ];
+// 🔴 NET-naalen var FOR BRED og skjulte et fund (maalt 15/8). `Timeout.*exceeded` fangede
+// ogsaa Playwrights ELEMENT-timeout (»waiting for locator('#share-btn')«), saa
+// `soevn-screening-smoke` , en aegte ROED med praecis samme aarsag som de to andre
+// share-btn-harnesser , blev klassificeret NET og afgav derfor »ingen dom« i stedet for at
+// raabe op. **En naal der er for bred, skjuler et fund**, og den skjuler det som en
+// UMAALT-lignende kategori, hvilket er vaerre end en falsk roed: ingen gaar og kigger.
+// Nu kraeves et NETVAERKS-ord, og Playwrights element-ventning er eksplicit undtaget.
 const NET = [
   [/ECONNREFUSED|ENOTFOUND|EAI_AGAIN|getaddrinfo/i, 'netvaerk/tjeneste'],
-  [/connect ETIMEDOUT|Timeout.*exceeded/i, 'timeout mod en tjeneste'],
+  [/connect ETIMEDOUT/i, 'timeout mod en tjeneste'],
 ];
+// Playwright-timeouts der IKKE er netvaerk: de venter paa DOM, ikke paa en socket.
+const IKKE_NET = /waiting for locator|element is not visible|waiting for selector|page\.(click|waitForSelector|waitForFunction)/i;
 
 // 🔴 VAERKTOEJ UDLEDES, DET LISTES IKKE. En haandskrevet liste raadner i det oejeblik nogen
 // tilfoejer et vaerktoej mere, og saa baerer taellingen en falsk ROED for evigt.
@@ -61,7 +70,7 @@ const koer = (fil, args = []) => new Promise((res) => {
 const klassificer = (rc, ud) => {
   if (rc === 3) return ['UMAALT', (ud.trim().split('\n')[0] || '').slice(0, 70)];
   for (const [m, hv] of DOED) if (m.test(ud)) return ['DOED', hv];
-  for (const [m, hv] of NET) if (m.test(ud)) return ['NET', hv];
+  if (!IKKE_NET.test(ud)) for (const [m, hv] of NET) if (m.test(ud)) return ['NET', hv];
   return rc === 0 ? ['GROEN', ''] : ['ROED', (ud.trim().split('\n').pop() || '').slice(0, 70)];
 };
 
