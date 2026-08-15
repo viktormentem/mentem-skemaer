@@ -32,7 +32,16 @@ function eq(name, got, want) {
 const SHA = 'a1b2c3d4e5f60718293a4b5c6d7e8f9012345678';   // 40 hex, som deploy-sha.txt
 // Nøglerne er MÅLT i SOEVN_SCREENING (mentem-skema-core.js:582-614), ikke gættet:
 // mit første udkast opdigtede `bipolar`/`epilepsi` og blev afvist af byggeren selv.
+// 🔴 `alder` tilfoejet 15/8. Fiksturet er fra 26/7; screeningen fik `alder` som PAAKRAEVET
+// felt 12/8 (talfeltet der afloeste ja/nej-itemet `alderOver50`), og fiksturet fulgte ikke
+// med. Proeven har derfor kastet `paakraevet_mangler:alder` siden 12/8 uden at nogen saa
+// det, fordi ingen automatik koerer den. Fundet 15/8 ved en folketaelling over alle 39
+// harnesser, ikke ved at nogen kiggede paa denne fil.
+// 🔵 `alderOver50` bliver staaende: det er den AFLEDTE STOP-Bang-vaerdi, ikke raatallet,
+// og proevens emne er afsender-stemplet , ikke screeningens egen validering. Fiksturet
+// skal derfor bare vaere GYLDIGT, ikke minimalt.
 const SVAR_SCREENING = {
+  alder: 58,
   snorken: true, observeretApnoe: false, dagtraethed: true, hypertension: false,
   bmiOver35: false, alderOver50: true, halsomfangOver40: null, koen: 'kvinde',
   bipolarMani: false, epilepsiAnfald: false, parasomnier: true,
