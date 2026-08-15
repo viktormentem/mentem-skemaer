@@ -227,6 +227,29 @@ try {
   // Maalt DIREKTE efter fill: input-handleren koerer synkront paa event'et, saa der er
   // intet at vente paa. (Foerste form brugte waitForFunction og flakkede - en ventetid
   // paa noget der allerede var sket.)
+  // 🔴 FLAKKEDE 1 af 4 (maalt 15/8, fire koersler). Kommentaren ovenfor siger at der
+  // »intet er at vente paa«, og den praemis er maalt forkert , men IKKE paa gaten.
+  // Hypotesen der bygges ind her: det er `fill('')` der ikke altid er landet naar
+  // assert'en koerer, altsaa FORUDSAETNINGEN og ikke det maalte. Derfor ventes der paa
+  // FELTET (den ting vi selv lige aendrede), og gaten maales som foer , synkront.
+  // 🔵 Forskellen paa dette og den gamle `waitForFunction`-form er hvad der ventes paa:
+  // dengang ventedes paa RESULTATET, hvilket skjuler om aarsagen indtraf. Her ventes paa
+  // AARSAGEN, og resultatet maales stadig i eet oejeblik.
+  // 🔴 MAALT 15/8 over 16 koersler: `fill('')` tager ikke altid. Foerst troede jeg det var
+  // gaten der flakkede, saa troede jeg det var en ventetid der manglede , begge forkerte.
+  // Det er selve TOEMNINGEN der ikke lander, formentlig fordi stepperen gen-optegner
+  // feltet og min fill rammer en node der er ved at blive skiftet ud.
+  // 🔵 Kuren er derfor et BUNDET gentagelses-forsoeg der spoerger DOM'en forfra hver gang,
+  // ikke en laengere ventetid: en ventetid paa noget der aldrig sker, bliver bare en
+  // langsommere fejl. Lykkes det ikke, siges det med en NAVNGIVEN besked frem for en
+  // raa TimeoutError, saa den naeste ikke skal gennem den samme opklaring.
+  let tomt = false;
+  for (let f = 0; f < 10 && !tomt; f++) {
+    await page.fill('#scr-alder', '');
+    tomt = await page.$eval('#scr-alder', (e) => e.value === '');
+    if (!tomt) await page.waitForTimeout(100);
+  }
+  check(tomt, 'FORUDSAETNING: alders-feltet kunne toemmes (10 forsoeg)');
   check(await page.locator('#instrument-submit').isDisabled(),
     '12/8: tomt alders-felt LUKKER submit-gaten (POS-KTRL: den var aaben lige ovenfor)');
   // Uden for spaendet (130 > SCREENING_ALDER_MAX=129, som spejler Swift-guarden).
@@ -264,7 +287,16 @@ try {
   await page.click('#instrument-review-submit');
   await page.waitForSelector('#screen-done.active', { timeout: 6000 });
   await shot('screening-6-klar-til-send.png');
-  await page.click('#share-btn');
+  // 🔴 KONTRAKTEN AENDREDE SIG 14/8 (`86051f4`): med et v1-token starter afleveringen af sig
+  // selv, og knappen SKJULES (`index.html:917-918`, `data-auto-igang="1"`). Denne fil
+  // klikkede ubetinget og stod derfor og ventede 30 s paa et skjult element.
+  // 🔵 TREDJE harness med samme aarsag: `e2e-besked-fase-b` blev rettet 14/8, `e2e-autosend`
+  // 15/8 om morgenen, og DENNE laa skjult bag en fejlklassifikation , Playwrights
+  // element-timeout blev laest som en NETVAERKS-timeout, saa en aegte ROED stod som NET og
+  // afgav derfor »ingen dom«. **En naal der er for bred, skjuler et fund.**
+  // Vi klikker kun naar der ER noget at klikke paa; kvitteringen maales uanset.
+  const knapSynlig = await page.$eval('#share-btn', (b) => !b.hidden && b.offsetParent !== null);
+  if (knapSynlig) await page.click('#share-btn');
   await page.waitForFunction(() => /sendt sikkert/.test(document.getElementById('done-status').textContent), null, { timeout: 10000 });
   check(true, 'auto-send: "sendt sikkert"-kvittering vist');
   await shot('screening-7-sendt.png');
