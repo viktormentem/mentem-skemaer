@@ -74,7 +74,17 @@ const klassificer = (rc, ud) => {
   return rc === 0 ? ['GROEN', ''] : ['ROED', (ud.trim().split('\n').pop() || '').slice(0, 70)];
 };
 
-const filer = readdirSync(TEST).filter((f) => f.endsWith('.mjs')).sort();
+// 🔴 `_`-praefiks = DELT MODUL, ikke en harness. Maalt 16/8: `_forudsaetning.mjs` (delt
+// forudsaetnings-gate) blev talt med som harness og rapporteret GROEN rc 0, fordi den ikke
+// goer noget naar den koeres nøgen. **En fil der ikke maalte noget, er ikke groen, den er
+// tavs** , og den loeftede samtidig populationen fra 40 til 41, saa summen saa ud til at
+// stemme. Samme klasse som `VAERKTOEJ` nedenfor: en fil der ikke kan koeres alene, maa ikke
+// taelles som en der blev koert alene.
+// 🔵 Praefikset er naalen frem for en haandskrevet liste, fordi en liste raadner naeste gang
+// nogen tilfoejer et modul mere (samme argument som `erVaerktoej`).
+const filer = readdirSync(TEST)
+  .filter((f) => f.endsWith('.mjs') && !f.startsWith('_'))
+  .sort();
 
 // ── POS-KTRL FOERST. Uden den kan »alle doede« ikke skelnes fra »vagten startede dem
 // forkert«, og det var praecis foerste koersels resultat: 39 af 39 doede, fordi den kaldte
