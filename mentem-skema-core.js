@@ -157,6 +157,36 @@ export const SKEMAER = {
     ],
     vasMin: 'Slet ingen tid', vasMax: 'Næsten hele tiden',
   },
+  // ── EMA: den MOMENTANE soester til `cas` (Viktor-direktiv 16/8) ────────
+  //
+  // 🔴 HVORFOR DEN IKKE ER CAS-1, og hvorfor det ikke er en mangel:
+  // CAS-1 er forankret »over the past week« (Wells' egne manualer, husets arkiv).
+  // Et uge-forankret item stillet 3 til 4 gange dagligt gensampler samme vindue op mod
+  // 56 gange og maaler dermed ikke det momentane, som er hele grunden til at bruge EMA.
+  // **Prompten KAN derfor ikke vaere instrumentet.** Den er noedvendigvis en tilpasning,
+  // og saa er protokol-troskab ikke tilgaengelig som forsvar mod dataminimering:
+  // art. 5(1)(c) gaelder fuldt, og faerrest mulige items er det rigtige.
+  //
+  // 🟢 Den er egen-forfattet paa husets egen proces-spine (§12, fri klinisk metode),
+  // praecis som `cas` og `mcb`. Vi er ikke bundet af et publiceret item-saet.
+  //
+  // 🔵 NOEGLERNE ER GENBRUGT MED VILJE: `worry` deles med `cas`, `uncontrollability`
+  // med `mcb`. Det er ikke kosmetik, det er hvad der goer at en momentan serie kan
+  // laegges ved siden af den ugentlige maaling uden en oversaettelse imellem.
+  //
+  // 🟡 CAS-1 selv bevares hvor den ER gyldig: EEN gang som baseline i sin uge-form.
+  // EMA bruges hvor den tilfoejer noget andet (Webb et al. 2025: EMA baerer
+  // inkrementel validitet ud over konventionelle selvrapport-maal).
+  ema: {
+    id: 'ema', kind: 'vas', title: 'Lige nu', short: 'Lige nu',
+    icon: 'kompas', badge: '2 skalaer',
+    instruction: 'Tænk på tiden siden sidste gang du svarede. Træk i hver skala. Det tager under et minut, og der er ingen rigtige eller forkerte svar.',
+    items: [
+      { key: 'worry', text: 'Hvor stor del af tiden har du brugt på bekymring eller grublen?' },
+      { key: 'uncontrollability', text: 'Hvor svært var det at stoppe igen, når det først var gået i gang?' },
+    ],
+    vasMin: 'Slet ingen tid', vasMax: 'Næsten hele tiden',
+  },
   mcb: {
     id: 'mcb', kind: 'vas', title: 'Tanker om bekymring', short: 'Tanker om bekymring',
     icon: 'tanker', badge: '5 skalaer',
