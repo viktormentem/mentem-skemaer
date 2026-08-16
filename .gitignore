@@ -7,3 +7,8 @@
 # De skabes i repo-roden ved hver koersel og gjorde traeet urent, hvilket faar
 # deploy-skemaer.sh herkomst-gate til at afvise en ellers ren udrulning (maalt 15/8).
 .seeit-*/
+
+# Daeknings-historik: EEN linje pr. koersel af harness-daekning-log.sh. Den vokser
+# ved hver maaling og hoerer derfor ikke i git, praecis som .seeit-*/ (15/8-kuren:
+# at koere en maaler maa ikke koste en udrulning).
+.harness-daekning-historik.jsonl
