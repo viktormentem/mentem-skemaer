@@ -65,8 +65,14 @@ ind i `INSTRUMENTER`/routing — et licens-pending instrument kan derfor aldrig 
    æøå-/em-dash-reglen; vores EGEN UI-copy i index.html forbliver em-dash-fri).
 3. Tilføj evt. afledningsregel i `instrumentFeltOrden()` + `instrumentDerived()` (sum/pct/flag).
 4. Sæt `licensStatus` korrekt + flip `KLAR: true`.
-5. Kør `node test/instrument-mycel.mjs` + `node test/instrument-klar-gate.mjs` (+ selftest +
-   emoji/emdash). Nul genbygning af render-motoren.
+5. **Skal instrumentet være KLIENTVENDT (altså med i `OFFENTLIGT_KLAR`): giv det en §3l-form i
+   `INSTRUMENT_LICENS` FØRST.** `grundlag: 'A'` (dokumenteret gratis/public domain/open source,
+   med `kilde` + ISO-dateret `verificeret`) eller `grundlag: 'B'` (`betingelser: [{krav,
+   status}]`, hvor HVER status skal være `opfyldt`). Uden form blokerer
+   `test/licens-3l-gate.mjs` push til main. Viktor-beslutning §3l (17/8): et instrument uden
+   dokumenteret grundlag hører ikke på en klientvendt flade.
+6. Kør `node test/instrument-mycel.mjs` + `node test/instrument-klar-gate.mjs` +
+   `node test/licens-3l-gate.mjs` (+ selftest + emoji/emdash). Nul genbygning af render-motoren.
 
 ## Aktiv nu (KLAR:true)
 

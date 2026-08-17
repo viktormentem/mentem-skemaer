@@ -90,15 +90,66 @@ export const PROFIL_PRODUKT = 'produkt';
 // false = beviseligt spærret, null = uverificeret (behandles som spærret i produktet).
 // `verificeret` er datoen for opslag mod primærkilden — en påstand uden dato er ikke en
 // verifikation. Kanonisk kilde: noter/instrument-licensregister-kanonisk-2026-07-18.md.
+//
+// ── `grundlag` = §3l-formen (Viktor-beslutning 2026-08-17) ──────────────────
+// »Alle licensinstrumenter skal være helt afklaret før de kommer live der er klientvendt,
+// fx ved at have dokumenteret det er gratis/open source eller hvilke betingelserne der skal
+// være opfyldt.« To tilladte former og intet tredje:
+//
+//   'A'  FRIT      dokumenteret gratis/public domain/open source, med KILDE og dato
+//   'B'  BETINGET  licens findes, og HVER betingelse står som en tjekbar række i
+//                  `betingelser: [{ krav, status: 'opfyldt' | 'ikke opfyldt' }]`
+//   null           INGEN FORM. Instrumentet hører ikke på en klientvendt flade.
+//
+// 🔴 HVORFOR FELTET STÅR HER OG IKKE I REGISTRET, og det er en rettelse af den oprindelige
+// ordre (MYCEL BUILDER 17/8: »en vagt der krydser OFFENTLIGT_KLAR mod dette registers
+// rækker«). Registret er `Projekt_Praksis/noter/…`, som er (a) et ANDET repo og (b)
+// permanent gitignoreret pga. klient-PII: målt 17/8, `git check-ignore` rammer det på
+// `/noter/*` og filen har 0 commits. En gate der dømte på det, ville hvile på noget der
+// ikke følger med den commit den dømmer — husets egen målte fejlklasse (CLAUDE.md,
+// »En dom må ikke hvile på noget der ikke er en del af det der dømmes«, 10/8).
+// ⇒ Grundlaget er DATA I REPOET, registret er fortsat prosa-sandheden. `registerRef`
+// bærer sporet tilbage, så de to kan afstemmes i hånden uden at gaten afhænger af det.
 export const INSTRUMENT_LICENS = {
   gad7: { kommercielt: true, verificeret: '2026-07-18',
-          kilde: 'Public domain siden 2010 (Pfizer frigav); ingen tilladelse noedvendig' },
+          kilde: 'Public domain siden 2010 (Pfizer frigav); ingen tilladelse noedvendig',
+          grundlag: 'A',
+          registerRef: 'instrument-licensregister-kanonisk-2026-07-18.md r.1' },
   phq9: { kommercielt: true, verificeret: '2026-07-18',
-          kilde: 'Public domain siden 2010 (Pfizer frigav); ingen tilladelse noedvendig' },
+          kilde: 'Public domain siden 2010 (Pfizer frigav); ingen tilladelse noedvendig',
+          grundlag: 'A',
+          registerRef: 'instrument-licensregister-kanonisk-2026-07-18.md r.2' },
   who5: { kommercielt: false, verificeret: '2026-07-18',
-          kilde: 'who.int WHO-UCN-MSD-MHE-2024.01: CC BY-NC-SA 3.0 IGO (NC = ingen salg, SA = afledte arver)' },
+          kilde: 'who.int WHO-UCN-MSD-MHE-2024.01: CC BY-NC-SA 3.0 IGO (NC = ingen salg, SA = afledte arver)',
+          // Form A: dokumenteret gratis under en navngiven aaben licens, med kilde og dato.
+          // NC/SA rammer VIDEREDISTRIBUTION (produkt-profilen), ikke om Viktors egne klienter
+          // maa se den. De to porte er forskellige og maa ikke blandes sammen.
+          grundlag: 'A',
+          registerRef: 'instrument-licensregister-kanonisk-2026-07-18.md r.3' },
   wsas: { kommercielt: null, verificeret: '2026-07-18',
-          kilde: 'I. M. Marks / ePROVIDE+Mapi: kraever tilladelse, kommerciel status uafklaret ved kilden' },
+          kilde: 'I. M. Marks / ePROVIDE+Mapi: kraever tilladelse, kommerciel status uafklaret ved kilden',
+          // 🔴 INGEN FORM. »Kraever tilladelse« uden en indhentet tilladelse er hverken A
+          // eller B. Staar paa den klientvendte flade i dag; se LICENS_3L_BASELINE.
+          grundlag: null,
+          registerRef: 'instrument-licensregister-kanonisk-2026-07-18.md r.4' },
+};
+
+// §3l-ratchettens GULV: de instrumenter der stod klientvendt live FØR reglen blev skrevet,
+// og som endnu ikke har form A eller B. Listen er en MÅLT undtagelse med en dato og en ejer,
+// ikke en tredje form: gaten fejler på ethvert NYT id uden form, og den fejler ogsaa hvis en
+// række her er blevet OVERFLØDIG (grundlag kom i hus) eller DØD (id ikke længere på fladen).
+// ⇒ Listen kan kun blive kortere. En undtagelse der ikke kan blive kortere, er et hul.
+//
+// 🔴 Hvorfor der overhovedet er et gulv: Viktor 19/7, »det interne produkt maa ikke komme i
+// vejen«. At fjerne WSAS fra hans egen praksisflade er en produktbeslutning, ikke en
+// infrastrukturbeslutning, og en vagt maa ikke traeffe den paa egen haand. Gulvet goer
+// hullet SYNLIGT frem for at lukke det tavst i den ene eller den anden retning.
+export const LICENS_3L_BASELINE = {
+  wsas: { siden: '2026-08-17',
+          hvorfor: 'Stod paa OFFENTLIGT_KLAR foer §3l blev skrevet. Kraever tilladelse '
+                 + '(I. M. Marks / ePROVIDE+Mapi); tilladelse er ikke indhentet.',
+          lukkes_ved: 'Indhent tilladelse hos ePROVIDE/Mapi -> skriv betingelserne som '
+                    + 'form B, ELLER fjern wsas fra OFFENTLIGT_KLAR.' },
 };
 
 // Allowlist for en given profil. Default er INTERN — en glemt parameter må ALDRIG kunne
