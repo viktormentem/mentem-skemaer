@@ -82,7 +82,14 @@ const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 900, height: 1000 } });
 const sidefejl = [];
 let submitPosts = 0;
-page.on('pageerror', (e) => sidefejl.push(String(e)));
+page.on('pageerror', (e) => sidefejl.push('pageerror: ' + String(e)));
+// 🔴 `pageerror` ALENE ER IKKE NOK MERE, og det er en aendring VI selv lavede.
+// Indtil 17/8 boblede en fejl i afleveringen op som en unhandled rejection, fordi ingen
+// await'ede `shareEncrypted`. Det er nu lukket: `afleverSikkert` (index.html) fanger den
+// og giver klienten knappen tilbage. Kuren er rigtig for klienten , og den slukkede
+// praecis det signal harnessen laeste. **Et net der fanger en fejl, fjerner ogsaa dens
+// spor**, saa maaleren skal flytte med over paa den kanal kuren skriver til.
+page.on('console', (m) => { if (m.type() === 'error') sidefejl.push('console.error: ' + m.text()); });
 page.on('request', (r) => { if (r.method() === 'POST' && /\/submit$/.test(r.url())) submitPosts++; });
 
 log(`\nEMA e2e  site=${SITE}  worker=${WORKER_BASE}  pseudonym=${pseudonymID}\n`);
@@ -133,22 +140,57 @@ try {
     return s && /sendt sikkert og krypteret/i.test(s.textContent || '');
   }, { timeout: 20000 }).catch(() => {});
   const statusTxt = await page.$eval('#done-status', (e) => e.textContent || '').catch(() => '');
-  ok(/sendt sikkert og krypteret/i.test(statusTxt), 'klienten fik kvittering for SENDT', statusTxt.slice(0, 60));
+  // 🔴 SIDEFEJLENE SKAL STAA HER, IKKE FOERST TIL SIDST. `sidefejl`-kontrollen er blokkens
+  // sidste linje, saa den naas ALDRIG naar afleveringen fejler: dekrypt-trinnet kaster
+  // foerst paa `mine[0].ciphertext`. Maalt 17/8 kostede det en hel session , harnessen
+  // meldte »Krypterer …« og 0 POST, mens aarsagen (`ReferenceError: battery is not
+  // defined`) laa opsamlet i en variabel ingen naaede at printe. **En roed dom der ikke
+  // baerer sin egen aarsag, sender naeste laeser efter den forkerte kur**, her efter
+  // krypto, som var det eneste led der virkede.
+  ok(/sendt sikkert og krypteret/i.test(statusTxt), 'klienten fik kvittering for SENDT',
+    statusTxt.slice(0, 60) + (sidefejl.length ? `  || JS-FEJL PAA SIDEN: ${sidefejl.join(' | ')}` : ''));
   ok(submitPosts >= 1, 'POST /submit blev faktisk affyret', `submitPosts=${submitPosts}`);
 
   // ── 3. Kom det frem, og kan det laeses? ────────────────────────────────────
   const pend = await fetch(`${WORKER_BASE}/pending`, {
     headers: { 'X-Mentem-Service-Token': SVC_TOKEN },
   }).then((r) => r.json());
-  const mine = (pend.pending || pend.messages || []).filter((m) => m.pseudonym_id === pseudonymID);
+  // 🔴 FELTNAVNENE ER camelCase. `/pending` koerer raekkerne gennem `rowToRecord`
+  // (ingest-worker/src/index.js:150), som mapper `pseudonym_id` -> `pseudonymID` og
+  // `schema_type` -> `schemaType`. Jeg skrev foerst kolonnenavnene fra D1, og de findes
+  // ikke i svaret: filteret gav 0 og saa ud som om afleveringen aldrig kom frem.
+  // **En naal der laeser et felt API'et aldrig sender, kan kun vaere roed** , den er ikke
+  // en maaling, den er en konstant. Soesteren `e2e-autosend.mjs:212` havde det rigtigt
+  // hele tiden; denne gang var det den NYE proeve der afveg, ikke den gamle.
+  // POS-KTRL paa selve svaret, saa et tomt filter ikke kan forveksles med et tomt svar:
+  ok((pend.pending || []).length >= 1, 'PULL: /pending svarer med mindst een raekke',
+    `count=${pend.count}`);
+  const mine = (pend.pending || pend.messages || []).filter((m) => m.pseudonymID === pseudonymID);
   ok(mine.length === 1, 'PULL: praecis een aflevering for vores pseudonym', String(mine.length));
-  ok(mine[0]?.schema_type === 'ema', 'PULL: schema_type er "ema"', mine[0]?.schema_type);
+  ok(mine[0]?.schemaType === 'ema', 'PULL: schemaType er "ema"', mine[0]?.schemaType);
 
   const klar = dekrypter(JSON.parse(mine[0].ciphertext), kp.privateKey);
-  const svar = JSON.stringify(klar);
-  ok(/worry/.test(svar), 'DEKRYPT: noeglen `worry` er i klarteksten');
-  ok(/uncontrollability/.test(svar), 'DEKRYPT: noeglen `uncontrollability` er i klarteksten');
-  ok(/70/.test(svar) && /40/.test(svar), 'DEKRYPT: de to tal round-trippede', '70 og 40');
+  // 🔴 MAAL STRUKTUREN, IKKE EN UNDERSTRENG. Den foerste udgave af de tre linjer her
+  // spurgte `/worry/.test(JSON.stringify(klar))` og `/70/ && /40/`. Begge ville vaere
+  // GROENNE paa en payload hvor tallene laa et vilkaarligt sted , og »70« findes i
+  // ethvert ISO-tidsstempel fra 1970 og i enhver base64-streng. **En understreng er
+  // ikke et felt.** Det er ogsaa den eneste grund til at de tre linjer var det sidste
+  // led der faldt: de kunne slet ikke se at `questionnaireScores` var tom.
+  const r = klar.data.emaRatings || [];
+  const find = (k) => r.find((x) => x.category === k);
+  ok(r.length === 2, 'DEKRYPT: praecis 2 emaRatings', String(r.length));
+  ok(find('worry')?.rating === 70, 'DEKRYPT: `worry` = 70', String(find('worry')?.rating));
+  ok(find('uncontrollability')?.rating === 40, 'DEKRYPT: `uncontrollability` = 40',
+    String(find('uncontrollability')?.rating));
+  // NEG-KTRL paa selve opslaget: et navn der ikke findes skal give undefined, ellers
+  // maaler `find` ikke det den ser ud til at maale.
+  ok(find('zzq-findes-ikke') === undefined, 'NEG-KTRL: ukendt noegle giver undefined');
+  ok(r.every((x) => Number.isInteger(x.rating) && x.rating >= 0 && x.rating <= 100),
+    'DEKRYPT: begge ratings er heltal i 0-100');
+  // 🔴 Og at der IKKE er opfundet en CAS-serie ved siden af: to EMA-svar maa aldrig
+  // lande som en fjerde-dels-udfyldt `casTrends` i psykologens forloebskurve.
+  ok(klar.data.casTrends === undefined, 'ingen fabrikeret casTrends fra en EMA',
+    JSON.stringify(klar.data.casTrends));
 
   // ── 4. KADENCEN EFTER: nu skal den spaerre, og sige hvorfor ────────────────
   const r2 = await fetch(`${WORKER_BASE}/ema/naeste?t=${encodeURIComponent(itToken)}`).then((r) => r.json());
