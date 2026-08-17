@@ -39,6 +39,11 @@ GUARD="$REPO_ROOT/test/emoji-guard.mjs"
 # klienten FAKTISK ser. Wired ind her fordi en guard der kun koerer i suiten er RAADGIVENDE;
 # gaten er dette hook. Samme konservative filosofi: mangler filen => BLOKER.
 COPY_GUARD="$REPO_ROOT/test/copy-guard.mjs"
+# VERA-guard #3 (17/8): §3l — intet licensinstrument klientvendt live uden afklaret grundlag
+# (Viktor-beslutning 17/8). Samme begrundelse for at den staar HER og ikke kun i suiten:
+# det kanoniske register er PROSA i et andet, gitignoreret repo og kan ikke spaerre en
+# udrulning. Dette hook kan. Samme konservative filosofi: mangler filen => BLOKER.
+TREL_GUARD="$REPO_ROOT/test/licens-3l-gate.mjs"
 
 relevant=0
 while read -r local_ref local_sha remote_ref remote_sha; do
@@ -69,6 +74,32 @@ fi
 if [ ! -f "$COPY_GUARD" ]; then
     echo "🛑 copy-guard: $COPY_GUARD mangler — kan ikke verificere $GUARD_REF." >&2
     echo "(Bevidst bypass, sidste udvej: git push --no-verify.)" >&2
+    exit 1
+fi
+if [ ! -f "$TREL_GUARD" ]; then
+    echo "🛑 licens-3l-gate: $TREL_GUARD mangler — kan ikke verificere $GUARD_REF." >&2
+    echo "(Bevidst bypass, sidste udvej: git push --no-verify.)" >&2
+    exit 1
+fi
+
+# VERA-guard #3: §3l. rc 3 = gatens EGET kontrolsaet svigtede ⇒ INGEN DOM ⇒ ogsaa BLOKER.
+# En gate der ikke kunne maale, maa aldrig kunne forveksles med en gate der maalte groent;
+# derfor faar rc 3 sin egen besked frem for at blive slaaet sammen med »§3l-brud«.
+node "$TREL_GUARD"
+trel_rc=$?
+if [ "$trel_rc" -eq 3 ]; then
+    echo "" >&2
+    echo "🛑 licens-3l-gate: BLOKERET push til $GUARD_REF — gatens EGET kontrolsaet svigtede (rc 3)." >&2
+    echo "Der er IKKE afgivet nogen dom om §3l. Ret gaten foer du pusher." >&2
+    exit 1
+elif [ "$trel_rc" -ne 0 ]; then
+    echo "" >&2
+    echo "🛑 licens-3l-gate: BLOKERET push til $GUARD_REF — §3l-brud (se ovenfor)." >&2
+    echo "Viktor 17/8: »Alle licensinstrumenter skal vaere helt afklaret foer de kommer live" >&2
+    echo "der er klientvendt.« FIX: giv instrumentet form A (dokumenteret gratis/open source," >&2
+    echo "med kilde og dato) ELLER form B (hver betingelse som en raekke med status opfyldt)" >&2
+    echo "i INSTRUMENT_LICENS — eller fjern det fra OFFENTLIGT_KLAR." >&2
+    echo "(Sidste noedudgang, ALDRIG reflektorisk: git push --no-verify.)" >&2
     exit 1
 fi
 

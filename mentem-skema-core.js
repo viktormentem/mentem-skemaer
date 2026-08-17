@@ -90,15 +90,109 @@ export const PROFIL_PRODUKT = 'produkt';
 // false = beviseligt spærret, null = uverificeret (behandles som spærret i produktet).
 // `verificeret` er datoen for opslag mod primærkilden — en påstand uden dato er ikke en
 // verifikation. Kanonisk kilde: noter/instrument-licensregister-kanonisk-2026-07-18.md.
+//
+// ── `grundlag` = §3l-formen (Viktor-beslutning 2026-08-17) ──────────────────
+// »Alle licensinstrumenter skal være helt afklaret før de kommer live der er klientvendt,
+// fx ved at have dokumenteret det er gratis/open source eller hvilke betingelserne der skal
+// være opfyldt.« To tilladte former og intet tredje:
+//
+//   'A'  FRIT      dokumenteret gratis/public domain/open source, med KILDE og dato
+//   'B'  BETINGET  licens findes, og HVER betingelse står som en tjekbar række i
+//                  `betingelser: [{ krav, status: 'opfyldt' | 'ikke opfyldt' }]`
+//   null           INGEN FORM. Instrumentet hører ikke på en klientvendt flade.
+//
+// 🔴 HVORFOR FELTET STÅR HER OG IKKE I REGISTRET, og det er en rettelse af den oprindelige
+// ordre (MYCEL BUILDER 17/8: »en vagt der krydser OFFENTLIGT_KLAR mod dette registers
+// rækker«). Registret er `Projekt_Praksis/noter/…`, som er (a) et ANDET repo og (b)
+// permanent gitignoreret pga. klient-PII: målt 17/8, `git check-ignore` rammer det på
+// `/noter/*` og filen har 0 commits. En gate der dømte på det, ville hvile på noget der
+// ikke følger med den commit den dømmer — husets egen målte fejlklasse (CLAUDE.md,
+// »En dom må ikke hvile på noget der ikke er en del af det der dømmes«, 10/8).
+// ⇒ Grundlaget er DATA I REPOET, registret er fortsat prosa-sandheden. `registerRef`
+// bærer sporet tilbage, så de to kan afstemmes i hånden uden at gaten afhænger af det.
 export const INSTRUMENT_LICENS = {
   gad7: { kommercielt: true, verificeret: '2026-07-18',
-          kilde: 'Public domain siden 2010 (Pfizer frigav); ingen tilladelse noedvendig' },
+          kilde: 'Public domain siden 2010 (Pfizer frigav); ingen tilladelse noedvendig',
+          grundlag: 'A',
+          registerRef: 'instrument-licensregister-kanonisk-2026-07-18.md r.1' },
   phq9: { kommercielt: true, verificeret: '2026-07-18',
-          kilde: 'Public domain siden 2010 (Pfizer frigav); ingen tilladelse noedvendig' },
+          kilde: 'Public domain siden 2010 (Pfizer frigav); ingen tilladelse noedvendig',
+          grundlag: 'A',
+          registerRef: 'instrument-licensregister-kanonisk-2026-07-18.md r.2' },
   who5: { kommercielt: false, verificeret: '2026-07-18',
-          kilde: 'who.int WHO-UCN-MSD-MHE-2024.01: CC BY-NC-SA 3.0 IGO (NC = ingen salg, SA = afledte arver)' },
-  wsas: { kommercielt: null, verificeret: '2026-07-18',
-          kilde: 'I. M. Marks / ePROVIDE+Mapi: kraever tilladelse, kommerciel status uafklaret ved kilden' },
+          kilde: 'who.int WHO-UCN-MSD-MHE-2024.01: CC BY-NC-SA 3.0 IGO (NC = ingen salg, SA = afledte arver)',
+          // Form A: dokumenteret gratis under en navngiven aaben licens, med kilde og dato.
+          // NC/SA rammer VIDEREDISTRIBUTION (produkt-profilen), ikke om Viktors egne klienter
+          // maa se den. De to porte er forskellige og maa ikke blandes sammen.
+          grundlag: 'A',
+          registerRef: 'instrument-licensregister-kanonisk-2026-07-18.md r.3' },
+  wsas: { kommercielt: null, verificeret: '2026-08-17',
+          kilde: 'PRIMAERKILDEN Mundt, Marks, Shear & Greist (2002) Br J Psychiatry 180:461-464, ordret: '
+               + '»Declaration of interest: The copyright in WSAS is owned by I.M.M.« og '
+               + '»Contact Dr Marks at SSHC, 303 North End Road, London W14 9NS, UK for permission '
+               + 'to use the WSAS in research without charge.« Gratistilbuddet gaelder FORSKNING; '
+               + 'klinisk brug er ikke naevnt. Tilladelse er IKKE indhentet.',
+          // 🔴 INGEN FORM, og det er nu afgjort mod primaerkilden frem for mod en database.
+          //
+          // 🔴 T1 LOEST 17/8, og den gik den MODSATTE vej af husets nyeste laesning. To kilder
+          // stod uenige: ePROVIDEs instrument-side (laest logget ind 27/6) sagde »Copyright:
+          // WSAS is in the public domain«, og registret 18/7 sagde »KRAEVER TILLADELSE«.
+          // 27/6-noten konkluderede at Marks-gaten var »formentlig foraeldet/upraecis«.
+          // ⇒ Selve ARTIKLEN, som ER instrumentet, modsiger distributoerens felt: forfatterne
+          // erklaerer copyright OG opgiver en postadresse man skal skrive til for at faa lov.
+          // Et felt i en distributoers database er en ETIKET; artiklens egen erklaering er
+          // tingen. Det er husets egen regel, anvendt paa et opslag huset selv havde lavet.
+          grundlag: null,
+          // Sporet: r.4 i registret, plus §3l.3b som baerer T1-afgoerelsen.
+          registerRef: 'instrument-licensregister-kanonisk-2026-07-18.md r.4' },
+  // ESS — den FOERSTE raekke der er skrevet som form B, og den er skrevet FOER instrumentet
+  // staar noget sted en klient kan naa. Det er hele pointen med §3l: formen skal findes paa
+  // det tidspunkt hvor betingelserne stadig er uopfyldte, ikke bagefter.
+  ess:  { kommercielt: false, verificeret: '2026-08-17',
+          kilde: 'Mapi/ePROVIDE Special Terms No 140135, udstedt til Viktor Nielsen 26/6-2026. '
+               + 'Category of User = Individual Practice, Mode of administration = Electronic '
+               + '(paper back-up allowed), data collection = BYOD, dansk version ESS_AU1.0_dan-DK, '
+               + 'term 06/2026 til 12/2028, 30 patienter/aar, 5 administrationer/patient. '
+               // Markoeren nedenfor skal staa paa SELVE linjen (copy-guard.mjs:267 laeser linje for linje).
+               + 'Licens-PDF paa disk: soevn/ess-licens/UA_special_terms_Viktor_Nielsen_ESS_140135.pdf.', // nudansk-guard:allow: faktisk mappenavn paa disk, aldrig klient-copy; i eet ord peger stien ingen steder hen
+          // kommercielt: false er IKKE et skoen. General Terms §3.1 ordret: »non-transferable,
+          // non-assignable, non-sublicensable« ⇒ licensen kan aldrig foelge med i et salg,
+          // uanset om betingelserne nedenfor bliver opfyldt. Aftaletekst, ikke vurdering.
+          grundlag: 'B',
+          betingelser: [
+            { krav: 'Screenshot-review: ALLE elektroniske sider hvor ESS optraeder indsendes via ' // nudansk-guard:allow: »Screenshot review« er licensgiverens egen term for processen (Special Terms §4.3), ikke dansk klient-copy
+                  + 'ePROVIDE til MRT-godkendelse FOER visning for en klient (Special Terms '
+                  + '§4.3+§5, General Terms §4.4). »May incur additional fees.«',
+              status: 'ikke opfyldt' },
+            { krav: 'Dansk e-version afklaret med ICON LS: maa ESS_AU1.0_dan-DK bruges direkte i '
+                  + 'e-versionen, eller skal ICON LS populere oversaettelsen i en teknisk fil. '
+                  + 'Licensvurderingen siger »om noedvendigt«, altsaa uafklaret.',
+              status: 'ikke opfyldt' },
+          ],
+          registerRef: 'instrument-licensregister-kanonisk-2026-07-18.md §3m + ' // nudansk-guard:allow: faktisk filnavn i Projekt_Praksis/noter/, ikke klient-copy
+                     + 'soevn/ess-licens/ESS-licens-vurdering-2026-06-26.md' },
+};
+
+// §3l-ratchettens GULV: de instrumenter der stod klientvendt live FØR reglen blev skrevet,
+// og som endnu ikke har form A eller B. Listen er en MÅLT undtagelse med en dato og en ejer,
+// ikke en tredje form: gaten fejler på ethvert NYT id uden form, og den fejler ogsaa hvis en
+// række her er blevet OVERFLØDIG (grundlag kom i hus) eller DØD (id ikke længere på fladen).
+// ⇒ Listen kan kun blive kortere. En undtagelse der ikke kan blive kortere, er et hul.
+//
+// 🔴 Hvorfor der overhovedet er et gulv: Viktor 19/7, »det interne produkt maa ikke komme i
+// vejen«. At fjerne WSAS fra hans egen praksisflade er en produktbeslutning, ikke en
+// infrastrukturbeslutning, og en vagt maa ikke traeffe den paa egen haand. Gulvet goer
+// hullet SYNLIGT frem for at lukke det tavst i den ene eller den anden retning.
+export const LICENS_3L_BASELINE = {
+  wsas: { siden: '2026-08-17',
+          hvorfor: 'Stod paa OFFENTLIGT_KLAR foer §3l blev skrevet. Primaerkilden (Mundt et al. '
+                 + '2002) erklaerer copyright hos I. M. Marks og henviser til en postadresse for '
+                 + 'tilladelse; gratistilbuddet i artiklen gaelder FORSKNING, ikke klinisk brug. '
+                 + 'Ingen tilladelse er indhentet, og der findes intet licens-artefakt paa disk '
+                 + '(modsat ESS, som har sin Special Terms-PDF).',
+          lukkes_ved: 'Anmodning sendes til ePROVIDE i samme ombaering som ISI (Viktor 17/8, '
+                    + 'svar 3). Naar svaret er der: skriv HVER betingelse som form B, ELLER '
+                    + 'fjern wsas fra OFFENTLIGT_KLAR.' },
 };
 
 // Allowlist for en given profil. Default er INTERN — en glemt parameter må ALDRIG kunne
@@ -249,10 +343,70 @@ export const SKEMAER = {
     ],
   },
   wsas: {
-    id: 'wsas', kind: 'radio', title: 'WSAS', short: 'Hverdag og funktion', icon: 'puslespil', badge: '5 spørgsmål',
+    // 🔴 VIST TITEL AENDRET 17/8 fra 'WSAS' til den neutrale, praecis som `cas` og `mcb`.
+    // LAGRINGSNOEGLEN `wsas` er UROERT: den er lagringsnoegle (answers.wsas), og et skifte
+    // ville braekke historiske klient-records. Rettelsen hoerer i navngivningens BETYDNING,
+    // ikke i dens bogstaver, praecis som praeciseringen ved OFFENTLIGT_KLAR siger.
+    // `title` er ikke doed: index.html:1153 bruger den til »naeste skema«-navnet i
+    // haandoffet, saa en klient KUNNE se strengen »WSAS« over husets egen tekst.
+    id: 'wsas', kind: 'radio', title: 'Hverdag og funktion', short: 'Hverdag og funktion', icon: 'puslespil', badge: '5 spørgsmål',
     instruction: 'Hvor meget påvirker dine vanskeligheder din evne til følgende? 0 = slet ikke påvirket, 8 = meget svært påvirket.',
     options: WSAS_OPTS, max: 40,
-    attribution: 'Work and Social Adjustment Scale (WSAS). Reproduced with kind permission of Professor Isaac Marks (Mundt et al. 2002).',
+    // 🔴 ITEMTEKSTEN HERUNDER ER HUSETS EGEN OMSKRIVNING, IKKE WSAS. Maalt 17/8 paa
+    // Viktors ordre (»find ud af det«), fire led der peger samme vej:
+    //   1. ordlyden findes 0 steder i noter/ soevn/ skemaer/, kun her
+    //   2. specen der bestilte bygningen (spec-mct-skema-kadence-2026-05-31.md) naevner
+    //      hverken oversaettelse, verbatim eller en dansk kilde for WSAS
+    //   3. den kom i 5adb585, samme commit som husets to EGNE skalaer (cas, mcb)
+    //   4. item for item mod Mundt et al. (2002): items 2, 3 og 4 har MISTET originalens
+    //      opremsninger, item 1 har FAAET »studie/daglige hovedbeskaeftigelse« som ikke
+    //      staar der, og item 5 er INDSNAEVRET (originalen siger »others, including those
+    //      I live with«, ikke familie og parforhold). Rammen er ogsaa skrevet om.
+    // ⇒ Det er ikke en oversaettelse. Det er husets egen skala i WSAS' navn, med WSAS'
+    // scoring og WSAS' maksimum. Samme figur som `cas` og `mcb` laengere oppe i filen.
+    // 🔴 KONSEKVENS, og fidelity er dyrere end licensen: ISI-agtige skaeringspunkter og
+    // funktionsbaand fra det VALIDEREDE instrument gaelder IKKE disse items. Den danske
+    // valideringsstudie (Hovmand et al. 2024) har skaeringspunkt 23; brugt her ville det
+    // vaere et tal der ser validt ud og ikke er det. Og spec §2b goer WSAS baerende i
+    // Prescriba-genansoegningen, saa eksponeringen er payer-vendt og ikke kun klinisk.
+    // Teksten er IKKE roert: det er en klinisk og produktmaessig beslutning. Fuld
+    // udredning med tabellen: registrets §3l.3d + §3l.3e.
+    //
+    // 🔴 ATTRIBUTIONEN RETTET 17/8. Stod som »Reproduced with kind permission of Professor
+    // Isaac Marks«. Den blev IKKE opfundet her: spec §7.5 konkluderede 31/5 at WSAS var
+    // »frit m.« praecis den formulering. Men en tilladelses-formulering fra en ANDEN
+    // udgivelse kan ikke baeres med over, og maalt 17/8 findes der intet
+    // tilladelses-artefakt i huset (ingen PDF, ingen svar, ingen raekke), og anmodningen
+    // fra 27/6 blev aldrig sendt.
+    // ⇒ Saetningen laeste som en paastand om en TREDJEPARTS SAMTYKKE, vist til klienter,
+    // som ingen kunne belaegge. En manglende notits er et hul; en urigtig er en oplysning.
+    // Erstattet af artiklens egen copyright-erklaering, som KAN belaegges.
+    // 🔴 KILDEANGIVELSEN FJERNET 17/8, og det ruller INFRAs rettelse fra fire timer foer
+    // tilbage. Ikke fordi den var daarligt begrundet, men fordi INFRAs EGEN NAESTE MAALING
+    // (7ed8887, item for item mod Mundt et al.) fastslog det der goer den forkert:
+    // teksten er husets. De to commits er skrevet i den raekkefoelge fundene kom, og den
+    // anden ophaever forudsaetningen for den foerste.
+    //   FOER 3a7f7a4  »Reproduced with kind permission of Professor Isaac Marks«
+    //                 = en paastand om en TILLADELSE der ikke findes.        Falsk.
+    //   3a7f7a4       »Copyright I. M. Marks. Mundt, Marks, Shear & Greist«
+    //                 = en paastand om FORFATTERSKAB til denne tekst.        Ogsaa falsk,
+    //                 og skarpere: den knytter husets egne saetninger til navngivne
+    //                 forskere, paa en flade klienter laeser, og som via Prescriba-
+    //                 genansoegningen (spec §2b) ogsaa laeses af en BETALER.
+    // ⇒ Ingen kildeangivelse, praecis som `cas` og `mcb`, der er den samme figur og har
+    // Viktors ratifikation (3/7 + praeciseringen 18/7). Husets egen ordlyd traekker mod
+    // ophavsretslovens §4 stk. 2; der er ingen tredjepart at kreditere for DENNE tekst.
+    // 🟡 Det er en RETTELSE af en falsk oplysning, ikke et valg mellem INFRAs to veje
+    // A (skaf den validerede danske ordlyd) og B (giv skalaen sit eget navn permanent).
+    // Begge veje staar aabne bagefter: kommer den validerede tekst i hus, sættes items,
+    // titel og kildeangivelse tilbage i samme greb. Spoergsmaalet ligger i lane-ask.
+    // 🔴 OG ET HUL DER IKKE ER LUKKET, maalt her: disse items ligger inde i em-dash-
+    // guardens sentinel-region (l.299-387, »VERBATIM fra kilden«), altsaa i en fritagelse
+    // de ikke kvalificerer til. Derfor staar der en em-dash i item 5 som guarden melder
+    // som 0. POS-KTRL 17/8: en syntetisk em-dash paa l.320 og l.384 ses IKKE af guarden,
+    // paa l.200 og l.500 ses den. Regionen indsnaevres IKKE her: kuren for det den saa
+    // ville finde, er en ordlyds-aendring i klient-copy, og den er Viktors.
+    attribution: '',
     items: [
       'Mit arbejde (eller studie/daglige hovedbeskæftigelse)',
       'Husholdning og praktiske opgaver i hjemmet',
@@ -1577,6 +1731,7 @@ export function instrumentFeltOrden(skema) {
   if (skema.skabelon === 'who5') return [...items, 'who5_raw', 'who5_pct'];
   if (skema.skabelon === 'phq9') return [...items, 'phq9_sum', 'phq9_item9_flag', skema.funktion.key];
   if (skema.skabelon === 'gad7') return [...items, 'gad7_sum'];   // INGEN funktion/flag (modsat PHQ-9)
+  if (skema.skabelon === 'ess')  return [...items, 'ess_sum'];    // 8 items a 0-3 => 0-24
   return items;
 }
 
@@ -1604,6 +1759,12 @@ export function instrumentDerived(skema, answers) {
   }
   if (skema.skabelon === 'gad7') {
     return { gad7_sum: sum };   // sum af alle 7 (0-21); ingen flag/funktion
+  }
+  if (skema.skabelon === 'ess') {
+    // Sum af alle 8 (0-24). Graensen >10 = »excessive daytime sleepiness« er KLINIKER-side
+    // og beregnes IKKE her: klienten ser aldrig et tal eller en tolkning, og et flag i
+    // konvolutten ville vaere en tolkning smuglet ind som et felt.
+    return { ess_sum: sum };
   }
   return {};
 }
@@ -1683,6 +1844,100 @@ export const GAD7_INSTRUMENT = {
 };
 // emdash-guard:instrument-end
 
+// ── ESS (Epworth Sleepiness Scale, 8 items) — BYGGET, IKKE GODKENDT ──────────
+// Viktor-beslutning 17/8: ESS maa staa paa klientfladen (licensen daekker BYOD paa klientens
+// egen telefon, Special Terms 140135), men som SEPARAT LINK og SENERE, ikke som et tredje
+// trin i intake. Begrundelsen er klinisk, ikke teknisk: ubundet traekvindue + lav test-retest
+// paa kort sigt + licensloft 5 administrationer pr. patient ⇒ foer/efter-maal, ikke forloebsmaal.
+//
+// 🔴 HVORFOR DEN ER KLAR:true OG ALLIGEVEL IKKE I INSTRUMENTER, og det er hele det nye i
+// denne blok. Byg-ordrens E2 sagde: byg skaermene FOERST, skyd screenshots, indsend dem til
+// Mapi/MRT, og foerst DEREFTER maa de bruges paa en aegte klient. Raekkefoelgen er omvendt af
+// intuitionen: siderne skal FINDES foer godkendelsen kan soeges. Den binaere KLAR-gate kunne
+// ikke baere det: KLAR:false ville betyde »ingen skaerme at fotografere«, og KLAR:true alene
+// ville betyde »naabar for et klient-token«. Derfor en anden akse:
+//
+//   KLAR            er modulet fuldt formet (verbatim tekst, skala, items)?      -> ja
+//   klientGodkendt  maa det vises for en KLIENT?                                 -> nej, endnu
+//
+// De to registre nedenfor laeser hver sin akse. `INSTRUMENTER` (som ?s=<skabelon>-routingen
+// slaar op i) kraever BEGGE; `INSTRUMENTER_REVIEW` kraever KLAR og NAEGTER klientGodkendt.
+// Et klient-link kan derfor ikke naa ESS, mens screenshot-vejen kan. Det er praecis den
+// skelnen E2 bad om: »en vagt der spaerrer ubekraeftede instrumenter maa kunne skelne
+// bygget-ikke-godkendt fra live«.
+//
+// 🔴 showValueBadge:true, og begrundelsen er en RETTELSE af den regel der staar ved WHO-5.
+// Dér staar »KUN WHO-5: PHQ-9 er 0-3 hvor hoejere=vaerre -> et tal ville aktivt vildlede«.
+// Den regel er formuleret paa scoringens retning, men det er ikke det tallet afhaenger af.
+// ESS er ogsaa 0-3 med hoejere=vaerre, OG dens verbatim instruktion siger ordret »Brug
+// nedenstaaende skala ved at vaelge det bedst passende nummer for hver situation«, og
+// svar-kolonnen hedder »Sandsynlighed for, at du smaablunder (0-3)«. At skjule tallet ville
+// vaere en AENDRING af instrumentet, og aendring er praecis det licensen forbyder.
+// ⇒ Den baerende regel er: baerer den VERBATIM instruktion selv tallet? Saa skal det vises.
+// Hoejere=bedre var et saertilfaelde af den regel, ikke reglen.
+//
+// VERBATIM-KILDE: soevn/ess-licens/ESS_AU1.0_dan-DK.txt (dansk ESS leveret af Mapi/ICON LS,
+// gitignoreret licens-scoped mappe, ikke i repo). Instruktion, skala-ankre og alle 8
+// situationer er gengivet ord-for-ord. Kolonne-layoutets efterstillede blanktegn og
+// underscore-felter er sat-satsning, ikke ordlyd, og foelger ikke med.
+// 🔴 Notitsen »ESS © MW Johns 1990-1997. Used under License.« er en HAARD licensbetingelse
+// (Special Terms §4.4) og staar i `attribution`, som renderes baade paa spoergeskaermen
+// (#instrument-attribution) og paa review-skaermen (#instrument-review-attribution).
+// emdash-guard:instrument-start (ESS © MW Johns 1990-1997, Used under License, Mapi Special
+// Terms 140135: dansk klient-tekst gengivet VERBATIM. Em-dash- og aeoeaa-reglen gaelder IKKE
+// inden for dette region, jf. byg-ordre E2. Vores egen UI-copy ligger i index.html.)
+export const ESS_INSTRUMENT = {
+  id: 'ess', kind: 'instrument', skabelon: 'ess',
+  // Neutral klient-titel paa siden selv (husets moenster: aldrig instrument-navnet som
+  // overskrift). Instrumentets EGET verbatim navn gaar ikke tabt: det staar foerst i
+  // `attribution`, saa baade den ordrette titel og copyright-notitsen er paa skaermen.
+  uiTitle: 'Søvnighed i dagligdagen', kort: 'ESS',
+  instruktion: 'Hvor stor er sandsynligheden for, at du småblunder eller falder i søvn i nedenstående situationer, og ikke bare føler dig træt? '
+             + 'Dette refererer til din sædvanlige levevis i den seneste tid. '
+             + 'Selv om du ikke har oplevet nogle af disse situationer i den seneste tid, bedes du forsøge at finde ud af, hvordan de ville have påvirket dig. '
+             + 'Brug nedenstående skala ved at vælge det bedst passende nummer for hver situation. '
+             + 'Det er vigtigt, at du besvarer hvert spørgsmål så godt, du kan.',
+  stem: 'Hvor stor er sandsynligheden for, at du småblunder eller falder i søvn i nedenstående situationer, og ikke bare føler dig træt?',
+  attribution: 'Epworth’ spørgeskema til vurdering af søvnighed (ESS). ESS © MW Johns 1990-1997. Used under License.',
+  showValueBadge: true,
+  // 🔴 Copyright-notitsen skal staa paa HVERT trin, ikke kun paa det foerste. Special Terms
+  // §4.4 kraever den vist hvor instrumentet optraeder, og i eet-spoergsmaal-ad-gangen-flowet
+  // er trin 2 til 8 syv selvstaendige sider hvor det optraeder. Default i stepperen er
+  // uaendret (kun trin 1), saa flaget koster nul for WHO-5, PHQ-9 og GAD-7.
+  notitsPaaHverSide: true,
+  options: [                                  // skala-ankre VERBATIM (0-3)
+    { value: 0, label: 'ville aldrig småblunde' },
+    { value: 1, label: 'lille sandsynlighed for, at du småblunder' },
+    { value: 2, label: 'moderat sandsynlighed for, at du småblunder' },
+    { value: 3, label: 'stor sandsynlighed for, at du småblunder' },
+  ],
+  scoredItems: [                              // 8 situationer VERBATIM, i kildens raekkefoelge
+    { key: 'ess_item_1', text: 'Sidder og læser' },
+    { key: 'ess_item_2', text: 'Ser fjernsyn' },
+    { key: 'ess_item_3', text: 'Sidder passivt et offentligt sted (f.eks. i et teater eller til et møde)' },
+    { key: 'ess_item_4', text: 'Som passager i en bil i en time uden en pause' },
+    { key: 'ess_item_5', text: 'Ligger ned for at hvile om eftermiddagen, når omstændighederne tillader det' },
+    { key: 'ess_item_6', text: 'Sidder og taler med nogen' },
+    { key: 'ess_item_7', text: 'Sidder stille efter en frokost uden indtagelse af alkohol' },
+    { key: 'ess_item_8', text: 'I en bil, mens den holder stille i nogle få minutter på grund af trafikken' },
+  ],
+  // INGEN funktion, INGEN safetyKey. ESS har hverken funktionslinje eller et item der
+  // udloeser et sikkerhedspanel; svaerhedsbaand er KLINIKER-side og vises aldrig klienten.
+  licensStatus: 'licens-gated',
+  KLAR: true,
+  // Den anden akse. `false` er det eneste der spaerrer, saa et modul der GLEMMER feltet
+  // opfoerer sig som i dag (godkendt) frem for at forsvinde tavst fra fladen.
+  klientGodkendt: false,
+  godkendelse: {
+    krav: 'Screenshot-review hos Mapi/MRT via ePROVIDE (Special Terms 140135 §4.3+§5, General §4.4)',
+    status: 'ikke indsendt',
+    naeste: 'Skyd screenshots af ALLE skaerme hvor ESS optraeder (spoergeskaerm pr. item, '
+          + 'review-skaerm, kvittering) og indsend dem via ePROVIDE. Viktor-greb: kraever hans login.',
+    ref: 'INSTRUMENT_LICENS.ess.betingelser',
+  },
+};
+// emdash-guard:instrument-end
+
 // ════════════════════════════════════════════════════════════════════════
 //  SCAFFOLD-SLOTS (KLAR:false) — defineret, men IKKE eksponerbare (spec §4)
 // ════════════════════════════════════════════════════════════════════════
@@ -1736,14 +1991,41 @@ export const WHODAS_INSTRUMENT_SLOT = {
 // klar-gate.mjs asserterer at intet KLAR:false-modul er i INSTRUMENTER eller routing.
 export const INSTRUMENT_MODULER = [
   WHO5_INSTRUMENT, PHQ9_INSTRUMENT, GAD7_INSTRUMENT,                  // KLAR:true  (aktiv)
+  ESS_INSTRUMENT,                                                     // KLAR:true, klientGodkendt:false
   CAS1_INSTRUMENT_SLOT, WSAS_INSTRUMENT_SLOT, WHODAS_INSTRUMENT_SLOT, // KLAR:false (scaffold)
 ];
 
+// Er modulet fuldt formet OG godkendt til at blive vist for en klient? Feltet `klientGodkendt`
+// spaerrer KUN naar det staar eksplicit `false`: et modul der ikke kender feltet opfoerer sig
+// som foer (godkendt). Et manglende felt maa aldrig kunne fjerne et instrument tavst fra
+// Viktors flade - fail-closed hoerer til produktet, ikke til installationen (samme skel som
+// `allowlistFor` ovenfor).
+export function maaVisesForKlient(modul) {
+  return modul.KLAR === true && modul.klientGodkendt !== false;
+}
+
 // SEPARAT register (IKKE SKEMAER - undgaar kollision med batteri-noeglerne who5/phq9).
+// Dette er det register `?s=<skabelon>`-routingen slaar op i. Et instrument der ikke staar
+// her, kan ikke naas af noget klient-link, uanset hvad tokenet siger.
 export const INSTRUMENTER = {};
 for (const modul of INSTRUMENT_MODULER) {
-  if (modul.KLAR) INSTRUMENTER[modul.skabelon] = modul;   // maskinel licens-gate
+  if (maaVisesForKlient(modul)) INSTRUMENTER[modul.skabelon] = modul;   // maskinel licens-gate
 }
+
+// ── DET TREDJE RUM: bygget, ikke godkendt ───────────────────────────────────
+// Instrumenter der ER fuldt formede, men hvis licens kraever en godkendelse foer en klient
+// maa se dem. De skal kunne RENDRES for at blive fotograferet (screenshot-review er selv
+// betingelsen), og de maa ALDRIG kunne naas af et klient-link. Registret er derfor adskilt,
+// og index.html kraever en eksplicit review-parameter OG fravaer af et ingest-token for at
+// slaa op i det. To noegler, hver med sin egen doer.
+export const INSTRUMENTER_REVIEW = {};
+for (const modul of INSTRUMENT_MODULER) {
+  if (modul.KLAR === true && modul.klientGodkendt === false) INSTRUMENTER_REVIEW[modul.skabelon] = modul;
+}
+
+// URL-parameteren der aabner review-visningen. Lang og eksplicit med vilje: den skal ikke
+// kunne rammes ved et uheld, og den skal kunne ses i en URL af den der tager screenshottet.
+export const REVIEW_PARAM = 'godkendelsesreview';
 
 // ════════════════════════════════════════════════════════════════════════
 //  SEND-KVITTERING + "Send sikkert"-CTA (besked-track K1P1 FASE B, K3+K4)

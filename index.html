@@ -617,7 +617,7 @@
 import { SKEMAER, SKEMA_ORDER, OFFENTLIGT_KLAR, buildPayload, buildPayloadCSD, buildPayloadBaseline, mentemEncrypt,
          CSD_SOEVNDAGBOG, SOEVN_BASELINE, CONTENT_VERSION, kryptoStoettet,
          PINNED_PUBKEY, PINNED_KEY_ID, resolveRecipientKey,
-         INSTRUMENTER, instrumentFeltOrden, buildInstrumentMycel,
+         INSTRUMENTER, INSTRUMENTER_REVIEW, REVIEW_PARAM, instrumentFeltOrden, buildInstrumentMycel,
          SOEVN_SCREENING, buildPayloadScreening, SCREENING_ALDER_MIN, SCREENING_ALDER_MAX,
          SENDT_KVITTERING_PRIMAER, sendtKvitteringSekundaer, SEND_SIKKERT_CTA,
          SRT_VINDUE_TEKST, SOEVN_F2,
@@ -1005,6 +1005,22 @@ const screeningId = rawSelected.find(id => SKEMAER[id].kind === 'screening') || 
 // flowet. KLAR:false-instrumenter er IKKE i INSTRUMENTER (licens-gate i core.js) -> ueksponerbare.
 const sTokens = sParam ? sParam.split(',').map(x => x.trim().toLowerCase()) : [];
 const instrumentId = (sTokens.length === 1 && INSTRUMENTER[sTokens[0]]) ? sTokens[0] : null;
+// ── GODKENDELSES-REVIEW: bygget, ikke godkendt (ESS, Mapi Special Terms 140135) ─────
+// Et instrument kan vaere fuldt formet og alligevel forbudt at vise for en klient, indtil
+// licensgiveren har godkendt selve SKAERMEN. Screenshot-review er selv betingelsen, saa
+// skaermen skal kunne rendres foer den maa bruges. Tre laase, alle tre skal aabne:
+//   1. skabelonen staar i INSTRUMENTER_REVIEW (altsaa KLAR:true OG klientGodkendt:false)
+//   2. ?godkendelsesreview=1 staar eksplicit i URL'en
+//   3. der er INTET ingest-token. Et token er beviset paa at linket er sendt til et
+//      menneske; et review-link maa aldrig kunne baere et. Uden token er der ingen
+//      krypteret transport overhovedet (instrument-flowet emitterer kun [MYCEL]-tekst).
+// 🔴 Der tegnes bevidst INTET review-baand paa skaermen. Mapi godkender den side klienten
+// faktisk ser; en ekstra bjaelke ville goere det godkendte artefakt forskelligt fra det
+// udrullede, og det er en vaerre fejl end at review-visningen ligner sig selv.
+const instrumentReviewId = (sTokens.length === 1
+  && INSTRUMENTER_REVIEW[sTokens[0]]
+  && params.get(REVIEW_PARAM) === '1'
+  && !ingestToken) ? sTokens[0] : null;
 // Offentlig batteri-allowlist: kun OFFENTLIGT_KLAR-skemaer kan rendres på den
 // uautentificerede flade (parallelt register, ikke SKEMA_ORDER): et licenspending
 // skema kan derfor ikke længere lække via ?s=. Kanonisk rækkefølge bevares (OFFENTLIGT_KLAR
@@ -1022,6 +1038,137 @@ let selected = OFFENTLIGT_KLAR.filter(id => rawSelected.includes(id));
 // er linket ufuldstaendigt og siden viser sin egen »kontakt din psykolog«-skaerm.
 if (rawSelected.includes('ema') && ingestToken) selected = ['ema'];
 const fixedFromLink = selected.length > 0;                    // gyldigt ?s=-subset → låst batteri
+
+// ════════════════════════════════════════════════════════════════════════════
+//  KÆDE: ét link, flere opgaver (Viktor-ordre 2026-08-17)
+// ════════════════════════════════════════════════════════════════════════════
+// 🔴 DEN LIVE FEJL DER UDLØSTE DEN. Opstarts-SMS'en mærkede link 2 »Søvndagbog« og
+// lovede »hver morgen i 14 nætter«, men linket var `?s=soevn-baseline`, som er et
+// ENGANGS-skema (`badge: 'udfyldes én gang'`, fem felter) og ender på `screen-done`
+// uden nogen overgang til dagbogen. Klienten stod næste morgen og ledte efter noget
+// der ikke fandtes bag linket.
+//
+// »Ét link« kan ikke leveres med ordlyd alene: dispatchen nedenfor tager den FØRSTE
+// art der matcher, så `?s=soevn-screening,soevn-baseline` kun kører screeningen.
+// Fladen skal KÆDE opgaverne.
+//
+// 🔴 HVORFOR KÆDNINGEN ER EN GENINDLÆSNING OG IKKE ET FUNKTIONSKALD. Det nærliggende
+// var at kalde `runBaseline()` når screeningen var afleveret. Målt i denne fil: FIRE
+// flows binder hver sin klik-lytter til den SAMME `#share-btn`, hver inde i sin egen
+// `run*`-funktion. To flows i samme sideindlæsning ville altså efterlade to lyttere,
+// og ét klik ville sende BEGGE nyttelaster. Hele siden er bygget på ét flow pr.
+// indlæsning, og det er en invariant værd at beholde.
+// 🟢 Derfor: markér trinnet afleveret, og genindlæs. Sidens egen invariant holder, og
+// vigtigere: »fortsæt«-stien og »hun lukkede fanen og kom tilbage«-stien bliver
+// NØJAGTIG samme kodesti. Den fejlgren ordren bad om at få designet, kan derfor ikke
+// rådne: den køres hver eneste gang nogen fortsætter.
+//
+// 🔴 TILSTANDEN ER LOKAL, OG DET ER EN GRÆNSE, IKKE EN LØSNING. localStorage er
+// browser-/enheds-bundet. Skifter hun telefon, eller rydder hun sin browser, starter
+// kæden forfra. Det koster en dublet-aflevering hos Viktor (workeren dedupliker på
+// submissionUUID, og en ny udfyldning bærer et nyt), og det er den rigtige måde at
+// fejle på: hellere ét skema for meget end et trin der springes over i tavshed.
+const KAEDE_LS_KEY = 'mentem_kaede_v1';
+
+// Rækkefølgen er KLINISK og ikke rækkefølgen i `?s=`: sikkerhedsscreeningen ligger
+// først fordi den er en gate, og dagbogen sidst fordi den er den blivende opgave.
+// 🔵 Dagbogen står med vilje som `varig: true`. De to andre er engangs og kan blive
+// »afleveret«; en dagbog er aldrig færdig, så den må aldrig kunne markeres af.
+const kaedeTrin = [
+  screeningId ? { id: screeningId, art: 'screening', varig: false } : null,
+  baselineId  ? { id: baselineId,  art: 'baseline',  varig: false } : null,
+  diaryId     ? { id: diaryId,     art: 'diary',     varig: true  } : null,
+].filter(Boolean);
+
+// Forløbets identitet = pseudonymID'et inde i v1-tokenet (`v1.<pseudonym>.<udløb>.…`).
+// 🔴 IKKE hele tokenet, og ALDRIG noget klient-identificerende: nøglen står i klartekst
+// i localStorage. Pseudonymet er præcis det felt der er født til at kunne stå et sådant
+// sted. 🔵 Og den skal være pr. FORLØB: to klienter i samme browser, eller et nyt forløb
+// for samme klient, må ikke arve hinandens »afleveret«-mærker og springe en
+// sikkerhedsscreening over.
+function forloebsNoegle() {
+  if (!ingestToken) return null;
+  const dele = String(ingestToken).split('.');
+  return (dele.length === 5 && dele[1]) ? dele[1] : null;
+}
+
+// Kæden er KUN aktiv for et ægte forløbs-link med mere end én opgave. Uden `it=` er
+// auto-afleveringen slået fra og klienten sender filer i hånden; at kæde dér ville bede
+// hende sende tre filer i træk. Prod-adfærd uden `it=` er dermed uændret.
+const kaedeAktiv = kaedeTrin.length > 1 && !!forloebsNoegle();
+
+function kaedeTilstand() {
+  try { return JSON.parse(localStorage.getItem(KAEDE_LS_KEY)) || {}; } catch (e) { return {}; }
+}
+function erAfleveret(skemaId) {
+  const n = forloebsNoegle();
+  if (!n) return false;
+  const forloeb = kaedeTilstand()[n];
+  return !!(forloeb && forloeb[skemaId]);
+}
+function markerAfleveret(skemaId) {
+  const n = forloebsNoegle();
+  if (!n) return;
+  try {
+    const alt = kaedeTilstand();
+    alt[n] = Object.assign({}, alt[n] || {}, { [skemaId]: new Date().toISOString() });
+    localStorage.setItem(KAEDE_LS_KEY, JSON.stringify(alt));
+  } catch (e) { /* private mode / quota → bedst-anstrengelse, se grænsen ovenfor */ }
+}
+
+/// Det trin klienten skal møde nu: det første der ikke er afleveret. Er alt engangs-
+/// arbejde gjort, er det den varige opgave (dagbogen), kædens hvilested.
+function naesteTrin() {
+  return kaedeTrin.find(t => t.varig || !erAfleveret(t.id)) || kaedeTrin[kaedeTrin.length - 1];
+}
+/// Trinnets plads i kæden, til »2 af 3«. 1-indekseret, fordi tallet vises for et menneske.
+function trinNummer(skemaId) {
+  const i = kaedeTrin.findIndex(t => t.id === skemaId);
+  return i < 0 ? null : i + 1;
+}
+
+/// Kaldes NÅR EN AFLEVERING ER LYKKEDES, aldrig før, og aldrig fra fil-stien.
+///
+/// 🔴 PLACERINGEN ER HELE FEJLGREN NUMMER ÉT. Ordren bad om at de to fejlgrene blev
+/// designet før den glade: hvad sker der hvis afleveringen fejler mellem to opgaver?
+/// Svaret er, at der ikke sker noget, og at det er rigtigt. Et trin markeres kun når
+/// serveren har kvitteret, så en fejlet aflevering efterlader kæden på præcis samme
+/// trin, med den ærlige røde besked og knappen tilbage (`visAutoSendFejlede`). Klienten
+/// prøver igen, og fortsætter først når svaret faktisk er nået frem.
+/// 🔵 Rækkefølgen indeni betyder noget: markér FØRST, tilbyd så at fortsætte. Ellers
+/// kunne hun nå at trykke videre på et trin der ikke var skrevet ned.
+function kaedeEfterAflevering(skemaId, statusEl) {
+  if (!kaedeAktiv || !statusEl) return;
+  const trin = kaedeTrin.find(t => t.id === skemaId);
+  if (!trin || trin.varig) return;         // dagbogen er aldrig »færdig«
+  markerAfleveret(skemaId);
+  const naeste = naesteTrin();
+  if (!naeste || naeste.id === skemaId) return;
+
+  // Kvitteringens primære linje slutter på »Tak!«, og den læses som et punktum. Er der
+  // mere tilbage, ville den være usand på samme måde som den SMS der udløste ordren.
+  const besked = document.createElement('div');
+  besked.className = 'kvittering-sekundaer';
+  besked.style.cssText = 'margin-top:10px;font-size:14px';
+  const navn = (SKEMAER[naeste.id] && SKEMAER[naeste.id].title) || 'næste skema';
+  besked.textContent = naeste.varig
+    ? 'Der mangler kun din søvndagbog. Den udfylder du hver morgen.'
+    : 'Der er ét skema mere. Det tager et par minutter.';
+  statusEl.appendChild(besked);
+
+  const knap = document.createElement('button');
+  knap.type = 'button';
+  knap.className = 'btn-primary';
+  knap.style.cssText = 'margin-top:12px';
+  knap.textContent = 'Fortsæt til ' + navn.toLowerCase() + ' (' +
+    trinNummer(naeste.id) + ' af ' + kaedeTrin.length + ')';
+  // 🔴 GENINDLÆSNING, ikke et kald til `runBaseline`. Se begrundelsen ved `kaedeTrin`:
+  // fire flows deler én `#share-btn`, så to flows i samme indlæsning ville sende to
+  // nyttelaster på ét klik. `location.reload()` beholder samme URL, og bootstrappen
+  // finder selv næste trin, nøjagtig samme sti som hvis hun havde lukket fanen.
+  knap.addEventListener('click', () => { location.reload(); });
+  statusEl.appendChild(knap);
+}
 
 const answers = {};
 
@@ -3067,6 +3214,9 @@ function showStep(i, moveFocus = true) {
   });
 }
 
+// Hvilket instrument-modul er i gang? Saettes af renderInstrument. Stepperens cfg bygges
+// uden for renderInstrument og har ellers ingen adgang til modulet.
+let aktivtInstrumentSkema = null;
 function instrumentStepperCfg() {
   return {
     rootId: 'instrument-fields',
@@ -3082,7 +3232,14 @@ function instrumentStepperCfg() {
         if (p) p.hidden = false;
       }
       const intro = document.getElementById('instrument-intro'); if (intro) intro.hidden = i !== 0;
-      const attr = document.getElementById('instrument-attribution'); if (attr) attr.hidden = i !== 0;
+      // 🔴 KILDEANGIVELSEN KAN VAERE EN LICENSBETINGELSE, ikke en hoeflighed. Default er
+      // uaendret (kun trin 1), fordi WHO-5/PHQ-9/GAD-7 ikke kraever andet. Men ESS' Special
+      // Terms §4.4 siger at notitsen SKAL vises hvor instrumentet optraeder, og i et
+      // eet-spoergsmaal-ad-gangen-flow er trin 2 til 8 syv sider hvor det optraeder UDEN
+      // notits. Maalt 17/8 paa screenshottene: 1 af 8 trin baerer den.
+      // Flaget saettes pr. modul, saa udvidelsen koster nul for de tre andre instrumenter.
+      const attr = document.getElementById('instrument-attribution');
+      if (attr) attr.hidden = (aktivtInstrumentSkema && aktivtInstrumentSkema.notitsPaaHverSide) ? false : (i !== 0);
       const note = document.getElementById('instrument-note'); if (note) note.hidden = i !== (steps.length - 1);
     },
     onTeardown: () => {
@@ -3101,7 +3258,11 @@ function instrumentStemAria(stem, text) {
   return (stem ? stem.replace(/\s*\.\.\.\s*$/, '') + ' ' : '') + text;
 }
 function renderInstrument(id) {
-  const skema = INSTRUMENTER[id];
+  // Render-motoren er FAELLES for de to registre med vilje. Screenshot-review skal ramme
+  // praecis den kode der senere sender: godkendte man en skaerm tegnet af en anden funktion,
+  // beviste godkendelsen noget om et artefakt der aldrig blev udrullet.
+  const skema = INSTRUMENTER[id] || INSTRUMENTER_REVIEW[id];
+  aktivtInstrumentSkema = skema;
   const ref  = params.get('ref')  || '';
   const dato = params.get('dato') || '';
   const instrAnswers = {};   // { [feltkey]: heltal }: KUN faktiske klik, ingen default
@@ -3706,6 +3867,7 @@ function runScreening(id) {
       const ok = await sendTilIngest(payload, 'soevn-screening');
       if (ok) {
         visSendtKvittering(status, 'soevn-screening');
+        kaedeEfterAflevering('soevn-screening', status);   // ét link: videre til næste opgave
         return;
       }
       // 🔴 Fejlede den AUTOMATISKE aflevering, må vi ikke falde videre til fil-stien:
@@ -4137,7 +4299,11 @@ async function shareBaselineEncrypted(auto = false) {
   // AUTO-SEND (#1/#2): kun it=-links. Lykkes → færdig; ellers fald til download/del.
   if (autoSendEnabled()) {
     const ok = await sendTilIngest(payload, 'soevn-baseline');
-    if (ok) { visSendtKvittering(status, 'soevn-baseline'); return; }
+    if (ok) {
+      visSendtKvittering(status, 'soevn-baseline');
+      kaedeEfterAflevering('soevn-baseline', status);      // ét link: videre til dagbogen
+      return;
+    }
     // Se `startAutoAflevering`: fil-stien kræver en brugerhandling, så en fejlet
     // AUTOMATISK aflevering må give knappen tilbage frem for at falde videre.
     if (auto) { visAutoSendFejlede(status, btn); return; }
@@ -4155,6 +4321,19 @@ if (formuleringAktiv) {
   // (fragment-dispatch øverst i modulet); resten af den eksisterende ?s=-query-
   // dispatch-kæde springes helt over (urørt for alle andre flows).
   showScreen('screen-formulering');
+} else if (kaedeAktiv) {
+  // ÉT LINK (Viktor-ordre 17/8): dispatchen nedenfor tager den FØRSTE art der matcher,
+  // så et link med flere opgaver ville køre den første igen og igen. Her spørger vi i
+  // stedet hvad der mangler. Samme URL, samme sekund, og samme sti hvad enten hun lige
+  // har trykket »Fortsæt« eller er kommet tilbage i morgen tidlig.
+  // 🔴 Den anden fejlgren fra ordren bor HER: lukker hun fanen mellem to opgaver, er der
+  // ingen særlig tilstand at genoprette. `naesteTrin()` læser hvad der er afleveret og
+  // sender hende det rigtige sted hen. En tilstand der ikke findes, kan ikke blive forkert.
+  const trin = naesteTrin();
+  if (trin.art === 'screening') runScreening(trin.id);
+  else if (trin.art === 'baseline') runBaseline(trin.id);
+  else if (srtAktiv) renderSoevnvindue();   // M1.6: ordinations-vinduet FØR dagbogen
+  else runDiary(trin.id);
 } else if (screeningId) {
   runScreening(screeningId);
 } else if (baselineId) {
@@ -4166,6 +4345,11 @@ if (formuleringAktiv) {
   runDiary(diaryId);
 } else if (instrumentId) {
   renderInstrument(instrumentId);
+} else if (instrumentReviewId) {
+  // Bygget, ikke godkendt. Naas kun med ?godkendelsesreview=1 og uden ingest-token; se
+  // begrundelsen ved instrumentReviewId ovenfor. Falder man igennem her (fx fordi tokenet
+  // var med), lander man i velkomst-grenen nedenfor, altsaa ingen ESS-skaerm. Fail-closed.
+  renderInstrument(instrumentReviewId);
 } else {
   document.getElementById('finish-btn').addEventListener('click', goDone);
   // Indpakket: se begrundelsen ved screening-bindingen (Event-objektet er sandt).
@@ -4311,7 +4495,13 @@ initA11yMode();
 // Instrument-skemaer (WHO-5/PHQ-9/GAD-7): ét-spørgsmål-ad-gangen-stepperen anvendes HER, efter
 // A11Y_KEY/data-a11y/localStorage er resolved (a11yOn() rammer TDZ under routing). a11y skifter kun
 // auto-frem, ikke selve trin-flowet. Søvndagbogen rammer ikke dette (felter renderes efter navigation).
-if (instrumentId) {
+// 🔴 `|| instrumentReviewId` er ikke kosmetik. Uden den kom stepperen aldrig i gang i
+// review-visningen, og siden viste ALLE items paa eet lange rul. Maalt 17/8 paa det foerste
+// screenshot: 8 af 8 ESS-spoergsmaal synlige samtidig. Det er ikke en grim skaerm, det er en
+// FALSK skaerm: screenshottet der skulle godkendes af licensgiveren, viste en side klienten
+// aldrig kommer til at se. En godkendelse af et artefakt der ikke udrulles, er ingen
+// godkendelse. Fundet fordi billedet blev SET, ikke fordi en proeve var roed.
+if (instrumentId || instrumentReviewId) {
   const instrScreen = document.getElementById('screen-instrument');
   if (instrScreen && instrScreen.classList.contains('active')) { diaryStepIndex = 0; applyInstrumentStepper(); }
 }
