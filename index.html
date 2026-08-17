@@ -988,6 +988,17 @@ const instrumentId = (sTokens.length === 1 && INSTRUMENTER[sTokens[0]]) ? sToken
 // skema kan derfor ikke længere lække via ?s=. Kanonisk rækkefølge bevares (OFFENTLIGT_KLAR
 // er ordnet som SKEMA_ORDER). Kun spørgeskemaer (diary/baseline har egne flows).
 let selected = OFFENTLIGT_KLAR.filter(id => rawSelected.includes(id));
+// ── EMA: egen-forfattet, og naas KUN med et autentificeret link ──────────────
+// 🔴 HVORFOR DEN IKKE LAEGGES I OFFENTLIGT_KLAR. Det register vogter TREDJEPARTS-
+// instrumenter mod at laekke paa den UAUTENTIFICEREDE flade (GAD-7, PHQ-9, WHO-5, WSAS
+// staar der; husets egne `cas` og `mcb` goer bevidst IKKE). At skrive `ema` ind dér ville
+// blande to spoergsmaal sammen: »maa vi vise en andens instrument gratis« og »maa vi vise
+// vores eget«. **En allowlist der baerer to slags tilladelse, holder op med at vaere en
+// tilladelse.**
+// 🟢 EMA er husets eget (§12, fri klinisk metode), saa der er ingen licens at bryde. Til
+// gengaeld er den KLIENT-specifik, og eksponeringen styres derfor af tokenet: uden `it=`
+// er linket ufuldstaendigt og siden viser sin egen »kontakt din psykolog«-skaerm.
+if (rawSelected.includes('ema') && ingestToken) selected = ['ema'];
 const fixedFromLink = selected.length > 0;                    // gyldigt ?s=-subset → låst batteri
 
 const answers = {};
@@ -1396,8 +1407,16 @@ async function shareEncrypted(auto = false) {
   }
   // AUTO-SEND (#1/#2): kun it=-links. Lykkes → færdig; ellers fald til download/del.
   if (autoSendEnabled()) {
-    const ok = await sendTilIngest(payload, 'batteri');
-    if (ok) { visSendtKvittering(status, 'batteri'); return; }
+    // 🔴 SKEMA-TYPEN ER IKKE ALTID 'batteri', og forskellen er ikke kosmetisk.
+    // EMA-kadencen (`/ema/naeste`) taeller rows med `schema_type = 'ema'`. Stemplede vi
+    // en EMA-aflevering som 'batteri', ville taelleren staa paa NUL for evigt: klienten
+    // ville faa »klar« igen og igen, og de fire daglige prompts ville aldrig lukke.
+    // Maalt i e2e-harnessen 16/8, hvor afleveringen ikke kunne findes bagefter.
+    // 🔵 Og tokenets scope binder haardt til skemaet (least-privilege), saa et forkert
+    // stempel ville i oevrigt blive afvist af workeren.
+    const skemaType = (battery.length === 1 && battery[0] === 'ema') ? 'ema' : 'batteri';
+    const ok = await sendTilIngest(payload, skemaType);
+    if (ok) { visSendtKvittering(status, skemaType); return; }
     // Se `startAutoAflevering`: fil-stien kræver en brugerhandling.
     if (auto) { visAutoSendFejlede(status, btn); return; }
   }
