@@ -62,19 +62,49 @@ const erVaerktoej = (fil) => {
   return /^\/\/\s*Brug:.*<[^>]+>/m.test(t);
 };
 
+// 🔴 EN HARNESS VAGTEN SELV HAR DRAEBT, ER IKKE EN DER SAGDE NEJ (maalt 16/8).
+// Ved timeout draeber `execFile` barnet, og saa er `err.code` undefined -> `rc = -1`, som
+// faldt igennem klassifikatoren til **ROED**. Maalt direkte, med NEG-KTRL:
+//   timeout ramt   rc -1 · err.killed true · signal SIGTERM · udskrift TOM  -> stod som ROED
+//   ingen timeout  rc 0                                                     -> GROEN
+// Udskriften er TOM, saa raekken bar ikke engang en aarsag: en roed uden begrundelse, om en
+// harness der maaske var groen hvis den havde faaet lov at koere faerdig.
+// 🔵 Det er dagens gennemgaaende klasse, vendt mod maaleren selv: **»jeg stoppede den« er
+// ikke »den sagde nej«.** Samme skel som `exit 0` der daekker over »jeg kan ikke«.
+// 🔴 Og det er den mest sandsynlige mekanisme bag den UNAVNGIVNE flakker (1 af 11 koersler
+// 16/8): en browser-harness der en sjaelden gang under belastning overskrider loftet.
+// Nu navngiver den sig selv, og den taeller som UMAALT frem for at forurene ROED.
+const TIMEOUT_MS = Number(process.env.HARNESS_TIMEOUT_MS || 150000);
+
 const koer = (fil, args = []) => new Promise((res) => {
-  execFile('node', [path.join('test', fil), ...args], { cwd: ROD, timeout: 150000 },
-    (err, out, errout) => res({ rc: err ? (err.code ?? -1) : 0, ud: `${out}${errout}` }));
+  execFile('node', [path.join('test', fil), ...args], { cwd: ROD, timeout: TIMEOUT_MS },
+    (err, out, errout) => res({
+      rc: err ? (err.code ?? -1) : 0,
+      draebt: !!(err && err.killed),
+      ud: `${out}${errout}`,
+    }));
 });
 
-const klassificer = (rc, ud) => {
+const klassificer = (rc, ud, draebt) => {
+  // Staar FOERST: et drab skal ikke kunne forveksles med noget harnessen naaede at sige.
+  if (draebt) return ['UMAALT', `vagten draebte den efter ${TIMEOUT_MS / 1000} s, ingen dom`];
   if (rc === 3) return ['UMAALT', (ud.trim().split('\n')[0] || '').slice(0, 70)];
   for (const [m, hv] of DOED) if (m.test(ud)) return ['DOED', hv];
   if (!IKKE_NET.test(ud)) for (const [m, hv] of NET) if (m.test(ud)) return ['NET', hv];
   return rc === 0 ? ['GROEN', ''] : ['ROED', (ud.trim().split('\n').pop() || '').slice(0, 70)];
 };
 
-const filer = readdirSync(TEST).filter((f) => f.endsWith('.mjs')).sort();
+// 🔴 `_`-praefiks = DELT MODUL, ikke en harness. Maalt 16/8: `_forudsaetning.mjs` (delt
+// forudsaetnings-gate) blev talt med som harness og rapporteret GROEN rc 0, fordi den ikke
+// goer noget naar den koeres nøgen. **En fil der ikke maalte noget, er ikke groen, den er
+// tavs** , og den loeftede samtidig populationen fra 40 til 41, saa summen saa ud til at
+// stemme. Samme klasse som `VAERKTOEJ` nedenfor: en fil der ikke kan koeres alene, maa ikke
+// taelles som en der blev koert alene.
+// 🔵 Praefikset er naalen frem for en haandskrevet liste, fordi en liste raadner naeste gang
+// nogen tilfoejer et modul mere (samme argument som `erVaerktoej`).
+const filer = readdirSync(TEST)
+  .filter((f) => f.endsWith('.mjs') && !f.startsWith('_'))
+  .sort();
 
 // ── POS-KTRL FOERST. Uden den kan »alle doede« ikke skelnes fra »vagten startede dem
 // forkert«, og det var praecis foerste koersels resultat: 39 af 39 doede, fordi den kaldte
@@ -82,7 +112,13 @@ const filer = readdirSync(TEST).filter((f) => f.endsWith('.mjs')).sort();
 // naesten altid maaleren.
 const pk = await koer(POS_KTRL);
 if (pk.rc !== 0) {
-  console.error(`UMAALT: POS-KTRL ${POS_KTRL} gav rc ${pk.rc}. Vagten kan ikke starte en harness`);
+  // 🔵 Skelnes ogsaa HER: falder POS-KTRL'en paa et drab, er loftet for lavt sat, ikke
+  // harnessen i stykker. Uden det led ville beskeden sige »gav rc -1« og sende laeseren
+  // ind i selftest for at finde en fejl der ikke findes.
+  const grund = pk.draebt
+    ? `blev DRAEBT efter ${TIMEOUT_MS / 1000} s (loftet er for lavt, ikke harnessen)`
+    : `gav rc ${pk.rc}`;
+  console.error(`UMAALT: POS-KTRL ${POS_KTRL} ${grund}. Vagten kan ikke starte en harness`);
   console.error('den VED er groen, saa ingen dom afgives over nogen af de andre.');
   process.exit(3);
 }
@@ -90,8 +126,8 @@ if (pk.rc !== 0) {
 const rows = [];
 for (const f of filer) {
   if (erVaerktoej(f)) { rows.push([f, 'VAERKTOEJ', 0, 'kraever argument, kaldes af en anden']); continue; }
-  const { rc, ud } = await koer(f);
-  const [k, hv] = klassificer(rc, ud);
+  const { rc, ud, draebt } = await koer(f);
+  const [k, hv] = klassificer(rc, ud, draebt);
   rows.push([f, k, rc, hv]);
 }
 

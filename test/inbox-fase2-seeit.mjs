@@ -9,6 +9,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { mentemEncrypt } from '../mentem-skema-core.js';
+import { kraevWorkerEvne, kraevSyntetiskNoegle } from './_forudsaetning.mjs';
 
 const SITE_DIR = path.resolve(fileURLToPath(new URL('../', import.meta.url)));
 const PW_DIR = process.env.PW_DIR || '/Users/viktornielsen/Documents/MEMTEM/PsykologInvitation/e2e/playwright/node_modules';
@@ -22,8 +23,11 @@ let fails = 0;
 const log = (...a) => console.log(...a);
 const check = (cond, label, extra = '') => { if (cond) log('  ✅', label); else { log('  ❌', label, extra); fails++; } };
 
-const keyFile = path.join(WORKER_DIR, 'test/.synthetic-key.json');
-if (!fs.existsSync(keyFile)) { console.error('Mangler', keyFile); process.exit(2); }
+// ── forudsaetninger FOER noget tungt startes (se test/_forudsaetning.mjs) ─────
+// Fase 2 begynder med et enroll, saa den samme rute er ogsaa DENNE harness' forudsaetning.
+await kraevWorkerEvne(API_BASE, '/webauthn/register/options', 'inbox-fase2-seeit', 'run-inbox-fase2-seeit.sh');
+const keyFile = kraevSyntetiskNoegle(WORKER_DIR, 'inbox-fase2-seeit');
+
 const synth = JSON.parse(fs.readFileSync(keyFile));
 const tokenPriv = crypto.createPrivateKey({ key: synth.privJwk, format: 'jwk' });
 const b64url = (buf) => Buffer.from(buf).toString('base64url');

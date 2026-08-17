@@ -157,6 +157,36 @@ export const SKEMAER = {
     ],
     vasMin: 'Slet ingen tid', vasMax: 'Næsten hele tiden',
   },
+  // ── EMA: den MOMENTANE soester til `cas` (Viktor-direktiv 16/8) ────────
+  //
+  // 🔴 HVORFOR DEN IKKE ER CAS-1, og hvorfor det ikke er en mangel:
+  // CAS-1 er forankret »over the past week« (Wells' egne manualer, husets arkiv).
+  // Et uge-forankret item stillet 3 til 4 gange dagligt gensampler samme vindue op mod
+  // 56 gange og maaler dermed ikke det momentane, som er hele grunden til at bruge EMA.
+  // **Prompten KAN derfor ikke vaere instrumentet.** Den er noedvendigvis en tilpasning,
+  // og saa er protokol-troskab ikke tilgaengelig som forsvar mod dataminimering:
+  // art. 5(1)(c) gaelder fuldt, og faerrest mulige items er det rigtige.
+  //
+  // 🟢 Den er egen-forfattet paa husets egen proces-spine (§12, fri klinisk metode),
+  // praecis som `cas` og `mcb`. Vi er ikke bundet af et publiceret item-saet.
+  //
+  // 🔵 NOEGLERNE ER GENBRUGT MED VILJE: `worry` deles med `cas`, `uncontrollability`
+  // med `mcb`. Det er ikke kosmetik, det er hvad der goer at en momentan serie kan
+  // laegges ved siden af den ugentlige maaling uden en oversaettelse imellem.
+  //
+  // 🟡 CAS-1 selv bevares hvor den ER gyldig: EEN gang som baseline i sin uge-form.
+  // EMA bruges hvor den tilfoejer noget andet (Webb et al. 2025: EMA baerer
+  // inkrementel validitet ud over konventionelle selvrapport-maal).
+  ema: {
+    id: 'ema', kind: 'vas', title: 'Lige nu', short: 'Lige nu',
+    icon: 'kompas', badge: '2 skalaer',
+    instruction: 'Tænk på tiden siden sidste gang du svarede. Træk i hver skala. Det tager under et minut, og der er ingen rigtige eller forkerte svar.',
+    items: [
+      { key: 'worry', text: 'Hvor stor del af tiden har du brugt på bekymring eller grublen?' },
+      { key: 'uncontrollability', text: 'Hvor svært var det at stoppe igen, når det først var gået i gang?' },
+    ],
+    vasMin: 'Slet ingen tid', vasMax: 'Næsten hele tiden',
+  },
   mcb: {
     id: 'mcb', kind: 'vas', title: 'Tanker om bekymring', short: 'Tanker om bekymring',
     icon: 'tanker', badge: '5 skalaer',
@@ -683,6 +713,12 @@ export function computeScores(answers) {
     const m = answers.mcb;
     out.mcb = { ratings: SKEMAER.mcb.items.map((it, i) => ({ key: it.key, rating: Number(val(m[i])) || 0 })) };
   }
+  // EMA: samme 0-100 VAS-form som `mcb`, to items. Se `buildPayload` for hvorfor den
+  // IKKE lander i `casTrends`.
+  if (answers.ema) {
+    const e = answers.ema;
+    out.ema = { ratings: SKEMAER.ema.items.map((it, i) => ({ key: it.key, rating: Number(val(e[i])) || 0 })) };
+  }
   return out;
 }
 
@@ -804,6 +840,35 @@ export function buildPayload(answers, meta = {}) {
     payload.beliefRatings = s.mcb.ratings.map((r) => ({
       date: now,
       beliefText: SKEMAER.mcb.items.find((it) => it.key === r.key).text,
+      category: r.key,
+      rating: r.rating,
+    }));
+  }
+  // ── EMA: den momentane serie faar sit EGET felt ─────────────────────────────
+  // 🔴 UDEN DEN HER GREN AFLEVERES EN EMA HELT TOM. Maalt 17/8 i `test/e2e-ema.mjs`:
+  // afleveringen naaede frem, kadencen taltes ned, klienten fik »sendt sikkert og
+  // krypteret« , og `questionnaireScores` var `[]`. `categories` bar navnet `ema`, saa
+  // alt SAA rigtigt ud. **En tom aflevering der lykkes, er dyrere end en der fejler:**
+  // den bruger klientens svar-oejeblik op og efterlader intet at maale paa, og hverken
+  // hun eller psykologen kan se det. Aarsagen er strukturel: `questionnaireScores`-loekken
+  // ovenfor har en HAARDKODET liste over fem skemaer, og `cas`/`mcb` fik hver sin gren
+  // her nedenfor. `ema` blev routet ind i batteri-flowet med en dispensation, men fik
+  // aldrig sin gren , et skema kan altsaa i dag rendres, besvares og sendes uden at
+  // nogen af de tre steder baerer dets svar.
+  //
+  // 🔴 DEN LANDER MED VILJE IKKE I `casTrends`. Den struktur har fire faste komponenter
+  // (worry/rumination/threat/avoidance) og et gennemsnit af dem som `totalScore`. EMA har
+  // TO items, saa de manglende to skulle udfyldes , og et udfyldt nul er ikke et tomt
+  // felt, det er et maalt »slet ingen tid«. To aegte svar paa 70 og 40 ville blive til en
+  // CAS-total paa 27 i psykologens forloebskurve. **Et fabrikeret tal er vaerre end intet
+  // tal, fordi det er umuligt at skelne fra et maalt**, og det ville netop ske i den serie
+  // CAS-1 selv bor i. Egen liste; sammenligningen sker paa NOEGLERNE (`worry` deles med
+  // `cas`, `uncontrollability` med `mcb` , se SKEMAER.ema), praecis som beslutningen 16/8
+  // sagde: momentan serie ved siden af den ugentlige maaling, uden en oversaettelse.
+  if (s.ema) {
+    payload.emaRatings = s.ema.ratings.map((r) => ({
+      date: now,
+      promptText: SKEMAER.ema.items.find((it) => it.key === r.key).text,
       category: r.key,
       rating: r.rating,
     }));

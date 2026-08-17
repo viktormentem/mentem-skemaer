@@ -17,7 +17,8 @@
 // Env (alle har fornuftige defaults):
 //   WORKER_BASE   default http://127.0.0.1:8787
 //   SVC_TOKEN     default dev-service-token-SYNTHETIC
-//   SYNTH_KEYFILE default <D1-eu-worktree>/ingest-worker/test/.synthetic-key.json
+//   WORKER_DIR    default <PsykologInvitation>/ingest-worker  (noeglen hentes herfra)
+//   SYNTH_KEYFILE eksplicit override; ellers findes/kopieres noeglen af _forudsaetning.mjs
 //   PW_DIR        default <PsykologInvitation>/e2e/playwright/node_modules
 
 import crypto from 'node:crypto';
@@ -25,12 +26,16 @@ import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { kraevSyntetiskNoegle, kraevWorkerEvne } from './_forudsaetning.mjs';
 
 const SITE_DIR    = path.resolve(fileURLToPath(new URL('../', import.meta.url)));   // mentem-skemaer/
 const WORKER_BASE = (process.env.WORKER_BASE || 'http://127.0.0.1:8787').replace(/\/+$/, '');
 const SVC_TOKEN   = process.env.SVC_TOKEN || 'dev-service-token-SYNTHETIC';
-const SYNTH_KEYFILE = process.env.SYNTH_KEYFILE
-  || '/private/tmp/wt-ingest-d1-eu/ingest-worker/test/.synthetic-key.json';
+// 🔴 Defaulten pegede paa `/private/tmp/wt-ingest-d1-eu/...`, en worktree der er ryddet.
+// Den doede sti var den YDERSTE af to maalere ovenpaa hinanden 14/8: harnessen kunne ikke
+// starte, og bag den laa en anden fejl ingen kunne se. Nu peger den paa det KANONISKE trae.
+const WORKER_DIR = process.env.WORKER_DIR
+  || path.resolve(SITE_DIR, '../PsykologInvitation/ingest-worker');
 const PW_DIR = process.env.PW_DIR
   || '/Users/viktornielsen/Documents/MEMTEM/PsykologInvitation/e2e/playwright/node_modules';
 
@@ -38,11 +43,19 @@ let fails = 0;
 const log = (...a) => console.log(...a);
 function check(cond, label, extra = '') { if (cond) log('  OK ', label); else { log('  XX ', label, extra); fails++; } }
 
+// ── 0. Forudsætninger, FØR noget tungt startes (se test/_forudsaetning.mjs) ──
+// 🔵 Uden denne faldt harnessen på ECONNREFUSED og blev klassificeret NET rc 1, altså en
+// RØD exitkode der kun undgik at tælle som rød fordi klassifikatoren fangede ordet.
+// »Der er ingen worker« er en manglende forudsætning, ikke en måling: rc 3.
+// `/submit` er nålen frem for `/health`, fordi den svarer 401 uden token og dermed beviser
+// at det er en INGEST-worker der lytter, ikke bare noget der svarer på /health.
+await kraevWorkerEvne(WORKER_BASE, '/submit', 'e2e-autosend', 'run-autosend-e2e.sh');
+
 // ── 1. Mønt syntetisk it=-token (Ed25519, matcher worker .dev.vars INGEST_TOKEN_PUBKEY) ──
-if (!fs.existsSync(SYNTH_KEYFILE)) {
-  console.error('Mangler syntetisk token-nøgle:', SYNTH_KEYFILE, '\nKør `npm run gen-key` i ingest-worker først.');
-  process.exit(2);
-}
+// Gaten kopierer noeglen fra et soeskendetrae hvis den mangler, og verificerer ALTID at den
+// matcher den pinnede pubkey. Den mønter aldrig en ny: `npm run gen-key` gav et token
+// workeren afviser, og afvisningen ligner ikke »forkert nøgle«.
+const SYNTH_KEYFILE = process.env.SYNTH_KEYFILE || kraevSyntetiskNoegle(WORKER_DIR, 'e2e-autosend');
 const synth = JSON.parse(fs.readFileSync(SYNTH_KEYFILE, 'utf8'));
 const tokenPriv = crypto.createPrivateKey({ key: synth.privJwk, format: 'jwk' });
 const b64url = (buf) => Buffer.from(buf).toString('base64url');

@@ -11,6 +11,7 @@ import http from 'node:http';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { kraevWorkerEvne, kraevSyntetiskNoegle } from './_forudsaetning.mjs';
 
 const SITE_DIR = path.resolve(fileURLToPath(new URL('../', import.meta.url)));   // mentem-skemaer/
 const PW_DIR = process.env.PW_DIR || '/Users/viktornielsen/Documents/MEMTEM/PsykologInvitation/e2e/playwright/node_modules';
@@ -24,9 +25,12 @@ let fails = 0;
 const log = (...a) => console.log(...a);
 const check = (cond, label, extra = '') => { if (cond) log('  ✅', label); else { log('  ❌', label, extra); fails++; } };
 
+// ── forudsaetninger FOER noget tungt startes (se test/_forudsaetning.mjs) ─────
+// Begge er UMAALT (rc 3), ikke ROED: en manglende forudsaetning er ikke en fejl i fladen.
+await kraevWorkerEvne(API_BASE, '/webauthn/register/options', 'inbox-enroll-seeit', 'run-inbox-enroll-seeit.sh');
+const keyFile = kraevSyntetiskNoegle(WORKER_DIR, 'inbox-enroll-seeit');
+
 // ── mint Ed25519 enroll-token (worker synth-noegle) ──────────────────────────
-const keyFile = path.join(WORKER_DIR, 'test/.synthetic-key.json');
-if (!fs.existsSync(keyFile)) { console.error('Mangler', keyFile); process.exit(2); }
 const synth = JSON.parse(fs.readFileSync(keyFile));
 const tokenPriv = crypto.createPrivateKey({ key: synth.privJwk, format: 'jwk' });
 const b64url = (buf) => Buffer.from(buf).toString('base64url');

@@ -948,7 +948,29 @@ function startAutoAflevering(btnId, koer) {
   if (!btn || btn.dataset.autoIgang === '1') return;   // aldrig to gange
   btn.dataset.autoIgang = '1';
   btn.hidden = true;
-  koer(true);
+  afleverSikkert(() => koer(true), btnId);
+}
+
+// 🔴 EN UFANGET FEJL EFTER »Krypterer …« LÅSER KLIENTEN INDE, OG GØR DET TAVST.
+// Alle fire send-funktioner (batteri · dagbog · screening · baseline) kaldes UDEN
+// `await`: tre fra auto-stien ovenfor, fire fra klik-lyttere. De har hver en
+// try/catch om KRYPTERINGEN, men intet om resten. En throw efter det trin bliver
+// derfor en unhandled rejection: status står på »Krypterer …« for evigt, knappen er
+// både `hidden` og `disabled`, og der er ingen vej ud for klienten.
+// Målt 17/8 i `test/e2e-ema.mjs`: en ReferenceError i EMA-grenen gav præcis den
+// tilstand, ingen rød besked, ingen console.error, bare »Krypterer …«. Fejlen kunne
+// kun ses ved at lytte på `pageerror` udefra. **En fejl klienten ikke kan se, koster
+// mere end den der råber**, for hun tror at svarene er afleveret.
+// 🔵 Nettet gætter ikke på årsagen: den er ukendt pr. definition. Det gør det ENESTE
+// der altid er rigtigt: giver knappen tilbage, så hun kan sende igen.
+function afleverSikkert(koer, btnId = 'share-btn') {
+  const vis = (e) => {
+    console.error('[mentem] aflevering fejlede uventet', e && e.name, e && e.message, e);
+    visAutoSendFejlede(document.getElementById('done-status'), document.getElementById(btnId));
+  };
+  let r;
+  try { r = koer(); } catch (e) { vis(e); return; }   // synkron throw før første await
+  Promise.resolve(r).catch(vis);                       // asynkron rejection efter await
 }
 
 // Auto-afleveringen nåede ikke frem. Giv klienten knappen tilbage frem for at lade
@@ -988,6 +1010,17 @@ const instrumentId = (sTokens.length === 1 && INSTRUMENTER[sTokens[0]]) ? sToken
 // skema kan derfor ikke længere lække via ?s=. Kanonisk rækkefølge bevares (OFFENTLIGT_KLAR
 // er ordnet som SKEMA_ORDER). Kun spørgeskemaer (diary/baseline har egne flows).
 let selected = OFFENTLIGT_KLAR.filter(id => rawSelected.includes(id));
+// ── EMA: egen-forfattet, og naas KUN med et autentificeret link ──────────────
+// 🔴 HVORFOR DEN IKKE LAEGGES I OFFENTLIGT_KLAR. Det register vogter TREDJEPARTS-
+// instrumenter mod at laekke paa den UAUTENTIFICEREDE flade (GAD-7, PHQ-9, WHO-5, WSAS
+// staar der; husets egne `cas` og `mcb` goer bevidst IKKE). At skrive `ema` ind dér ville
+// blande to spoergsmaal sammen: »maa vi vise en andens instrument gratis« og »maa vi vise
+// vores eget«. **En allowlist der baerer to slags tilladelse, holder op med at vaere en
+// tilladelse.**
+// 🟢 EMA er husets eget (§12, fri klinisk metode), saa der er ingen licens at bryde. Til
+// gengaeld er den KLIENT-specifik, og eksponeringen styres derfor af tokenet: uden `it=`
+// er linket ufuldstaendigt og siden viser sin egen »kontakt din psykolog«-skaerm.
+if (rawSelected.includes('ema') && ingestToken) selected = ['ema'];
 const fixedFromLink = selected.length > 0;                    // gyldigt ?s=-subset → låst batteri
 
 const answers = {};
@@ -1396,8 +1429,20 @@ async function shareEncrypted(auto = false) {
   }
   // AUTO-SEND (#1/#2): kun it=-links. Lykkes → færdig; ellers fald til download/del.
   if (autoSendEnabled()) {
-    const ok = await sendTilIngest(payload, 'batteri');
-    if (ok) { visSendtKvittering(status, 'batteri'); return; }
+    // 🔴 SKEMA-TYPEN ER IKKE ALTID 'batteri', og forskellen er ikke kosmetisk.
+    // EMA-kadencen (`/ema/naeste`) taeller rows med `schema_type = 'ema'`. Stemplede vi
+    // en EMA-aflevering som 'batteri', ville taelleren staa paa NUL for evigt: klienten
+    // ville faa »klar« igen og igen, og de fire daglige prompts ville aldrig lukke.
+    // Maalt i e2e-harnessen 16/8, hvor afleveringen ikke kunne findes bagefter.
+    // 🔵 Og tokenets scope binder haardt til skemaet (least-privilege), saa et forkert
+    // stempel ville i oevrigt blive afvist af workeren.
+    // 🔴 `battery` FINDES IKKE HER. Den er en `const` inde i render-funktionen (l.1184);
+    // det modul-globale navn er `selected`, som l.1185 skriver batteriet tilbage i.
+    // Målt 17/8: linjen kastede `ReferenceError` på hver eneste EMA-aflevering, og fejlen
+    // var usynlig, fordi den ligger EFTER krypto-try/catch'en i en funktion ingen await'er.
+    const skemaType = (selected.length === 1 && selected[0] === 'ema') ? 'ema' : 'batteri';
+    const ok = await sendTilIngest(payload, skemaType);
+    if (ok) { visSendtKvittering(status, skemaType); return; }
     // Se `startAutoAflevering`: fil-stien kræver en brugerhandling.
     if (auto) { visAutoSendFejlede(status, btn); return; }
   }
@@ -1891,7 +1936,7 @@ async function runDiary(id) {
   document.getElementById('diary-cancel-btn').addEventListener('click', () => {
     renderDiaryWelcome(); showScreen('screen-diary-welcome'); window.scrollTo(0, 0);
   });
-  document.getElementById('share-btn').addEventListener('click', shareDiaryEncrypted);
+  document.getElementById('share-btn').addEventListener('click', () => afleverSikkert(shareDiaryEncrypted));
 
   showScreen('screen-diary-welcome');
   renderDiaryWelcome();        // render straks (lokal)
@@ -3633,7 +3678,7 @@ function runScreening(id) {
   // `auto`, og et klik ville sende Event-objektet ind som første argument - et objekt er
   // sandt, så HVERT manuelt klik ville blive læst som en auto-aflevering og ende i
   // fejl-grenen i stedet for fil-stien. Pakket ind, så argumentet er vores og ikke DOM'ens.
-  document.getElementById('share-btn').addEventListener('click', () => shareScreeningEncrypted(false));
+  document.getElementById('share-btn').addEventListener('click', () => afleverSikkert(() => shareScreeningEncrypted(false)));
 
   async function shareScreeningEncrypted(auto = false) {
     const status = document.getElementById('done-status');
@@ -3926,7 +3971,7 @@ function runBaseline(id) {
   document.getElementById('baseline-start-btn').addEventListener('click', startBaseline);
   document.getElementById('baseline-finish-btn').addEventListener('click', finishBaseline);
   // Indpakket: se begrundelsen ved screening-bindingen (Event-objektet er sandt).
-  document.getElementById('share-btn').addEventListener('click', () => shareBaselineEncrypted(false));
+  document.getElementById('share-btn').addEventListener('click', () => afleverSikkert(() => shareBaselineEncrypted(false)));
   renderBaselineWelcome();
   showScreen('screen-baseline-welcome');
 }
@@ -4124,7 +4169,7 @@ if (formuleringAktiv) {
 } else {
   document.getElementById('finish-btn').addEventListener('click', goDone);
   // Indpakket: se begrundelsen ved screening-bindingen (Event-objektet er sandt).
-  document.getElementById('share-btn').addEventListener('click', () => shareEncrypted(false));
+  document.getElementById('share-btn').addEventListener('click', () => afleverSikkert(() => shareEncrypted(false)));
   renderWelcome();
 }
 gatePrivacyTekst();   // #F: flip statiske privatlivs-discl. til "sendes direkte" når it= aktiv (no-op uden it=)

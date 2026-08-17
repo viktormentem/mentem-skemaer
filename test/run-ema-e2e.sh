@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# run-autosend-e2e.sh — synthetic E2E for web-producent-benet (#1/#2/#4).
+# run-ema-e2e.sh — synthetic E2E for web-producent-benet (#1/#2/#4).
 # Starter en LOKAL ingest-worker (D1-eu, syntetiske secrets), kører Playwright-
-# orkestratoren (test/e2e-autosend.mjs), river worker ned igen. NUL ægte PHI.
+# orkestratoren (test/e2e-ema.mjs), river worker ned igen. NUL ægte PHI.
 #
-#   bash test/run-autosend-e2e.sh
+#   bash test/run-ema-e2e.sh
 #
 # Env-overrides:
 #   WORKER_DIR  default <PsykologInvitation>/ingest-worker  (det KANONISKE træ)
@@ -68,20 +68,20 @@ echo "==> starter worker @ $WORKER_BASE"
 # workerd-barnebarnet og ikke kun wrapper-subshellet. Uden den er pgid'et scriptets eget,
 # og et gruppedrab ville slå scriptet selv ihjel før oprydningen var færdig.
 set -m
-( cd "$WORKER_DIR" && npx wrangler dev --port "$WORKER_PORT" --ip 127.0.0.1 ) >/tmp/mentem-ingest-dev.log 2>&1 &
+( cd "$WORKER_DIR" && npx wrangler dev --port "$WORKER_PORT" --ip 127.0.0.1 ) >/tmp/mentem-ema-dev.log 2>&1 &
 WORKER_PID=$!
 set +m
 
 echo -n "==> venter på /health "
 for i in $(seq 1 60); do
   if curl -fsS "$WORKER_BASE/health" >/dev/null 2>&1; then echo " ok"; break; fi
-  if ! kill -0 "$WORKER_PID" 2>/dev/null; then echo " worker døde — se /tmp/mentem-ingest-dev.log"; tail -20 /tmp/mentem-ingest-dev.log; exit 1; fi
+  if ! kill -0 "$WORKER_PID" 2>/dev/null; then echo " worker døde — se /tmp/mentem-ema-dev.log"; tail -20 /tmp/mentem-ingest-dev.log; exit 1; fi
   sleep 1; echo -n "."
-  if [ "$i" -eq 60 ]; then echo " timeout"; tail -20 /tmp/mentem-ingest-dev.log; exit 1; fi
+  if [ "$i" -eq 60 ]; then echo " timeout"; tail -20 /tmp/mentem-ema-dev.log; exit 1; fi
 done
 
 echo "==> kører orkestrator (Playwright)"
 # 🔵 WORKER_DIR, ikke SYNTH_KEYFILE: en eksplicit filsti ville tilsidesætte gaten i
 # test/_forudsaetning.mjs, og dermed slå både selvhelbredelsen og pubkey-kontrollen fra.
 WORKER_BASE="$WORKER_BASE" WORKER_DIR="$WORKER_DIR" \
-  node "$HERE/test/e2e-autosend.mjs"
+  node "$HERE/test/e2e-ema.mjs"
