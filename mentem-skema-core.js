@@ -343,7 +343,13 @@ export const SKEMAER = {
     ],
   },
   wsas: {
-    id: 'wsas', kind: 'radio', title: 'WSAS', short: 'Hverdag og funktion', icon: 'puslespil', badge: '5 spørgsmål',
+    // 🔴 VIST TITEL AENDRET 17/8 fra 'WSAS' til den neutrale, praecis som `cas` og `mcb`.
+    // LAGRINGSNOEGLEN `wsas` er UROERT: den er lagringsnoegle (answers.wsas), og et skifte
+    // ville braekke historiske klient-records. Rettelsen hoerer i navngivningens BETYDNING,
+    // ikke i dens bogstaver, praecis som praeciseringen ved OFFENTLIGT_KLAR siger.
+    // `title` er ikke doed: index.html:1153 bruger den til »naeste skema«-navnet i
+    // haandoffet, saa en klient KUNNE se strengen »WSAS« over husets egen tekst.
+    id: 'wsas', kind: 'radio', title: 'Hverdag og funktion', short: 'Hverdag og funktion', icon: 'puslespil', badge: '5 spørgsmål',
     instruction: 'Hvor meget påvirker dine vanskeligheder din evne til følgende? 0 = slet ikke påvirket, 8 = meget svært påvirket.',
     options: WSAS_OPTS, max: 40,
     // 🔴 ITEMTEKSTEN HERUNDER ER HUSETS EGEN OMSKRIVNING, IKKE WSAS. Maalt 17/8 paa
@@ -375,7 +381,32 @@ export const SKEMAER = {
     // ⇒ Saetningen laeste som en paastand om en TREDJEPARTS SAMTYKKE, vist til klienter,
     // som ingen kunne belaegge. En manglende notits er et hul; en urigtig er en oplysning.
     // Erstattet af artiklens egen copyright-erklaering, som KAN belaegges.
-    attribution: 'Work and Social Adjustment Scale (WSAS). Copyright I. M. Marks. Mundt, Marks, Shear & Greist (2002), British Journal of Psychiatry 180:461-464.',
+    // 🔴 KILDEANGIVELSEN FJERNET 17/8, og det ruller INFRAs rettelse fra fire timer foer
+    // tilbage. Ikke fordi den var daarligt begrundet, men fordi INFRAs EGEN NAESTE MAALING
+    // (7ed8887, item for item mod Mundt et al.) fastslog det der goer den forkert:
+    // teksten er husets. De to commits er skrevet i den raekkefoelge fundene kom, og den
+    // anden ophaever forudsaetningen for den foerste.
+    //   FOER 3a7f7a4  »Reproduced with kind permission of Professor Isaac Marks«
+    //                 = en paastand om en TILLADELSE der ikke findes.        Falsk.
+    //   3a7f7a4       »Copyright I. M. Marks. Mundt, Marks, Shear & Greist«
+    //                 = en paastand om FORFATTERSKAB til denne tekst.        Ogsaa falsk,
+    //                 og skarpere: den knytter husets egne saetninger til navngivne
+    //                 forskere, paa en flade klienter laeser, og som via Prescriba-
+    //                 genansoegningen (spec §2b) ogsaa laeses af en BETALER.
+    // ⇒ Ingen kildeangivelse, praecis som `cas` og `mcb`, der er den samme figur og har
+    // Viktors ratifikation (3/7 + praeciseringen 18/7). Husets egen ordlyd traekker mod
+    // ophavsretslovens §4 stk. 2; der er ingen tredjepart at kreditere for DENNE tekst.
+    // 🟡 Det er en RETTELSE af en falsk oplysning, ikke et valg mellem INFRAs to veje
+    // A (skaf den validerede danske ordlyd) og B (giv skalaen sit eget navn permanent).
+    // Begge veje staar aabne bagefter: kommer den validerede tekst i hus, sættes items,
+    // titel og kildeangivelse tilbage i samme greb. Spoergsmaalet ligger i lane-ask.
+    // 🔴 OG ET HUL DER IKKE ER LUKKET, maalt her: disse items ligger inde i em-dash-
+    // guardens sentinel-region (l.299-387, »VERBATIM fra kilden«), altsaa i en fritagelse
+    // de ikke kvalificerer til. Derfor staar der en em-dash i item 5 som guarden melder
+    // som 0. POS-KTRL 17/8: en syntetisk em-dash paa l.320 og l.384 ses IKKE af guarden,
+    // paa l.200 og l.500 ses den. Regionen indsnaevres IKKE her: kuren for det den saa
+    // ville finde, er en ordlyds-aendring i klient-copy, og den er Viktors.
+    attribution: '',
     items: [
       'Mit arbejde (eller studie/daglige hovedbeskæftigelse)',
       'Husholdning og praktiske opgaver i hjemmet',
