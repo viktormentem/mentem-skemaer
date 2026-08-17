@@ -320,14 +320,35 @@ export const SKEMAER = {
     id: 'wsas', kind: 'radio', title: 'WSAS', short: 'Hverdag og funktion', icon: 'puslespil', badge: '5 spørgsmål',
     instruction: 'Hvor meget påvirker dine vanskeligheder din evne til følgende? 0 = slet ikke påvirket, 8 = meget svært påvirket.',
     options: WSAS_OPTS, max: 40,
-    // 🔴 RETTET 17/8. Stod tidligere som »Reproduced with kind permission of Professor Isaac
-    // Marks«, skrevet 31/5 (5adb585), altsaa FIRE UGER foer nogen undersoegte licensen.
-    // Maalt 17/8: der findes intet tilladelses-artefakt i huset (ingen PDF, ingen svar, ingen
-    // raekke i registret), og anmodningen fra 27/6 blev aldrig sendt.
-    // ⇒ Saetningen var en paastand om en TREDJEPARTS SAMTYKKE, vist til klienter, som ingen
-    // kunne belaegge. Den er vaerre end ingen attribution: en manglende notits er et hul, en
-    // urigtig er en oplysning. Erstattet af det der KAN belaegges, nemlig artiklens egen
-    // copyright-erklaering. Ordlyden skiftes tilbage den dag tilladelsen ligger paa disk.
+    // 🔴 ITEMTEKSTEN HERUNDER ER HUSETS EGEN OMSKRIVNING, IKKE WSAS. Maalt 17/8 paa
+    // Viktors ordre (»find ud af det«), fire led der peger samme vej:
+    //   1. ordlyden findes 0 steder i noter/ soevn/ skemaer/, kun her
+    //   2. specen der bestilte bygningen (spec-mct-skema-kadence-2026-05-31.md) naevner
+    //      hverken oversaettelse, verbatim eller en dansk kilde for WSAS
+    //   3. den kom i 5adb585, samme commit som husets to EGNE skalaer (cas, mcb)
+    //   4. item for item mod Mundt et al. (2002): items 2, 3 og 4 har MISTET originalens
+    //      opremsninger, item 1 har FAAET »studie/daglige hovedbeskaeftigelse« som ikke
+    //      staar der, og item 5 er INDSNAEVRET (originalen siger »others, including those
+    //      I live with«, ikke familie og parforhold). Rammen er ogsaa skrevet om.
+    // ⇒ Det er ikke en oversaettelse. Det er husets egen skala i WSAS' navn, med WSAS'
+    // scoring og WSAS' maksimum. Samme figur som `cas` og `mcb` laengere oppe i filen.
+    // 🔴 KONSEKVENS, og fidelity er dyrere end licensen: ISI-agtige skaeringspunkter og
+    // funktionsbaand fra det VALIDEREDE instrument gaelder IKKE disse items. Den danske
+    // valideringsstudie (Hovmand et al. 2024) har skaeringspunkt 23; brugt her ville det
+    // vaere et tal der ser validt ud og ikke er det. Og spec §2b goer WSAS baerende i
+    // Prescriba-genansoegningen, saa eksponeringen er payer-vendt og ikke kun klinisk.
+    // Teksten er IKKE roert: det er en klinisk og produktmaessig beslutning. Fuld
+    // udredning med tabellen: registrets §3l.3d + §3l.3e.
+    //
+    // 🔴 ATTRIBUTIONEN RETTET 17/8. Stod som »Reproduced with kind permission of Professor
+    // Isaac Marks«. Den blev IKKE opfundet her: spec §7.5 konkluderede 31/5 at WSAS var
+    // »frit m.« praecis den formulering. Men en tilladelses-formulering fra en ANDEN
+    // udgivelse kan ikke baeres med over, og maalt 17/8 findes der intet
+    // tilladelses-artefakt i huset (ingen PDF, ingen svar, ingen raekke), og anmodningen
+    // fra 27/6 blev aldrig sendt.
+    // ⇒ Saetningen laeste som en paastand om en TREDJEPARTS SAMTYKKE, vist til klienter,
+    // som ingen kunne belaegge. En manglende notits er et hul; en urigtig er en oplysning.
+    // Erstattet af artiklens egen copyright-erklaering, som KAN belaegges.
     attribution: 'Work and Social Adjustment Scale (WSAS). Copyright I. M. Marks. Mundt, Marks, Shear & Greist (2002), British Journal of Psychiatry 180:461-464.',
     items: [
       'Mit arbejde (eller studie/daglige hovedbeskæftigelse)',
