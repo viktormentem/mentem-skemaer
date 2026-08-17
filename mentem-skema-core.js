@@ -126,11 +126,24 @@ export const INSTRUMENT_LICENS = {
           // maa se den. De to porte er forskellige og maa ikke blandes sammen.
           grundlag: 'A',
           registerRef: 'instrument-licensregister-kanonisk-2026-07-18.md r.3' },
-  wsas: { kommercielt: null, verificeret: '2026-07-18',
-          kilde: 'I. M. Marks / ePROVIDE+Mapi: kraever tilladelse, kommerciel status uafklaret ved kilden',
-          // 🔴 INGEN FORM. »Kraever tilladelse« uden en indhentet tilladelse er hverken A
-          // eller B. Staar paa den klientvendte flade i dag; se LICENS_3L_BASELINE.
+  wsas: { kommercielt: null, verificeret: '2026-08-17',
+          kilde: 'PRIMAERKILDEN Mundt, Marks, Shear & Greist (2002) Br J Psychiatry 180:461-464, ordret: '
+               + '»Declaration of interest: The copyright in WSAS is owned by I.M.M.« og '
+               + '»Contact Dr Marks at SSHC, 303 North End Road, London W14 9NS, UK for permission '
+               + 'to use the WSAS in research without charge.« Gratistilbuddet gaelder FORSKNING; '
+               + 'klinisk brug er ikke naevnt. Tilladelse er IKKE indhentet.',
+          // 🔴 INGEN FORM, og det er nu afgjort mod primaerkilden frem for mod en database.
+          //
+          // 🔴 T1 LOEST 17/8, og den gik den MODSATTE vej af husets nyeste laesning. To kilder
+          // stod uenige: ePROVIDEs instrument-side (laest logget ind 27/6) sagde »Copyright:
+          // WSAS is in the public domain«, og registret 18/7 sagde »KRAEVER TILLADELSE«.
+          // 27/6-noten konkluderede at Marks-gaten var »formentlig foraeldet/upraecis«.
+          // ⇒ Selve ARTIKLEN, som ER instrumentet, modsiger distributoerens felt: forfatterne
+          // erklaerer copyright OG opgiver en postadresse man skal skrive til for at faa lov.
+          // Et felt i en distributoers database er en ETIKET; artiklens egen erklaering er
+          // tingen. Det er husets egen regel, anvendt paa et opslag huset selv havde lavet.
           grundlag: null,
+          // Sporet: r.4 i registret, plus §3l.3b som baerer T1-afgoerelsen.
           registerRef: 'instrument-licensregister-kanonisk-2026-07-18.md r.4' },
 };
 
@@ -146,10 +159,14 @@ export const INSTRUMENT_LICENS = {
 // hullet SYNLIGT frem for at lukke det tavst i den ene eller den anden retning.
 export const LICENS_3L_BASELINE = {
   wsas: { siden: '2026-08-17',
-          hvorfor: 'Stod paa OFFENTLIGT_KLAR foer §3l blev skrevet. Kraever tilladelse '
-                 + '(I. M. Marks / ePROVIDE+Mapi); tilladelse er ikke indhentet.',
-          lukkes_ved: 'Indhent tilladelse hos ePROVIDE/Mapi -> skriv betingelserne som '
-                    + 'form B, ELLER fjern wsas fra OFFENTLIGT_KLAR.' },
+          hvorfor: 'Stod paa OFFENTLIGT_KLAR foer §3l blev skrevet. Primaerkilden (Mundt et al. '
+                 + '2002) erklaerer copyright hos I. M. Marks og henviser til en postadresse for '
+                 + 'tilladelse; gratistilbuddet i artiklen gaelder FORSKNING, ikke klinisk brug. '
+                 + 'Ingen tilladelse er indhentet, og der findes intet licens-artefakt paa disk '
+                 + '(modsat ESS, som har sin Special Terms-PDF).',
+          lukkes_ved: 'Anmodning sendes til ePROVIDE i samme ombaering som ISI (Viktor 17/8, '
+                    + 'svar 3). Naar svaret er der: skriv HVER betingelse som form B, ELLER '
+                    + 'fjern wsas fra OFFENTLIGT_KLAR.' },
 };
 
 // Allowlist for en given profil. Default er INTERN — en glemt parameter må ALDRIG kunne
@@ -303,7 +320,15 @@ export const SKEMAER = {
     id: 'wsas', kind: 'radio', title: 'WSAS', short: 'Hverdag og funktion', icon: 'puslespil', badge: '5 spørgsmål',
     instruction: 'Hvor meget påvirker dine vanskeligheder din evne til følgende? 0 = slet ikke påvirket, 8 = meget svært påvirket.',
     options: WSAS_OPTS, max: 40,
-    attribution: 'Work and Social Adjustment Scale (WSAS). Reproduced with kind permission of Professor Isaac Marks (Mundt et al. 2002).',
+    // 🔴 RETTET 17/8. Stod tidligere som »Reproduced with kind permission of Professor Isaac
+    // Marks«, skrevet 31/5 (5adb585), altsaa FIRE UGER foer nogen undersoegte licensen.
+    // Maalt 17/8: der findes intet tilladelses-artefakt i huset (ingen PDF, ingen svar, ingen
+    // raekke i registret), og anmodningen fra 27/6 blev aldrig sendt.
+    // ⇒ Saetningen var en paastand om en TREDJEPARTS SAMTYKKE, vist til klienter, som ingen
+    // kunne belaegge. Den er vaerre end ingen attribution: en manglende notits er et hul, en
+    // urigtig er en oplysning. Erstattet af det der KAN belaegges, nemlig artiklens egen
+    // copyright-erklaering. Ordlyden skiftes tilbage den dag tilladelsen ligger paa disk.
+    attribution: 'Work and Social Adjustment Scale (WSAS). Copyright I. M. Marks. Mundt, Marks, Shear & Greist (2002), British Journal of Psychiatry 180:461-464.',
     items: [
       'Mit arbejde (eller studie/daglige hovedbeskæftigelse)',
       'Husholdning og praktiske opgaver i hjemmet',
