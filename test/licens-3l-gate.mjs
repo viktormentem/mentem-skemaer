@@ -30,8 +30,32 @@
 // EXITKODER (husets konvention, CLAUDE.md §»Et maaleskript naegter at doemme«):
 //   0 = maalt groent · 1 = maalt roedt · 3 = INSTRUMENTET ER DOEDT, ingen dom afgives.
 import {
-  OFFENTLIGT_KLAR, INSTRUMENT_LICENS, LICENS_3L_BASELINE,
+  OFFENTLIGT_KLAR, INSTRUMENTER, INSTRUMENT_LICENS, LICENS_3L_BASELINE,
 } from '../mentem-skema-core.js';
+
+// ── NAALEN, udvidet 2026-08-17 af MYCEL BUILDER, og hvorfor ─────────────────
+// Gaten doemte oprindeligt paa `OFFENTLIGT_KLAR` alene. Men det register vogter kun den ene
+// af husets TO klientvendte doere: batteri-fladen (`?s=a,b,c` -> renderWelcome). Den anden er
+// `INSTRUMENTER`, som et single-token `?s=<skabelon>` slaar op i, og den har sin egen
+// KLAR-gate der intet ved om §3l. Et licensinstrument kunne altsaa staa klientvendt live via
+// `INSTRUMENTER` uden at denne gate nogensinde saa det. At de tre nuvaerende skabeloner
+// tilfaeldigvis OGSAA staar i OFFENTLIGT_KLAR, er det der har skjult hullet.
+// 🔴 MAALT FOER UDVIDELSEN, saa prisen er kendt og ikke gaettet:
+//     OFFENTLIGT_KLAR    gad7,phq9,who5,wsas
+//     INSTRUMENTER       gad7,phq9,who5
+//     kun i INSTRUMENTER (ingen)
+//     UNION              gad7,phq9,who5,wsas   = uaendret
+// Udvidelsen koster derfor NUL i dag: samme population, samme dom, ingen ny spaerring. Det er
+// praecis den betingelse CLAUDE.md saetter for at udvide en naal MED DET SAMME frem for at
+// vente paa kuren. Havde der ligget en skabelon der KUN var i INSTRUMENTER, ville udvidelsen
+// have vaeret en ny dom, og saa hoerte den sammen med sin kur.
+// 🔵 ESS staar hverken i OFFENTLIGT_KLAR eller i INSTRUMENTER (den er i INSTRUMENTER_REVIEW,
+// bygget men ikke godkendt), og er derfor korrekt USYNLIG for gaten. Den dag nogen flipper
+// `klientGodkendt`, traeder den ind i INSTRUMENTER, og saa faelder gaten push'et paa dens to
+// uopfyldte form B-betingelser. Det er den skelnen byg-ordrens E2 bad om.
+export function klientvendtFlade(offentligt = OFFENTLIGT_KLAR, instrumenter = INSTRUMENTER) {
+  return [...new Set([...offentligt, ...Object.keys(instrumenter)])];
+}
 
 const ISO_DATO = /^\d{4}-\d{2}-\d{2}$/;
 const STATUS_OK = new Set(['opfyldt', 'ikke opfyldt']);
@@ -137,8 +161,30 @@ for (const k of KONTROLLER) {
   kontrolLinjer.push(`     ${holdt ? '·' : '✗'} ${k.navn} -> ${n} fejl`);
 }
 
+// ── Kontrol af NAALEN selv, ikke kun af dommen ──────────────────────────────
+// POS-KTRL: naalen skal FINDE et id der kun staar i INSTRUMENTER. Det er hele grunden til at
+// den blev udvidet, og uden denne kontrol er udvidelsen en paastand.
+// NEG-KTRL: den maa ikke opfinde id'er der ikke staar nogen af stederne, og den maa ikke
+// dublere et id der staar begge steder (saa ville tallet vaere en anden enhed end »id'er«).
+const NAAL_KONTROLLER = [
+  { navn: 'POS naal: id kun i INSTRUMENTER faanges',
+    faktisk: () => klientvendtFlade(['a'], { b: {} }).sort().join(','), venter: 'a,b' },
+  { navn: 'POS naal: id kun i OFFENTLIGT_KLAR faanges',
+    faktisk: () => klientvendtFlade(['a'], {}).join(','), venter: 'a' },
+  { navn: 'NEG naal: dublet taelles EEN gang (enheden er id, ikke forekomst)',
+    faktisk: () => klientvendtFlade(['a'], { a: {} }).join(','), venter: 'a' },
+  { navn: 'NEG naal: tomt ind => tomt ud (ingen opfundne id er)',
+    faktisk: () => klientvendtFlade([], {}).length, venter: 0 },
+];
+for (const k of NAAL_KONTROLLER) {
+  const f = k.faktisk();
+  const holdt = f === k.venter;
+  if (!holdt) kontrolFejl++;
+  kontrolLinjer.push(`     ${holdt ? '·' : '✗'} ${k.navn} -> ${JSON.stringify(f)} (venter ${JSON.stringify(k.venter)})`);
+}
+
 console.log('licens-3l-gate (§3l: intet licensinstrument klientvendt live uden afklaret grundlag)');
-console.log(`  kontrolsaet: ${KONTROLLER.length - kontrolFejl} af ${KONTROLLER.length} former holdt`);
+console.log(`  kontrolsaet: ${KONTROLLER.length + NAAL_KONTROLLER.length - kontrolFejl} af ${KONTROLLER.length + NAAL_KONTROLLER.length} former holdt (${KONTROLLER.length} dom + ${NAAL_KONTROLLER.length} naal)`);
 if (kontrolFejl) {
   kontrolLinjer.forEach(l => console.error(l));
   console.error('🛑 INSTRUMENTET ER DOEDT, ingen dom afgives '
@@ -147,15 +193,20 @@ if (kontrolFejl) {
 }
 
 // ── DOMMEN over det aegte register ──────────────────────────────────────────
-const fejl = doemTreL(OFFENTLIGT_KLAR, INSTRUMENT_LICENS, LICENS_3L_BASELINE);
+const FLADE = klientvendtFlade();
+const fejl = doemTreL(FLADE, INSTRUMENT_LICENS, LICENS_3L_BASELINE);
 
 // Taellingen sker paa den UAFKORTEDE population; visningen maa gerne afkortes.
-const paaFladen = OFFENTLIGT_KLAR.length;
-const medForm = OFFENTLIGT_KLAR.filter(id => ['A', 'B'].includes(INSTRUMENT_LICENS[id]?.grundlag)).length;
-const paaGulvet = OFFENTLIGT_KLAR.filter(id => LICENS_3L_BASELINE[id]).length;
+const paaFladen = FLADE.length;
+const medForm = FLADE.filter(id => ['A', 'B'].includes(INSTRUMENT_LICENS[id]?.grundlag)).length;
+const paaGulvet = FLADE.filter(id => LICENS_3L_BASELINE[id]).length;
 
+// 🔴 Naalen skriver sig selv ud. Et tal uden sin naal kan ikke skelne »maalte nul« fra
+// »maalte ikke«, og en gate der har udvidet sin population uden at sige det, ser ud som om
+// den altid har daekket den.
+console.log(`  naal: OFFENTLIGT_KLAR (${OFFENTLIGT_KLAR.length}) UNION INSTRUMENTER (${Object.keys(INSTRUMENTER).length}) = ${paaFladen} id(er): ${FLADE.slice().sort().join(', ')}`);
 console.log(`  klientvendt flade: ${paaFladen} instrument(er) · ${medForm} med form A/B · ${paaGulvet} paa §3l-gulvet`);
-for (const id of OFFENTLIGT_KLAR) {
+for (const id of FLADE) {
   const g = INSTRUMENT_LICENS[id]?.grundlag;
   const b = LICENS_3L_BASELINE[id];
   if (g === 'A' || g === 'B') console.log(`     ✓ ${id} · form ${g}`);

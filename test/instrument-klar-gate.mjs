@@ -9,8 +9,8 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import {
-  INSTRUMENTER, INSTRUMENT_MODULER,
-  WHO5_INSTRUMENT, PHQ9_INSTRUMENT, GAD7_INSTRUMENT,
+  INSTRUMENTER, INSTRUMENTER_REVIEW, INSTRUMENT_MODULER, maaVisesForKlient, REVIEW_PARAM,
+  WHO5_INSTRUMENT, PHQ9_INSTRUMENT, GAD7_INSTRUMENT, ESS_INSTRUMENT,
   CAS1_INSTRUMENT_SLOT, WSAS_INSTRUMENT_SLOT, WHODAS_INSTRUMENT_SLOT,
 } from '../mentem-skema-core.js';
 
@@ -22,7 +22,7 @@ console.log('Instrument KLAR-gate guard (licens-gate + a11y, spec §5):');
 // ── 1. Maskinel licens-gate ─────────────────────────────────────────────────
 const aktive = INSTRUMENT_MODULER.filter(m => m.KLAR);
 const slots  = INSTRUMENT_MODULER.filter(m => !m.KLAR);
-ok(aktive.length === 3, 'praecis 3 aktive moduler (KLAR:true)');
+ok(aktive.length === 4, 'praecis 4 fuldt formede moduler (KLAR:true)');
 ok(slots.length === 3, 'praecis 3 scaffold-slots (KLAR:false)');
 
 // Intet KLAR:false-modul maa vaere i INSTRUMENTER -> ueksponerbart via ?s=<skabelon>.
@@ -38,6 +38,33 @@ for (const [key, modul] of Object.entries(INSTRUMENTER)) {
   ok(modul.skabelon === key, `INSTRUMENTER['${key}'].skabelon matcher noeglen`);
 }
 ok(Object.keys(INSTRUMENTER).sort().join(',') === 'gad7,phq9,who5', 'INSTRUMENTER = praecis {who5, phq9, gad7}');
+
+// ── 1b. DEN ANDEN AKSE: bygget, ikke godkendt ───────────────────────────────
+// KLAR svarer paa »er modulet fuldt formet«. klientGodkendt svarer paa »maa en klient se
+// det«. Et instrument der er KLAR og IKKE godkendt hoerer i INSTRUMENTER_REVIEW og
+// ingenting andet: det skal kunne rendres (screenshot-review ER betingelsen) og maa aldrig
+// kunne rammes af et klient-link. Faelder ogsaa hvis nogen flipper klientGodkendt uden at
+// have skrevet betingelserne opfyldt i INSTRUMENT_LICENS (se licens-3l-gate.mjs).
+ok(ESS_INSTRUMENT.KLAR === true, 'ess er KLAR:true (fuldt formet, verbatim tekst paa plads)');
+ok(ESS_INSTRUMENT.klientGodkendt === false, 'ess er klientGodkendt:false (Mapi screenshot-review udestaar)');
+ok(!('ess' in INSTRUMENTER), 'ess er IKKE i INSTRUMENTER -> intet klient-link kan naa den');
+ok('ess' in INSTRUMENTER_REVIEW, 'ess ER i INSTRUMENTER_REVIEW -> skaermen kan fotograferes');
+ok(ESS_INSTRUMENT.scoredItems.length === 8, 'ess har 8 verbatim items');
+ok(maaVisesForKlient(ESS_INSTRUMENT) === false, 'maaVisesForKlient(ess) = false');
+// Fail-open paa et MANGLENDE felt er med vilje: et modul der ikke kender klientGodkendt maa
+// ikke forsvinde tavst fra Viktors egen flade. Kun eksplicit false spaerrer.
+ok(maaVisesForKlient({ KLAR: true }) === true, 'modul UDEN klientGodkendt-felt opfoerer sig som godkendt (ingen tavs amputation)');
+ok(maaVisesForKlient({ KLAR: false, klientGodkendt: true }) === false, 'KLAR:false spaerrer stadig, uanset klientGodkendt');
+// De to registre maa ALDRIG overlappe: en skabelon i begge ville betyde at review-doeren
+// ogsaa aabnede klient-doeren, og saa var der kun een doer.
+const overlap = Object.keys(INSTRUMENTER).filter(k => k in INSTRUMENTER_REVIEW);
+ok(overlap.length === 0, `INSTRUMENTER og INSTRUMENTER_REVIEW er disjunkte (overlap: ${overlap.length})`);
+for (const [key, modul] of Object.entries(INSTRUMENTER_REVIEW)) {
+  ok(modul.KLAR === true && modul.klientGodkendt === false, `INSTRUMENTER_REVIEW['${key}'] er KLAR og ikke godkendt`);
+  ok(Array.isArray(modul.scoredItems) && modul.scoredItems.length > 0, `INSTRUMENTER_REVIEW['${key}'] har verbatim items (ellers intet at fotografere)`);
+  ok(!!(modul.godkendelse && modul.godkendelse.krav && modul.godkendelse.status),
+    `INSTRUMENTER_REVIEW['${key}'] baerer 'godkendelse' med krav + status (en spaerring uden lukke-betingelse er permanent)`);
+}
 
 // Aktive moduler er fuldt-formede (licensStatus + ikke-tom items).
 for (const m of aktive) {
@@ -62,6 +89,34 @@ ok(/<input type="radio"[^>]*name="\$\{instrEscAttr\(item\.key\)\}" value="\$\{op
   'ikke-badge-radio: <span>label</span> wrapper input (navn = ordlyd-label, ingen value-only aria)');
 ok(/group\.setAttribute\('aria-label', instrumentStemAria\(item\.stem, item\.text\)\)/.test(html),
   'radiogroup baerer stamme+spoergsmaal som tilgaengeligt navn (ikke bar value)');
+
+// ── 3. REVIEW-DOEREN: tre laase i routingen, maalt paa den udrullede fil ─────
+// Registret alene beviser ingenting: det er index.html der afgoer hvad en URL rammer.
+// Alle tre betingelser skal staa i selve opslaget, ellers er doeren ikke laast.
+const reviewOpslag = /const instrumentReviewId = \(sTokens\.length === 1[\s\S]{0,400}?\) \? sTokens\[0\] : null;/.exec(html);
+ok(!!reviewOpslag, 'index.html har et instrumentReviewId-opslag');
+const rk = reviewOpslag ? reviewOpslag[0] : '';
+ok(/INSTRUMENTER_REVIEW\[sTokens\[0\]\]/.test(rk), 'laas 1: opslaget gaar i INSTRUMENTER_REVIEW (ikke INSTRUMENTER)');
+ok(/params\.get\(REVIEW_PARAM\) === '1'/.test(rk), 'laas 2: kraever eksplicit ?' + REVIEW_PARAM + '=1');
+ok(/&& !ingestToken/.test(rk), 'laas 3: NAEGTER naar der er et ingest-token (et review-link maa aldrig baere et klient-token)');
+// Routingen skal faktisk BRUGE id'et, ellers er opslaget dekoration.
+ok(/\} else if \(instrumentReviewId\) \{\s*(?:\/\/[^\n]*\n\s*)*renderInstrument\(instrumentReviewId\);/.test(html),
+  'routingen kalder renderInstrument(instrumentReviewId)');
+// Og den skal ligge EFTER klient-grenen, saa et godkendt instrument aldrig kan blive
+// overtaget af review-grenen.
+const iKlient = html.indexOf('} else if (instrumentId) {');
+const iReview = html.indexOf('} else if (instrumentReviewId) {');
+ok(iKlient > 0 && iReview > iKlient, 'review-grenen staar EFTER klient-grenen i dispatchen');
+// Faelles render-motor: godkendelsen skal gaelde den kode der senere sender.
+ok(/const skema = INSTRUMENTER\[id\] \|\| INSTRUMENTER_REVIEW\[id\];/.test(html),
+  'renderInstrument bruger SAMME motor til begge registre (godkendt skaerm = udrullet skaerm)');
+// NEG-KTRL paa selve naalene: de fire regexer ovenfor skal kunne fejle. Rammer de ogsaa en
+// tom streng, maaler de ingenting. (Husets regel: en gate der ikke kan blive roed, er tavs.)
+const negKtrl = [
+  /INSTRUMENTER_REVIEW\[sTokens\[0\]\]/, /params\.get\(REVIEW_PARAM\) === '1'/, /&& !ingestToken/,
+  /const skema = INSTRUMENTER\[id\] \|\| INSTRUMENTER_REVIEW\[id\];/,
+].filter(re => re.test('')).length;
+ok(negKtrl === 0, `NEG-KTRL: 0 af 4 review-naale rammer en tom streng (maalt ${negKtrl})`);
 
 console.log(fejl === 0 ? '\nINSTRUMENT KLAR-GATE GUARD PASSED ✅' : '\nINSTRUMENT KLAR-GATE GUARD FAILED ❌ (' + fejl + ')');
 process.exit(fejl === 0 ? 0 : 1);
