@@ -1,0 +1,50 @@
+# VERA-guard #3 — formulerings-fladens licens-lås som SERVER-SIDE merge-gate.
+#
+# HVORFOR (samme rationale som VERA-guard #1's backstop): licens-registrets flip-
+# betingelse 01 (noter/licens-register-kanonisk-2026-07-16.md) siger at formulerings-
+# fladens retsgrundlag FALDER, hvis verbatim tekst fra et licenseret instrument
+# (CAS-1/MCB/WAI-SR) indsættes i den. Fladen er IKKE gatet af OFFENTLIGT_KLAR — den
+# dispatches via URL-fragment, og koden siger ordret "Ingen render-token-gate her" —
+# så intet i produktionskoden fanger et brud. Målingen blev lavet i hånden ÉN gang
+# (16/7: 0 verbatim genbrug). Denne workflow gør den permanent og maskin-uafhængig:
+# GitHub kører guarden på HVER PR mod main og på HVERT push til main, uanset om nogen
+# har en lokal hook installeret. Rød guard => rød check.
+#
+# En rød check her betyder IKKE "ret lige teksten". Den betyder: fladen må ikke vises
+# digitalt (behandl som CAS-1/MCB: kun papir) før teksten er ude. Se registrets §flip.
+#
+# Korpuset AFLEDES i guarden (SKEMA_ORDER \ OFFENTLIGT_KLAR), aldrig hardcodet (T9) →
+# tages et nyt instrument af det offentlige batteri, dækker denne gate det automatisk.
+#
+# Ren Node-ESM uden npm-deps → kun checkout + node. Node pinnet til LTS 20 som #1.
+# Source-of-truth for reglen: test/formulering-licens-gate.mjs.
+# Branch-protection (required status check) sættes separat i repo-settings.
+
+name: "VERA-guard #3 — formulering licens-lås (klient-web)"
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  formulering-licens-gate:
+    name: formulering-licens-gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node (LTS 20)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # RØD-beviset køres FØRST og i CI: en guard hvis selvtest er rådnet ville ellers
+      # kunne rapportere grønt uden nogensinde at kunne fejle (fund #3's klasse).
+      - name: RØD-bevis (guarden kan stadig fejle)
+        run: node test/formulering-licens-gate.mjs --selvtest
+
+      - name: Licens-lås (0 verbatim genbrug i formulerings-fladen)
+        run: node test/formulering-licens-gate.mjs
