@@ -84,7 +84,8 @@
 </div>
 
 <script type="module">
-import { ESS_INSTRUMENT_SLOT as ESS } from '../mentem-skema-core.js';
+import { ESS_INSTRUMENT_SLOT as ESS, SENDT_KVITTERING_PRIMAER, SEND_SIKKERT_CTA }
+  from '../mentem-skema-core.js';
 
 try {
   const html = await (await fetch('../index.html')).text();
@@ -117,18 +118,41 @@ let aktiv = 0;
 // saa selve spoergsmaalet laa under folden , altsaa VAERRE end udgave A, ikke bedre.
 // Kilden viser ogsaa instruktionen EEN gang, saa pagineringen er baade venligere OG taettere
 // paa originalen. Intet er fjernet; det er fordelt.
-const TRIN = ESS.scoredItems.length;   // 0 = intro, 1..TRIN = spoergsmaal
+// 0 = intro · 1..8 = spoergsmaal · 9 = kvittering.
+// 🔵 Kvitteringen er MED i pakken selv om den maalt baerer NUL ESS-indhold (hverken titel,
+// items, skala eller copyright , efterproevet mod SENDT_KVITTERING_PRIMAER og SEND_SIKKERT_CTA).
+// §4.3 kraever screenshots af alle sider hvor ESS OPTRAEDER, og her goer den det ikke. Men
+// asymmetrien afgoer det: en side for meget koster et billede, en side for lidt koster et
+// helt nyt review. **Naar de to fejl ikke koster det samme, vaelger man ikke den billigste
+// forklaring, man vaelger den billigste fejl.**
+const TRIN = ESS.scoredItems.length;   // sidste spoergsmaal
+const KVITTERING = TRIN + 1;
 function tegn() {
   wrap.innerHTML = '';
   const erIntro = aktiv === 0;
+  const erKvit  = aktiv === KVITTERING;
   document.getElementById('instrument-intro').style.display = erIntro ? '' : 'none';
   document.getElementById('instrument-title').style.display = erIntro ? '' : 'none';
   document.getElementById('venlig').style.display = erIntro ? '' : 'none';
+  document.getElementById('instrument-attribution').style.display = erKvit ? 'none' : '';
   if (erIntro) {
     document.getElementById('tal').textContent = 'Introduktion';
     document.getElementById('bar').style.width = '0%';
     document.getElementById('forrige').disabled = true;
     document.getElementById('naeste').textContent = 'Start';
+    return;
+  }
+  if (erKvit) {
+    // VORES lag alene. Intet ESS-indhold paa denne skaerm.
+    const p = document.createElement('p');
+    p.className = 'hus-venlig';
+    p.style.cssText = 'font-size:17px;margin-top:8px';
+    p.textContent = SENDT_KVITTERING_PRIMAER;
+    wrap.appendChild(p);
+    document.getElementById('tal').textContent = 'Sendt';
+    document.getElementById('bar').style.width = '100%';
+    document.getElementById('forrige').disabled = true;
+    document.getElementById('naeste').textContent = 'Luk';
     return;
   }
   const item = ESS.scoredItems[aktiv - 1];
@@ -162,11 +186,11 @@ function tegn() {
   document.getElementById('tal').textContent = `${aktiv} af ${TRIN}`;
   document.getElementById('bar').style.width = `${aktiv / TRIN * 100}%`;
   document.getElementById('forrige').disabled = false;
-  document.getElementById('naeste').textContent = aktiv === TRIN ? 'Færdig' : 'Næste';
+  document.getElementById('naeste').textContent = aktiv === TRIN ? SEND_SIKKERT_CTA : 'Næste';
 }
 
 document.getElementById('naeste').addEventListener('click', () => {
-  if (aktiv < TRIN) { aktiv++; tegn(); }
+  if (aktiv <= TRIN) { aktiv++; tegn(); }
 });
 document.getElementById('forrige').addEventListener('click', () => {
   if (aktiv > 0) { aktiv--; tegn(); }
@@ -175,7 +199,7 @@ document.getElementById('toggle').addEventListener('click', () => document.body.
 if (new URLSearchParams(location.search).get('rent') === '1') document.body.classList.add('rent');
 // Saem til screenshot-produktion: ?item=3 aabner paa et bestemt spoergsmaal.
 const oensket = parseInt(new URLSearchParams(location.search).get('item') || '0', 10);
-if (oensket >= 0 && oensket <= ESS.scoredItems.length) aktiv = oensket;
+if (oensket >= 0 && oensket <= KVITTERING) aktiv = oensket;
 tegn();
 </script>
 </body>
