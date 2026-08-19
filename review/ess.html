@@ -125,6 +125,12 @@ for (const item of ESS.scoredItems) {
 document.getElementById('toggle').addEventListener('click', () => {
   document.body.classList.add('rent');
 });
+// 🔵 `?rent=1` skjuler rammen fra start. Et klik er en skroebelig maade at producere et
+// artefakt paa: rammer det ved siden af, faar man et screenshot MED rammen og opdager det
+// foerst naar MRT spoerger hvad den gule tekst er. En parameter kan efterproeves i URL'en.
+if (new URLSearchParams(location.search).get('rent') === '1') {
+  document.body.classList.add('rent');
+}
 
 console.log(`[ESS-review] ${ESS.scoredItems.length} items · KLAR=${ESS.KLAR} · ${ESS.licensStatus}`);
 </script>
