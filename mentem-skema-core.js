@@ -145,6 +145,35 @@ export const INSTRUMENT_LICENS = {
           grundlag: null,
           // Sporet: r.4 i registret, plus §3l.3b som baerer T1-afgoerelsen.
           registerRef: 'instrument-licensregister-kanonisk-2026-07-18.md r.4' },
+// ── ESS: form B, og den ENESTE raekke her hvor licensen faktisk ER i hus ────────────────
+// 🔴 Den staar her selv om `ess` IKKE er paa OFFENTLIGT_KLAR, og det er med vilje. §3l-gaten
+// doemmer kun fladen, saa en raekke for et instrument UDEN FOR fladen koster ingen dom i dag.
+// Men den dag nogen skriver `ess` ind i OFFENTLIGT_KLAR, gaar gaten ROED med de to
+// betingelser NAVNGIVET, i stedet for at spoerge hvad status er. **En betingelse skrevet ned
+// foer den er relevant, er den eneste slags der virker, naar den bliver det.**
+  ess: { kommercielt: false, verificeret: '2026-06-26',
+         kilde: 'Special Terms No 140135 (ePROVIDE/Mapi), Individual Practice, Effective 26 Jun 2026, '
+              + 'term til 12/2028. Mode of administration = Electronic (paper back-up allowed), BYOD, '
+              + 'e-Vendor = No. PDF paa disk: soevn/ess-licens/UA_special_terms_Viktor_Nielsen_ESS_140135.pdf',  // nudansk-guard:allow: FILSTI paa disk, ikke klient-copy. Maalt: filen HEDDER soevn/ess-licens/ og kan ikke omskrives uden at pege paa noget der ikke findes.
+         grundlag: 'B',
+         betingelser: [
+           // nudansk-guard:allow: licensens EGET fagudtryk (Special Terms No 140135 §4.3), i et internt register der aldrig rendres til en klient. Maalt: 0 kaldesteder i render-stien.
+           { krav: 'Screenshot-review: ALLE elektroniske sider hvor ESS optraeder indsendes via '  // nudansk-guard:allow: licensens EGET fagudtryk (Special Terms 140135 §4.3); internt register, 0 kaldesteder i render-stien
+                 + 'ePROVIDE til MRT/ICON LS for review og godkendelse (Special §4.3). '
+                 + '»May incur additional fees«, beloeb ikke oplyst.',
+             status: 'ikke opfyldt' },
+           { krav: 'Dansk e-version via ICON LS: oversaettelsen populeres ind i en teknisk fil '
+                 + 'der uploades, og screenshots sendes til ICON LS. Papirudgaven (AU1.0 dan-DK) '
+                 + 'er i hus; e-versionen er et SEPARAT led.',
+             status: 'ikke opfyldt' },
+           { krav: 'Verbatim gengivelse, uaendret, med notitsen »ESS © MW Johns 1990-1997. '
+                 + 'Used under License.« synlig paa siden (Special §5 + General §4.4).',
+             status: 'opfyldt' },
+           { krav: 'Stated Purpose bindende: kun intern klinisk brug i egen praksis. '
+                 + 'Deling med andre psykologer eller kommerciel distribution kraever ny aftale.',
+             status: 'opfyldt' },
+         ],
+         registerRef: 'soevn/ess-licens/ESS-licens-vurdering-2026-06-26.md' },
 };
 
 // §3l-ratchettens GULV: de instrumenter der stod klientvendt live FØR reglen blev skrevet,
@@ -1822,6 +1851,73 @@ export const WHODAS_INSTRUMENT_SLOT = {
   KLAR: false,
 };
 
+// ESS - EN TREDJE TILSTAND SCAFFOLD-MOENSTRET IKKE HAVDE, og den er hele grunden til at
+// dette slot ser anderledes ud end de tre ovenfor.
+//
+// 🔴 De tre slots ovenfor har 0 items fordi VERBATIM MANGLER. ESS har verbatim OG licens:
+//   licens    Special Terms No 140135, udstedt 26/6 til Viktor Nielsen, Individual Practice,
+//             Mode = Electronic (paper back-up allowed), BYOD. E-versionen er INDEN FOR scope.
+//   verbatim  soevn/ess-licens/ESS_AU1.0_dan-DK.txt (dansk, Mapi/ICON), i hus siden 26/6.
+// Alligevel maa den IKKE naa en klient, fordi licensen er BETINGET og to betingelser er
+// uopfyldte (se INSTRUMENT_LICENS.ess). ⇒ Tilstanden er »maa bygges, maa vises til
+// rettighedshaver, maa IKKE vises til en klient«, og den fandtes ikke i moenstret.
+//
+// 🔴 HVORFOR ITEMS ER HER FREM FOR I EN SEPARAT REVIEW-FIL. Licensens §4.3 kraever
+// screenshots af de FAKTISKE elektroniske sider. Laa teksten et andet sted end i det modul
+// produktet bruger, ville de godkendte screenshots vise noget andet end det der senere
+// shippes, og godkendelsen ville daekke en attrap. **En godkendelse af en kopi er ikke en
+// godkendelse.** Derfor: eet sted, og eksponeringen spaerres af KLAR:false i stedet.
+//
+// 🔵 »Ingen fabrikation«-reglen er IKKE svaekket, den er gjort maalbar: `verbatimKilde`
+// navngiver den licenserede fil teksten er taget fra, og instrument-klar-gaten kraever
+// feltet af ethvert slot der HAR items. Foer var reglen »0 items«, som ikke kunne skelne
+// »ingen tekst« fra »fabrikeret tekst«; den nye kan.
+//
+// 🔴 TEKSTEN ER VERBATIM OG MAA IKKE ROERES. Ingen aeoeaa-normalisering, ingen omskrivning,
+// ingen forkortelse. §4.3+§5 binder ordlyden, og husets em-dash/aeoeaa-regel gaelder
+// eksplicit IKKE reproduceret instrument-tekst (CLAUDE.md-undtagelsen, Viktor 19/6).
+const ESS_OPTS = [
+  { label: 'ville aldrig småblunde', value: 0 },
+  { label: 'lille sandsynlighed for, at du småblunder', value: 1 },
+  { label: 'moderat sandsynlighed for, at du småblunder', value: 2 },
+  { label: 'stor sandsynlighed for, at du småblunder', value: 3 },
+];
+
+// emdash-guard:instrument-start (ESS © M.W. Johns 1990-97, dansk AU1.0 dan-DK): gengivet
+// VERBATIM fra den licenserede kilde; em-dash-reglen gaelder IKKE reproducerede instrumenter.
+export const ESS_INSTRUMENT_SLOT = {
+  id: 'ess', kind: 'instrument', skabelon: 'ess',
+  uiTitle: 'Epworth’ spørgeskema til vurdering af søvnighed (ESS)',
+  kort: 'ESS',
+  instruktion: 'Hvor stor er sandsynligheden for, at du småblunder eller falder i søvn i '
+             + 'nedenstående situationer, og ikke bare føler dig træt?\n\n'
+             + 'Dette refererer til din sædvanlige levevis i den seneste tid.\n\n'
+             + 'Selv om du ikke har oplevet nogle af disse situationer i den seneste tid, '
+             + 'bedes du forsøge at finde ud af, hvordan de ville have påvirket dig.\n\n'
+             + 'Brug nedenstående skala ved at vælge det bedst passende nummer for hver '
+             + 'situation:\n\n'
+             + 'Det er vigtigt, at du besvarer hvert spørgsmål så godt, du kan.',
+  stem: 'Forskellige situationer',
+  // Notitsen er KONTRAKTLIG (§4.4 General) og skal vaere SYNLIG paa siden, ikke i en kommentar.
+  attribution: 'ESS © MW Johns 1990-1997. Used under License.',
+  options: ESS_OPTS,
+  max: 24,
+  scoredItems: [                              // 8 items VERBATIM (dansk AU1.0 dan-DK)
+    { key: 'ess_item_1', text: 'Sidder og læser' },
+    { key: 'ess_item_2', text: 'Ser fjernsyn' },
+    { key: 'ess_item_3', text: 'Sidder passivt et offentligt sted (f.eks. i et teater eller til et møde)' },
+    { key: 'ess_item_4', text: 'Som passager i en bil i en time uden en pause' },
+    { key: 'ess_item_5', text: 'Ligger ned for at hvile om eftermiddagen, når omstændighederne tillader det' },
+    { key: 'ess_item_6', text: 'Sidder og taler med nogen' },
+    { key: 'ess_item_7', text: 'Sidder stille efter en frokost uden indtagelse af alkohol' },
+    { key: 'ess_item_8', text: 'I en bil, mens den holder stille i nogle få minutter på grund af trafikken' },
+  ],
+  verbatimKilde: 'Projekt_Praksis/soevn/ess-licens/ESS_AU1.0_dan-DK.txt (Mapi/ICON, dansk AU1.0)',
+  licensStatus: 'afventer-screenshot-review',
+  KLAR: false,
+};
+// emdash-guard:instrument-end
+
 // ════════════════════════════════════════════════════════════════════════
 //  MASKINEL LICENS-GATE (spec §4 KLAR-reglen + §5 extensibilitets-beskyttelse)
 // ════════════════════════════════════════════════════════════════════════
@@ -1834,6 +1930,7 @@ export const WHODAS_INSTRUMENT_SLOT = {
 export const INSTRUMENT_MODULER = [
   WHO5_INSTRUMENT, PHQ9_INSTRUMENT, GAD7_INSTRUMENT,                  // KLAR:true  (aktiv)
   CAS1_INSTRUMENT_SLOT, WSAS_INSTRUMENT_SLOT, WHODAS_INSTRUMENT_SLOT, // KLAR:false (scaffold)
+  ESS_INSTRUMENT_SLOT,                                                // KLAR:false (verbatim i hus, venter screenshot-review)
 ];
 
 // SEPARAT register (IKKE SKEMAER - undgaar kollision med batteri-noeglerne who5/phq9).
