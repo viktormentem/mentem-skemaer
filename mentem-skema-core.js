@@ -199,6 +199,17 @@ export const INSTRUMENT_LICENS = {
                  + 'electronic pages where the e-Version appears to MRT«. Samme pligt som ESS §5. '
                  + 'Falder foerst naar ISI-fladen findes; vaerktoej: '
                  + 'build-tools/lanes/licens-screenshots.mjs. »May incur additional fees«.',
+             // 🟢 KANALEN ER FUNDET OG BRUGT 20-08 kl. 19.3x, og den var ikke en mail.
+             // ePROVIDEs »SUBMIT A REQUEST« er et rigtigt forloeb, ikke den knap uden felter
+             // huset maalte tidligere samme dag: trin 1 »I have already downloaded a
+             // questionnaire«, trin 2 »I want to submit screenshots of an electronic version«,
+             // derefter emne, beskrivelse, COA-valg og filupload (10 MB pr. fil).
+             // ESS-pakken er indsendt der: sag 2620356, status NEW, 9 skaermbilleder,
+             // Budget Direct Fees €0.00 EUR. Svaret paa den afgoer ogsaa ISI's pris, fordi
+             // anmodningen beder om et tilbud der daekker BEGGE instrumenter.
+             // 🔴 Til sammenligning: 7 breve til 3 instrument-ejere har givet 0 menneskesvar.
+             // En struktureret sag i leverandoerens eget system er en anden kanal end en mail
+             // til en generisk postkasse, og den har et sagsnummer man kan henvise til.
              status: 'ikke opfyldt' },
            { krav: 'Copyright-notits (General §4.1): notitsen skal staa paa selve skemaet, og '
                  + 'MRT kontaktoplysninger skal med ved enhver offentlig gengivelse. '
@@ -236,9 +247,28 @@ export const LICENS_3L_BASELINE = {
                  + 'tilladelse; gratistilbuddet i artiklen gaelder FORSKNING, ikke klinisk brug. '
                  + 'Ingen tilladelse er indhentet, og der findes intet licens-artefakt paa disk '
                  + '(modsat ESS, som har sin Special Terms-PDF).',
-          lukkes_ved: 'Anmodning sendes til ePROVIDE i samme ombaering som ISI (Viktor 17/8, '
-                    + 'svar 3). Naar svaret er der: skriv HVER betingelse som form B, ELLER '
-                    + 'fjern wsas fra OFFENTLIGT_KLAR.' },
+          // 🔴 LUKKE-BETINGELSEN ER OMSKREVET 20-08 kl. 19.4x, fordi den gamle var UMULIG.
+          // Den lyd »anmodning sendes til ePROVIDE i samme ombaering som ISI«. Maalt samme
+          // aften, logget ind paa ePROVIDEs eget licensforloeb med WSAS valgt:
+          //   »Mapi Research Trust does not distribute this COA on behalf of its developer.«
+          // Der er altsaa ingen Mapi-rute at gaa. Til gengaeld oplyser de rettighedshaverens
+          // LEVENDE adresse, som huset ikke kunne finde: Prof. Isaac M. Marks, King's College
+          // London, Strand, London WC2R 2LS, isaac.marks@kcl.ac.uk. Artiklens 2002-adresse
+          // (SSHC, 303 North End Road) er 24 aar gammel og var den eneste vi havde.
+          //
+          // 🔴 OG SPOERGSMAALET ER ET ANDET END LICENSEN, hvilket maalingen 17/8 allerede
+          // havde vist ovenfor: items'ene her er husets EGEN omskrivning. Vi bruger ikke
+          // WSAS' tekst. Vi viser WSAS' NAVN, WSAS' maksimum paa 40 og en attribution med
+          // Marks' copyright over vores egne fem linjer. En licens til tekst vi ikke bruger,
+          // loeser ikke det. ⇒ Gulvet lukkes af en PRODUKTbeslutning, ikke af en tilladelse.
+          lukkes_ved: 'EN af tre, og valget er Viktors: (1) brug det AEGTE instrument, altsaa '
+                    + 'den validerede danske WSAS (Hovmand et al. 2024, skaeringspunkt 23) '
+                    + 'verbatim, hvorefter et licensspoergsmaal til isaac.marks@kcl.ac.uk '
+                    + 'bliver reelt at stille · (2) OMDOEB vores egen skala, saa navnet WSAS, '
+                    + 'maksimum 40, Marks-attributionen og ethvert WSAS-skaeringspunkt gaar '
+                    + 'af fladen, hvorefter der slet ingen licens skal indhentes · '
+                    + '(3) fjern wsas fra OFFENTLIGT_KLAR. '
+                    + 'Maalt 20-08: ePROVIDE har INGEN licensrute, Mapi distribuerer den ikke.' },
 };
 
 // Allowlist for en given profil. Default er INTERN — en glemt parameter må ALDRIG kunne
