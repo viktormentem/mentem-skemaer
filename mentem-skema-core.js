@@ -126,25 +126,33 @@ export const INSTRUMENT_LICENS = {
           // maa se den. De to porte er forskellige og maa ikke blandes sammen.
           grundlag: 'A',
           registerRef: 'instrument-licensregister-kanonisk-2026-07-18.md r.3' },
-  wsas: { kommercielt: null, verificeret: '2026-08-17',
-          kilde: 'PRIMAERKILDEN Mundt, Marks, Shear & Greist (2002) Br J Psychiatry 180:461-464, ordret: '
-               + '»Declaration of interest: The copyright in WSAS is owned by I.M.M.« og '
-               + '»Contact Dr Marks at SSHC, 303 North End Road, London W14 9NS, UK for permission '
-               + 'to use the WSAS in research without charge.« Gratistilbuddet gaelder FORSKNING; '
-               + 'klinisk brug er ikke naevnt. Tilladelse er IKKE indhentet.',
-          // 🔴 INGEN FORM, og det er nu afgjort mod primaerkilden frem for mod en database.
-          //
-          // 🔴 T1 LOEST 17/8, og den gik den MODSATTE vej af husets nyeste laesning. To kilder
-          // stod uenige: ePROVIDEs instrument-side (laest logget ind 27/6) sagde »Copyright:
-          // WSAS is in the public domain«, og registret 18/7 sagde »KRAEVER TILLADELSE«.
-          // 27/6-noten konkluderede at Marks-gaten var »formentlig foraeldet/upraecis«.
-          // ⇒ Selve ARTIKLEN, som ER instrumentet, modsiger distributoerens felt: forfatterne
-          // erklaerer copyright OG opgiver en postadresse man skal skrive til for at faa lov.
-          // Et felt i en distributoers database er en ETIKET; artiklens egen erklaering er
-          // tingen. Det er husets egen regel, anvendt paa et opslag huset selv havde lavet.
-          grundlag: null,
-          // Sporet: r.4 i registret, plus §3l.3b som baerer T1-afgoerelsen.
-          registerRef: 'instrument-licensregister-kanonisk-2026-07-18.md r.4' },
+  // ── »wsas« ER IKKE LAENGERE ET LICENSINSTRUMENT (Viktor-GO »10=1«, 20-08 kl. 20.0x) ─────
+  // Raekken stod fra 17/8 som INGEN FORM, fordi primaerkilden (Mundt et al. 2002) erklaerer
+  // copyright hos I. M. Marks og henviser til en postadresse for tilladelse. Den analyse var
+  // rigtig OM INSTRUMENTET og forkert om det der laa paa fladen: ordlyden har aldrig vaeret
+  // WSAS'. Det var husets egen skala i WSAS' navn.
+  // ⇒ Fladen er omdoebt til »Hverdag og funktion«, attributionen krediterer idéen og siger at
+  // ordlyden er vores, og navnet, WSAS-skaeringspunkter og Marks-copyrighten er vaek.
+  // Der er dermed ingen tredjepart at faa tilladelse fra. FORM A, og kilden er os selv.
+  //
+  // 🔴 TO TING DER IKKE ER LOEST HER, saa ingen laeser mere ud af raekken end der staar:
+  //  1. `kommercielt` bliver staaende som null. Det betoed foer »rettighederne er uafklarede«
+  //     og betyder nu »om vores egen skala maa i PRODUKTET, er en produktbeslutning«.
+  //     `test/licens-profil-gate.mjs` laaser bevidst at wsas er UDE af produktprofilen, og
+  //     den laas roeres ikke af en omdoebning.
+  //  2. Id'et `wsas` deles fortsat med WSAS_INSTRUMENT_SLOT, som er den TOMME plads til det
+  //     aegte instrument. To ting med samme noegle er en faelde den dag instrumentet
+  //     licenseres, for saa kan gemte svar fra VORES skala ikke skelnes fra WSAS-scorer.
+  //     Et id-skift roerer gemte klientsvar og er derfor ikke en omdoebnings-aendring.
+  wsas: { kommercielt: null, verificeret: '2026-08-20',
+          kilde: 'HUSETS EGEN SKALA. Fem items, 0-8, skrevet i huset (5adb585, samme commit som '
+               + 'husets to andre egne skalaer cas og mcb). Maalt 17/8 item for item mod '
+               + 'Mundt et al. (2002): items 2, 3 og 4 har mistet originalens opremsninger, '
+               + 'item 1 har faaet indhold der ikke staar der, og item 5 er indsnaevret. '
+               + 'Det er ikke en oversaettelse. Klientvendt navn siden 20-08: '
+               + '»Hverdag og funktion«. Ingen tredjepartsrettigheder involveret.',
+          grundlag: 'A',
+          registerRef: 'kanonisk/registre/licens-register-kanonisk-2026-07-16.md §4.12' },  // nudansk-guard:allow: FILSTI i repoet: filen HEDDER licens-register-kanonisk-2026-07-16.md
 // ── ESS: form B, og den ENESTE raekke her hvor licensen faktisk ER i hus ────────────────
 // 🔴 Den staar her selv om `ess` IKKE er paa OFFENTLIGT_KLAR, og det er med vilje. §3l-gaten
 // doemmer kun fladen, saa en raekke for et instrument UDEN FOR fladen koster ingen dom i dag.
@@ -188,8 +196,8 @@ export const INSTRUMENT_LICENS = {
               + 'Danish for Denmark). Sag 145425 = engelsk (Last 2 weeks eng-CA-USori originalen '
               + '+ Last month eng-GB). Context of use = Observational studies, Marketing, Clinical '
               + 'practice and Educational projects. Conditions of use = Not Funded. Mode = '
-              + 'Electronic, BYOD. Filer paa disk: soevn/isi-licens/ (4 instrumenter + '
-              + 'ISI Users Manual.pdf). Vilkaarene i fuld ordlyd: '
+              + 'Electronic, BYOD. Filer paa disk: soevn/isi-licens/ (4 instrumenter + '  // nudansk-guard:allow: FILSTI paa disk: mappen HEDDER soevn/isi-licens/
+              + 'ISI Users Manual.pdf). Vilkaarene i fuld ordlyd: '  // nudansk-guard:allow: FILSTI paa disk: mappen HEDDER soevn/isi-licens/
               + 'kanonisk/dokumentation/mapi-user-license-agreement-general-terms-2026-08-20.md',
          grundlag: 'B',
          betingelser: [
@@ -198,7 +206,7 @@ export const INSTRUMENT_LICENS = {
                  + 'brug, ordret »the User undertakes to submit the Screenshots of ALL the '
                  + 'electronic pages where the e-Version appears to MRT«. Samme pligt som ESS §5. '
                  + 'Falder foerst naar ISI-fladen findes; vaerktoej: '
-                 + 'build-tools/lanes/licens-screenshots.mjs. »May incur additional fees«.',
+                 + 'build-tools/lanes/licens-screenshots.mjs. »May incur additional fees«.',  // nudansk-guard:allow: FILSTI til vaerktoejet i repoet, ikke klient-copy
              // 🟢 KANALEN ER FUNDET OG BRUGT 20-08 kl. 19.3x, og den var ikke en mail.
              // ePROVIDEs »SUBMIT A REQUEST« er et rigtigt forloeb, ikke den knap uden felter
              // huset maalte tidligere samme dag: trin 1 »I have already downloaded a
@@ -211,23 +219,23 @@ export const INSTRUMENT_LICENS = {
              // En struktureret sag i leverandoerens eget system er en anden kanal end en mail
              // til en generisk postkasse, og den har et sagsnummer man kan henvise til.
              status: 'ikke opfyldt' },
-           { krav: 'Copyright-notits (General §4.1): notitsen skal staa paa selve skemaet, og '
+           { krav: 'Copyright-notits (General §4.1): notitsen skal staa paa selve skemaet, og '  // nudansk-guard:allow: licensens EGET fagudtryk (General Terms §4.1); internt register, 0 kaldesteder i render-stien
                  + 'MRT kontaktoplysninger skal med ved enhver offentlig gengivelse. '
                  + 'Fladen findes ikke endnu, saa den kan ikke vaere opfyldt.',
              status: 'ikke opfyldt' },
            { krav: 'Dansk e-version: ICON LS populerer den danske ordlyd ind i den tekniske fil. '
-                 + 'Papir/doc-udgaverne (AU2.1 og AU2.0, dan-DK) er i hus; e-versionen er et '
+                 + 'Papir/doc-udgaverne (AU2.1 og AU2.0, dan-DK) er i hus; e-versionen er et '  // nudansk-guard:allow: filformatet .doc som forled; det er en filtype og ikke et dansk sammensat ord
                  + 'SEPARAT led, praecis som ved ESS. »May incur additional fees«.',
              status: 'ikke opfyldt' },
-           { krav: 'General §3.1: non-exclusive, non-transferable, non-assignable, '
-                 + 'non-sublicensable ⇒ maa IKKE deles med andre klinikker eller psykologer. '
+           { krav: 'General §3.1: non-exclusive, non-transferable, non-assignable, '  // nudansk-guard:allow: licensens EGNE engelske fagudtryk, citeret fra General Terms §3.1; internt register
+                 + 'non-sublicensable ⇒ maa IKKE deles med andre klinikker eller psykologer. '  // nudansk-guard:allow: licensens EGET engelske fagudtryk fra General Terms §3.1; internt register
                  + 'Uaendret fra ESS. Kommerciel distribution kraever en ny aftale.',
              status: 'opfyldt' },
            { krav: 'General §5.1: DATA TILHOERER BRUGEREN. Ingen betingelse at opfylde, men den '
                  + 'staar her fordi forskningssporet hviler paa den.',
              status: 'opfyldt' },
          ],
-         registerRef: 'kanonisk/registre/licens-register-kanonisk-2026-07-16.md §4.8-4.10' },
+         registerRef: 'kanonisk/registre/licens-register-kanonisk-2026-07-16.md §4.8-4.10' },  // nudansk-guard:allow: FILSTI i repoet. Filen HEDDER licens-register-kanonisk og kan ikke omskrives uden at pege paa noget der ikke findes
 };
 
 // §3l-ratchettens GULV: de instrumenter der stod klientvendt live FØR reglen blev skrevet,
@@ -240,36 +248,13 @@ export const INSTRUMENT_LICENS = {
 // vejen«. At fjerne WSAS fra hans egen praksisflade er en produktbeslutning, ikke en
 // infrastrukturbeslutning, og en vagt maa ikke traeffe den paa egen haand. Gulvet goer
 // hullet SYNLIGT frem for at lukke det tavst i den ene eller den anden retning.
-export const LICENS_3L_BASELINE = {
-  wsas: { siden: '2026-08-17',
-          hvorfor: 'Stod paa OFFENTLIGT_KLAR foer §3l blev skrevet. Primaerkilden (Mundt et al. '
-                 + '2002) erklaerer copyright hos I. M. Marks og henviser til en postadresse for '
-                 + 'tilladelse; gratistilbuddet i artiklen gaelder FORSKNING, ikke klinisk brug. '
-                 + 'Ingen tilladelse er indhentet, og der findes intet licens-artefakt paa disk '
-                 + '(modsat ESS, som har sin Special Terms-PDF).',
-          // 🔴 LUKKE-BETINGELSEN ER OMSKREVET 20-08 kl. 19.4x, fordi den gamle var UMULIG.
-          // Den lyd »anmodning sendes til ePROVIDE i samme ombaering som ISI«. Maalt samme
-          // aften, logget ind paa ePROVIDEs eget licensforloeb med WSAS valgt:
-          //   »Mapi Research Trust does not distribute this COA on behalf of its developer.«
-          // Der er altsaa ingen Mapi-rute at gaa. Til gengaeld oplyser de rettighedshaverens
-          // LEVENDE adresse, som huset ikke kunne finde: Prof. Isaac M. Marks, King's College
-          // London, Strand, London WC2R 2LS, isaac.marks@kcl.ac.uk. Artiklens 2002-adresse
-          // (SSHC, 303 North End Road) er 24 aar gammel og var den eneste vi havde.
-          //
-          // 🔴 OG SPOERGSMAALET ER ET ANDET END LICENSEN, hvilket maalingen 17/8 allerede
-          // havde vist ovenfor: items'ene her er husets EGEN omskrivning. Vi bruger ikke
-          // WSAS' tekst. Vi viser WSAS' NAVN, WSAS' maksimum paa 40 og en attribution med
-          // Marks' copyright over vores egne fem linjer. En licens til tekst vi ikke bruger,
-          // loeser ikke det. ⇒ Gulvet lukkes af en PRODUKTbeslutning, ikke af en tilladelse.
-          lukkes_ved: 'EN af tre, og valget er Viktors: (1) brug det AEGTE instrument, altsaa '
-                    + 'den validerede danske WSAS (Hovmand et al. 2024, skaeringspunkt 23) '
-                    + 'verbatim, hvorefter et licensspoergsmaal til isaac.marks@kcl.ac.uk '
-                    + 'bliver reelt at stille · (2) OMDOEB vores egen skala, saa navnet WSAS, '
-                    + 'maksimum 40, Marks-attributionen og ethvert WSAS-skaeringspunkt gaar '
-                    + 'af fladen, hvorefter der slet ingen licens skal indhentes · '
-                    + '(3) fjern wsas fra OFFENTLIGT_KLAR. '
-                    + 'Maalt 20-08: ePROVIDE har INGEN licensrute, Mapi distribuerer den ikke.' },
-};
+// 🟢 TOM SIDEN 20-08 kl. 20.0x, og det er hele pointen med et gulv: det kan kun blive
+// kortere. `wsas` var den eneste raekke. Den blev ikke lukket af en tilladelse, men af at
+// spoergsmaalet viste sig at vaere et andet: fladen baar et instruments NAVN over husets
+// egen tekst. Omdoebningen fjernede tredjeparten, og dermed licensspoergsmaalet.
+// Vagten fejler paa enhver NY flade uden form, saa en tom baseline er en gyldig tilstand
+// og ikke et hul.
+export const LICENS_3L_BASELINE = {};
 
 // Allowlist for en given profil. Default er INTERN — en glemt parameter må ALDRIG kunne
 // amputere Viktors egen flade. `licenser` er injicerbar, så gaten kan red-bevises uden at
@@ -371,7 +356,7 @@ export const SKEMAER = {
     vasMin: 'Helt uenig', vasMax: 'Helt enig',
   },
   // ── Symptom (frit/public domain) ───────────────────────────────────────
-  // emdash-guard:instrument-start (validerede instrumenter GAD-7/PHQ-9/WHO-5/WSAS): gengivet
+  // emdash-guard:instrument-start (validerede instrumenter GAD-7/PHQ-9/WHO-5): gengivet
   // VERBATIM fra kilden; em-dash-reglen gælder IKKE reproducerede instrumenter (CLAUDE.md-undtagelse,
   // Viktor 2026-06-19). Vores EGEN copy (CAS/MCB ovenfor, anmod, §2b) forbliver em-dash-fri + guardet.
   gad7: {
@@ -418,8 +403,19 @@ export const SKEMAER = {
       'Min dagligdag har været fyldt med ting, der interesserer mig',
     ],
   },
+  // emdash-guard:instrument-end
+  // ── Hverdag og funktion: VORES EGEN skala (Viktor-GO »10=1«, 20-08 kl. 20.0x) ──────────
+  // 🔴 Den hed »WSAS« indtil i aften, og baar en attribution med Marks' copyright over vores
+  // egne fem linjer. Maalingen fra 17/8 (bevaret nedenfor) viste at ordlyden ALDRIG har
+  // vaeret WSAS'. Navnet, ikke teksten, var det der var galt.
+  // 🔴 Og den staar nu UDEN FOR emdash-guardens instrument-region med vilje: undtagelsen
+  // gaelder verbatim gengivne instrumenter, og det her er husets egen copy. Item 5 baar en
+  // em-dash netop fordi regionen frikendte den; den er rettet til en parentes.
+  // 🟢 Den AEGTE WSAS har fortsat sin egen tomme plads i WSAS_INSTRUMENT_SLOT nedenfor
+  // (KLAR:false, licensStatus 'afventer'). Omdoebningen lukker altsaa ikke vejen til
+  // instrumentet, den skiller de to ad.
   wsas: {
-    id: 'wsas', kind: 'radio', title: 'WSAS', short: 'Hverdag og funktion', icon: 'puslespil', badge: '5 spørgsmål',
+    id: 'wsas', kind: 'radio', title: 'Hverdag og funktion', short: 'Hverdag og funktion', icon: 'puslespil', badge: '5 spørgsmål',
     instruction: 'Hvor meget påvirker dine vanskeligheder din evne til følgende? 0 = slet ikke påvirket, 8 = meget svært påvirket.',
     options: WSAS_OPTS, max: 40,
     // 🔴 ITEMTEKSTEN HERUNDER ER HUSETS EGEN OMSKRIVNING, IKKE WSAS. Maalt 17/8 paa
@@ -451,16 +447,24 @@ export const SKEMAER = {
     // ⇒ Saetningen laeste som en paastand om en TREDJEPARTS SAMTYKKE, vist til klienter,
     // som ingen kunne belaegge. En manglende notits er et hul; en urigtig er en oplysning.
     // Erstattet af artiklens egen copyright-erklaering, som KAN belaegges.
-    attribution: 'Work and Social Adjustment Scale (WSAS). Copyright I. M. Marks. Mundt, Marks, Shear & Greist (2002), British Journal of Psychiatry 180:461-464.',
+    // 🔴 ATTRIBUTIONEN ER SKIFTET IGEN, 20-08, og det er anden gang paa tre dage.
+    // 17/8 gik den fra en UBELAGT tilladelses-paastand (»Reproduced with kind permission of
+    // Professor Isaac Marks«) til artiklens egen copyright-erklaering, som KAN belaegges.
+    // Den rettelse var rigtig og loeste det forkerte problem: linjen satte stadig en
+    // tredjeparts copyright under tekst han ikke har skrevet, og den blev VIST TIL KLIENTEN
+    // (index.html:1377 rendrer s.attribution paa skemakortet).
+    // ⇒ Linjen krediterer nu idéen, siger at ordlyden er vores, og siger at skalaen ikke er
+    // valideret. Alle tre led er sande og kan belaegges. Kreditering af idéen selv om intet
+    // kraever det: Viktor-direktiv 18/8.
+    attribution: 'Mycels egen skala. Ordlyden er vores, inspireret af tanken bag Work and Social Adjustment Scale (Mundt et al., 2002). Ikke et valideret instrument.',
     items: [
       'Mit arbejde (eller studie/daglige hovedbeskæftigelse)',
       'Husholdning og praktiske opgaver i hjemmet',
       'Sociale fritidsaktiviteter (sammen med andre)',
       'Private fritidsaktiviteter (alene)',
-      'Nære relationer — familie og parforhold',
+      'Nære relationer (familie og parforhold)',
     ],
   },
-  // emdash-guard:instrument-end
   // ── Alliance (frit/public domain, alliance-checkpoints) ────────────────
   waisr: {
     id: 'waisr', kind: 'radio', title: 'WAI-SR', short: 'Samarbejde', icon: 'samarbejde', badge: '12 spørgsmål',
@@ -2000,10 +2004,29 @@ export const ESS_INSTRUMENT_SLOT = {
 // kan derfor ALDRIG lække til preview/prod, uanset hvad et token siger. Dette generaliserer
 // det tidligere GAD7_INSTRUMENT_KLAR-mønster til ALLE instrumenter. Guard: test/instrument-
 // klar-gate.mjs asserterer at intet KLAR:false-modul er i INSTRUMENTER eller routing.
+// ISI: licensen ER i hus (to sager, begge Free of charge, 20-08), men ordlyden er IKKE
+// transskriberet. Slottet findes fordi `licens-profil-gate` med rette afviser en licensraekke
+// uden et instrument: raekken i INSTRUMENT_LICENS pegede paa noget der ikke fandtes.
+// 🔴 items er TOMME med vilje. Fire varianter ligger paa disk (to sprog x to recall-vinduer),
+// og hvilken der er den primaere paa fladen, er en klinisk beslutning frem for en oprydning.
+// Sammenlign ESS-slottet, som HAR sin verbatim: forskellen er ikke licensen, men at nogen
+// har valgt versionen.
+export const ISI_INSTRUMENT_SLOT = {
+  id: 'isi', kind: 'instrument', skabelon: 'isi',
+  uiTitle: '', kort: 'ISI',
+  instruktion: '', stem: '', attribution: '',
+  options: [], scoredItems: [],          // 0 item-tekst: versionsvalget mangler, ikke licensen
+  verbatimKilde: 'Projekt_Praksis/soevn/isi-licens/ (4 varianter: dan-DK og eng, '  // nudansk-guard:allow: FILSTI paa disk: mappen HEDDER soevn/isi-licens/
+               + 'last-2-weeks og last-month, plus ISI Users Manual)',  // nudansk-guard:allow: recall-vinduernes EGNE engelske navne i Mapis filnavne (last-2-weeks, last-month)
+  licensStatus: 'i-hus-afventer-flade',
+  KLAR: false,
+};
+
 export const INSTRUMENT_MODULER = [
   WHO5_INSTRUMENT, PHQ9_INSTRUMENT, GAD7_INSTRUMENT,                  // KLAR:true  (aktiv)
   CAS1_INSTRUMENT_SLOT, WSAS_INSTRUMENT_SLOT, WHODAS_INSTRUMENT_SLOT, // KLAR:false (scaffold)
   ESS_INSTRUMENT_SLOT,                                                // KLAR:false (verbatim i hus, venter screenshot-review)
+  ISI_INSTRUMENT_SLOT,                                                // KLAR:false (licens i hus, ordlyd ikke valgt)
 ];
 
 // SEPARAT register (IKKE SKEMAER - undgaar kollision med batteri-noeglerne who5/phq9).
