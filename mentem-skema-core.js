@@ -166,6 +166,11 @@ export const INSTRUMENT_LICENS = {
          grundlag: 'B',
          betingelser: [
            // nudansk-guard:allow: licensens EGET fagudtryk (Special Terms No 140135 §4.3), i et internt register der aldrig rendres til en klient. Maalt: 0 kaldesteder i render-stien.
+           { krav: 'ICON LS-population (Special Terms 140135 §5): ICON LS populerer den danske '
+                 + 'ordlyd ind i en teknisk fil VI leverer, vi uploader derfra, og screenshots af '
+                 + 'OVERSAETTELSEN sendes til ICON LS. Husets nuvaerende tekst er en AFSKRIFT og maa '
+                 + 'derfor ikke gaa klientvendt, uanset at ordlyden er korrekt.',
+             status: 'ikke opfyldt' },
            { krav: 'Screenshot-review: ALLE elektroniske sider hvor ESS optraeder indsendes via '  // nudansk-guard:allow: licensens EGET fagudtryk (Special Terms 140135 §4.3); internt register, 0 kaldesteder i render-stien
                  + 'ePROVIDE til MRT/ICON LS for review og godkendelse (Special §4.3). '
                  + '»May incur additional fees«, beloeb ikke oplyst.',
@@ -1989,7 +1994,26 @@ export const ESS_INSTRUMENT_SLOT = {
     { key: 'ess_item_7', text: 'Sidder stille efter en frokost uden indtagelse af alkohol' },
     { key: 'ess_item_8', text: 'I en bil, mens den holder stille i nogle få minutter på grund af trafikken' },
   ],
-  verbatimKilde: 'Projekt_Praksis/soevn/ess-licens/ESS_AU1.0_dan-DK.txt (Mapi/ICON, dansk AU1.0)',
+  // 🔴 KILDEN ER PAPIRUDGAVEN, OG DEN ER IKKE DEN RUTE E-VERSIONEN SKAL KOMME AD.
+  // Special Terms No 140135 §5, ordret (verificeret i PDF'en 20/8, ikke i en sammenfatning):
+  //   »ICON LS is the ONLY organization authorized to perform linguistic validation/
+  //    translation work on the COA«
+  //   »ICON LS shall update (if needed) and POPULATE the COA translations into a technical
+  //    file PROVIDED BY THE USER ... The User will upload the translations FROM THE TECHNICAL
+  //    FILE into the User's system and shall send the Screenshots of the translations to
+  //    ICON LS for review and approval.«
+  // ⇒ Teksten herunder er AFSKREVET af huset fra den licenserede papirudgave. Ordlyden er
+  // rigtig og uaendret, men RUTEN er ikke den licensen beskriver: den danske e-ordlyd skal
+  // populeres af ICON LS ind i en teknisk fil VI leverer.
+  // 🔴 DERFOR MAA DETTE SLOT IKKE FLIPPES TIL KLAR:true PAA DENNE TEKST. Den er lovlig at
+  // bygge og at skyde screenshots af; den er ikke lovlig at sende en klient.
+  // 🔵 Fundet af INFRA 19/8 kl. 19.0x da de efterproevede min pakke foer afsendelse, og
+  // genmaalt af mig i primaerkilden. Min egen oprindelige linje her sagde bare »dansk AU1.0«,
+  // hvilket er sandt og udelader det led der afgoer noget. Samme klasse som husets
+  // licensvurdering, der naevnte »verbatim« og udelod »condense/reorganize«.
+  verbatimKilde: 'AFSKRIFT af Projekt_Praksis/soevn/ess-licens/ESS_AU1.0_dan-DK.txt (dansk AU1.0). '
+               + 'E-versionens ordlyd skal komme via ICON LS-population i en teknisk fil (Special Terms 140135 §5), '
+               + 'IKKE fra denne afskrift. Til bygning og screenshot-review, ikke til klientbrug.',
   licensStatus: 'afventer-screenshot-review',
   KLAR: false,
 };
