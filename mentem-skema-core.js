@@ -57,6 +57,34 @@ export const SKEMA_ORDER = ['cas', 'mcb', 'gad7', 'phq9', 'who5', 'wsas', 'waisr
 // til Viktor bekræfter (reversibelt: tilføj 'waisr' igen her + genindsæt alliance-checkpoint).
 export const OFFENTLIGT_KLAR = ['gad7', 'phq9', 'who5', 'wsas'];
 
+// ── KLIENTENS RAEKKEFOELGE (Viktor-GO Q12=1, 2026-08-20) ────────────────────
+// 🔴 HVORFOR DEN ER ET EGET REGISTER, og hvorfor det ikke er dobbeltarbejde.
+// Indtil i nat var `OFFENTLIGT_KLAR` BEGGE dele: den afgjorde hvem der maatte vises
+// (en LICENSGATE) og samtidig i hvilken orden (en UX-beslutning). index.html:1012
+// filtrerede gennem den, saa `?s=`-raekkefoelgen blev kasseret og listens orden vandt.
+//
+// Foelgen var maalbar og ikke teoretisk: **for at give klienten en bedre raekkefoelge
+// skulle man redigere en licensgate.** En gate der aendres af en UX-grund, holder op med
+// at vaere en gate. Det er husets egen regel, og den staar allerede skrevet 40 linjer
+// laengere oppe om et andet register: »En allowlist der baerer to slags tilladelse,
+// holder op med at vaere en tilladelse.«
+//
+// 🟢 DE TO SKAL VAERE FORSKELLIGT ORDNET, MED VILJE. Var de ens, kunne ingen proeve se
+// hvilken af dem koden faktisk laeste, og en mutant der byttede tilbage ville vaere
+// groen. Forskellen ER maaleinstrumentet. Se test/raekkefoelge-gate.mjs.
+//
+// 🔵 RAEKKEFOELGEN, og begrundelsen bag hvert led (Viktor 20-08, Q12 mulighed 1):
+//   who5  5 spm, positivt formuleret   -> laveste indgangstaerskel
+//   wsas  5 spm, funktion              -> stadig kort, endnu ikke symptom
+//   gad7  7 spm, symptom               -> hun er investeret naar det tunge kommer
+//   phq9  9 spm, baerer selvmordsitemet -> SIDST, taettest paa skaermen med Akut hjaelp
+// Maalt bonus paa en akse der ikke indgik i begrundelsen: denne orden giver 2 skalaskift,
+// den gamle gav 3 (who5 og wsas har hver sin skala, gad7+phq9 deler FREQ_0_3).
+//
+// 🟡 MEDLEMSKAB VINDER OVER ORDEN. Et id her der IKKE staar i OFFENTLIGT_KLAR, maa ikke
+// kunne vises. Filtret i index.html kraever begge, og gaten asserterer det.
+export const KLIENT_RAEKKEFOELGE = ['who5', 'wsas', 'gad7', 'phq9'];
+
 // ── LICENS-PROFILER (Viktor-beslutning 18/7 + 19/7) ─────────────────────────
 // To forskellige rettigheder på SAMME flade, og de må ikke blandes sammen:
 //
