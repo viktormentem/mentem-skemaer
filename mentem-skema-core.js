@@ -174,6 +174,49 @@ export const INSTRUMENT_LICENS = {
              status: 'opfyldt' },
          ],
          registerRef: 'soevn/ess-licens/ESS-licens-vurdering-2026-06-26.md' },
+
+// ── ISI: form B, og den ANDEN raekke hvor licensen er i hus. Skrevet 20-08, samme dag som
+// den blev accepteret, og FOER `isi` findes paa nogen flade. Samme begrundelse som ESS-blokken
+// ovenfor: den dag nogen skriver `isi` ind i OFFENTLIGT_KLAR, gaar gaten ROED med hver
+// betingelse NAVNGIVET frem for at spoerge hvad status er.
+// 🔴 »Free of charge« gaelder LICENSEN, ikke arbejdet omkring e-versionen. Specific Terms
+// siger to steder »may incur additional fees«, begge om screenshot-review og om ICON LS'
+// populering af den danske ordlyd. Beloebet er ukendt og staar derfor som en betingelse.
+  isi: { kommercielt: false, verificeret: '2026-08-20',
+         kilde: 'To sager paa ePROVIDE/Mapi, begge Free of charge, accepteret 20-08 paa Viktors '
+              + 'eksplicitte godkendelse. Sag 145419 = dansk (ISI-Last 2 weeks + ISI-Last month, '
+              + 'Danish for Denmark). Sag 145425 = engelsk (Last 2 weeks eng-CA-USori originalen '
+              + '+ Last month eng-GB). Context of use = Observational studies, Marketing, Clinical '
+              + 'practice and Educational projects. Conditions of use = Not Funded. Mode = '
+              + 'Electronic, BYOD. Filer paa disk: soevn/isi-licens/ (4 instrumenter + '
+              + 'ISI Users Manual.pdf). Vilkaarene i fuld ordlyd: '
+              + 'kanonisk/dokumentation/mapi-user-license-agreement-general-terms-2026-08-20.md',
+         grundlag: 'B',
+         betingelser: [
+           // nudansk-guard:allow: licensens EGET fagudtryk (General Terms §4.4), i et internt register der aldrig rendres til en klient.
+           { krav: 'Screenshot-review: General §4.4 er UBETINGET for akademisk/ikke-kommerciel '  // nudansk-guard:allow: licensens EGET fagudtryk (General Terms §4.4); internt register, 0 kaldesteder i render-stien
+                 + 'brug, ordret »the User undertakes to submit the Screenshots of ALL the '
+                 + 'electronic pages where the e-Version appears to MRT«. Samme pligt som ESS §5. '
+                 + 'Falder foerst naar ISI-fladen findes; vaerktoej: '
+                 + 'build-tools/lanes/licens-screenshots.mjs. »May incur additional fees«.',
+             status: 'ikke opfyldt' },
+           { krav: 'Copyright-notits (General §4.1): notitsen skal staa paa selve skemaet, og '
+                 + 'MRT kontaktoplysninger skal med ved enhver offentlig gengivelse. '
+                 + 'Fladen findes ikke endnu, saa den kan ikke vaere opfyldt.',
+             status: 'ikke opfyldt' },
+           { krav: 'Dansk e-version: ICON LS populerer den danske ordlyd ind i den tekniske fil. '
+                 + 'Papir/doc-udgaverne (AU2.1 og AU2.0, dan-DK) er i hus; e-versionen er et '
+                 + 'SEPARAT led, praecis som ved ESS. »May incur additional fees«.',
+             status: 'ikke opfyldt' },
+           { krav: 'General §3.1: non-exclusive, non-transferable, non-assignable, '
+                 + 'non-sublicensable ⇒ maa IKKE deles med andre klinikker eller psykologer. '
+                 + 'Uaendret fra ESS. Kommerciel distribution kraever en ny aftale.',
+             status: 'opfyldt' },
+           { krav: 'General §5.1: DATA TILHOERER BRUGEREN. Ingen betingelse at opfylde, men den '
+                 + 'staar her fordi forskningssporet hviler paa den.',
+             status: 'opfyldt' },
+         ],
+         registerRef: 'kanonisk/registre/licens-register-kanonisk-2026-07-16.md §4.8-4.10' },
 };
 
 // §3l-ratchettens GULV: de instrumenter der stod klientvendt live FØR reglen blev skrevet,
