@@ -399,7 +399,7 @@
     <button class="btn-primary" id="start-btn" disabled>Start</button>
     <p class="start-note">Til sidst får du én fil, som du nemt deler med din psykolog. Vi viser dig hvordan.</p>
     <div class="disclaimer"><span aria-hidden="true" style="display:inline-flex;width:1em;height:1em;vertical-align:-2px;margin-right:5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><span class="disc-body" data-autosend="<strong>Privatliv:</strong> Du udfylder alt i din egen browser. Når du er færdig, sendes svarene sikkert og krypteret direkte til din psykolog. Kun din psykolog kan åbne dem. Har du det akut svært, skal du ikke vente til samtalen. Se Akut hjælp nederst."><strong>Privatliv:</strong> Du udfylder alt i din egen browser. Når du er færdig, samles svarene i én krypteret fil, som kun din psykolog kan åbne. Intet gemmes på en server, og du sender selv filen. Har du det akut svært, skal du ikke vente til samtalen. Se Akut hjælp nederst.</span></div>
-    <p class="footer-credit" id="footer-credit">Skemaerne bygger på anerkendte, validerede spørgeskemaer, som din psykolog bruger til at følge din udvikling.</p>
+    <p class="footer-credit" id="footer-credit">Skemaerne er valgt af din psykolog til at følge din udvikling. Hvert skema fortæller selv, hvor det kommer fra.</p>
     <p class="footer-credit" id="key-fp"></p>
   </div>
 </div>
@@ -415,7 +415,7 @@
     <div class="patient-info">
       <div class="form-field">
         <label>Dit navn (valgfrit)</label>
-        <input type="text" id="patient-name" placeholder="Fx Anna Larsen" autocomplete="off">
+        <input type="text" id="patient-name" placeholder="Fx dit fornavn, eller dine initialer" autocomplete="off">
       </div>
     </div>
     <div id="form-sections"></div>
@@ -1357,9 +1357,19 @@ function renderWelcome() {
 
   // Footer-credit drives af OFFENTLIGT_KLAR: generisk ordlyd, ingen instrumentnavne
   // (samme register som batteri-allowlisten). Tomt register → ingen credit.
+  // 🔴 ORDLYDEN RETTET 20-08, og fejlen opstod af en RIGTIG rettelse eet led vaek.
+  // Linjen sagde »anerkendte, VALIDEREDE spoergeskemaer« om HELE listen. Da »WSAS« samme
+  // aften blev omdoebt til husets egen skala »Hverdag og funktion«, fik dens egen
+  // attribution linjen »Ikke et valideret instrument«. Forsiden og skemaet modsagde
+  // dermed hinanden paa den samme flade, og forsiden var den der loej.
+  // ⇒ Den nye ordlyd paastaar intet om validering og peger paa attributionen, som er
+  // stedet hvor hvert enkelt skema kan svare for sig. Den er dermed sand for enhver
+  // sammensaetning af OFFENTLIGT_KLAR, ogsaa fremtidige.
+  // 🔵 Fundet paa SKAERMEN, ikke i koden: begge saetninger er korrekte hver for sig, og
+  // kun det samlede billede viser modsigelsen (Chrome-SOP, udvidelse 18/8).
   const credit = document.getElementById('footer-credit');
   if (credit) credit.textContent = OFFENTLIGT_KLAR.length
-    ? 'Skemaerne bygger på anerkendte, validerede spørgeskemaer, som din psykolog bruger til at følge din udvikling.'
+    ? 'Skemaerne er valgt af din psykolog til at følge din udvikling. Hvert skema fortæller selv, hvor det kommer fra.'
     : '';
 
   const fp = document.getElementById('key-fp');

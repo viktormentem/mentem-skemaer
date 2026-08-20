@@ -81,7 +81,20 @@ const navne = /(GAD-7|PHQ-9|WHO-5|WSAS|WAI-SR)/;
 const staticCredit = (html.match(/<p class="footer-credit" id="footer-credit"[^>]*>([^<]*)<\/p>/) || [])[1] || '';
 ok(staticCredit.length > 0, 'statisk footer-credit findes (id="footer-credit")');
 ok(!navne.test(staticCredit), 'statisk footer-credit navngiver INTET instrument (L2 lukket)');
-ok(/anerkendte, validerede spørgeskemaer/.test(staticCredit), 'statisk footer-credit bruger den generiske ordlyd');
+// 🔴 DENNE ASSERT SPEJLEDE EN STRENG, IKKE EN EGENSKAB, og det kostede en roed gate paa en
+// RIGTIG rettelse 20-08. Den lyd `/anerkendte, validerede spørgeskemaer/`, altsaa den ordlyd
+// fodnoten tilfaeldigvis havde. Da »WSAS« blev omdoebt til husets egen skala, blev ordet
+// »validerede« USANDT om listen, copyen blev rettet, og gaten gik roed paa noget der ikke er
+// dens formaal. Gatens formaal staar i B ovenfor: fodnoten skal vaere GENERISK.
+// ⇒ Den maaler nu to EGENSKABER i stedet, og er dermed straengere end foer:
+//   1. fodnoten er en hel saetning (ikke en rest efter en halv redigering)
+//   2. den paastaar ikke at ALLE skemaer er validerede. Mindst eet af dem er husets eget,
+//      og dets egen attribution siger ordret »Ikke et valideret instrument«. To saetninger
+//      paa samme flade maa ikke modsige hinanden.
+ok(staticCredit.trim().length >= 40 && /\.$/.test(staticCredit.trim()),
+  'statisk footer-credit er en hel saetning');
+ok(!/validerede?\s+sp(ø|oe)rgeskemaer/i.test(staticCredit),
+  'statisk footer-credit paastaar IKKE at alle skemaer er validerede (mindst eet er husets eget)');
 const jsCredit = (html.match(/credit\.textContent = OFFENTLIGT_KLAR\.length[\s\S]*?:\s*'';/) || [''])[0];
 ok(jsCredit.length > 0 && !navne.test(jsCredit), 'JS-drevet footer-credit (af OFFENTLIGT_KLAR) navngiver INTET instrument');
 
