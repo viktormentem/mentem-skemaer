@@ -319,7 +319,28 @@ const WHO5_OPTS = [
 ];
 
 // WSAS svarmuligheder (0-8, vis kun yderpunkter + midte som ledetekst).
-const WSAS_OPTS = Array.from({ length: 9 }, (_, v) => ({ value: v, label: String(v) }));
+// 🔴 ENDEPUNKTERNE BAERER DERES ORD, og fundet er fra skaermen frem for fra koden
+// (INFRA 21-08). Foer i dag var alle ni svarmuligheder BARE TAL, 0 til 8, uden ankre.
+// Klienten skulle huske hvad 0 og 8 betyder fra instruktionslinjen ovenfor, mens hun
+// scrollede gennem 45 knapper (5 items gange 9). Ved item 3 er den linje ude af skaermen.
+//
+// 🔵 Og skaermen viser det med det samme, fordi naboskemaet goer det modsatte: WHO-5 lige
+// OVER dette baerer ord paa hver mulighed (»Lidt af tiden«). To skalaer paa samme skaerm,
+// hvor den ene baerer sin betydning og den anden ikke goer.
+//
+// 🟢 Ordene er IKKE nye. De staar allerede ordret i skemaets egen `instruction`
+// (»0 = slet ikke paavirket, 8 = meget svaert paavirket«). De er FLYTTET derhen hvor de
+// bruges, ikke opfundet. Og fladen er husets EGEN skala, ikke et licensbundet instrument
+// (se `attribution`), saa der er ingen fidelity-graense at bryde ved at maerke den.
+//
+// 🟡 KUN endepunkterne faar ord. 1 til 7 forbliver tal, fordi en 9-punkts skala med ni
+// ordlyde tvinger klienten til at LAESE ni linjer frem for at maerke en afstand.
+const WSAS_OPTS = Array.from({ length: 9 }, (_, v) => ({
+  value: v,
+  label: v === 0 ? '0 · Slet ikke påvirket'
+       : v === 8 ? '8 · Meget svært påvirket'
+       : String(v),
+}));
 
 // WAI-SR svarmuligheder (1-6).
 const WAISR_OPTS = [
@@ -449,6 +470,22 @@ export const SKEMAER = {
   // instrumentet, den skiller de to ad.
   wsas: {
     id: 'wsas', kind: 'radio', title: 'Hverdag og funktion', short: 'Hverdag og funktion', icon: 'puslespil', badge: '5 spørgsmål',
+    // ── LEDESAETNING (Viktor-GO 21-08, valg A) ────────────────────────────
+    // 🔴 HVORFOR DEN FINDES. Dette skema staar som NUMMER TO i batteriet og spoerger
+    // »hvor meget paavirker DINE VANSKELIGHEDER ...«. En klient der endnu ikke selv har
+    // navngivet et problem, moeder dermed en saetning der forudsaetter noget hun ikke har
+    // sagt. Fundet paa skaermen 20-08, ikke i koden.
+    //
+    // 🔴 DEN STAAR OVER SKEMAET, ALDRIG INDE I ITEMSENE, og det er et krav frem for en
+    // aestetik: et aendret item er et andet instrument. `instruction` og `items` er uroerte.
+    //
+    // 🔵 HVORFOR NETOP DENNE ORDLYD (Viktor valgte A af fire bud):
+    //   den navngiver INTET. »Det, der fik dig til at soege hjaelp« lader klienten selv
+    //   udfylde indholdet, hvor »dine vanskeligheder« paastaar en kategori paa hendes vegne.
+    //   den er en HANDLING hun HAR foretaget, ikke en tilstand hun skal tilslutte sig.
+    //   og den braekker ikke for en klient der er TILDELT gennem et netvaerk frem for selv
+    //   at have soegt: saetningen bliver bredere, ikke forkert.
+    ledesaetning: 'Tænk på det, der fik dig til at søge hjælp.',
     instruction: 'Hvor meget påvirker dine vanskeligheder din evne til følgende? 0 = slet ikke påvirket, 8 = meget svært påvirket.',
     options: WSAS_OPTS, max: 40,
     // 🔴 ITEMTEKSTEN HERUNDER ER HUSETS EGEN OMSKRIVNING, IKKE WSAS. Maalt 17/8 paa

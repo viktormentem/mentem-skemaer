@@ -79,6 +79,11 @@
   .schema-section { margin-bottom:40px; }
   .schema-header { border-bottom:2px solid var(--ink); padding-bottom:14px; margin-bottom:18px; }
   .schema-title { font-family:'DM Serif Display',serif; font-size:26px; margin-bottom:4px; }
+  /* Ledesaetningen er husets EGEN ramme om et instrument, ikke en del af det. Derfor
+     ser den anderledes ud end instruktionsboksen: ingen baggrund, ingen kant, stoerre og
+     roligere. Klienten skal kunne se at det er en tanke hun bliver bedt om at holde fast
+     i, frem for endnu en instruks om hvordan skemaet udfyldes. (Viktor-GO 21-08) */
+  .schema-lede { font-size:16px; line-height:1.5; color:var(--ink, #1a1a24); margin:0 0 12px; font-weight:500; }
   .schema-instruction { background:var(--accent-light); border-left:3px solid var(--accent); padding:12px 16px; border-radius:0 8px 8px 0; font-size:14px; margin-bottom:20px; line-height:1.5; }
   .schema-attribution { font-size:11px; color:var(--muted); margin-top:10px; font-style:italic; }
 
@@ -1390,8 +1395,12 @@ function renderForm() {
     const sec = document.createElement('div');
     sec.className = 'schema-section';
     const attr = s.attribution ? `<div class="schema-attribution">${s.attribution}</div>` : '';
+    // Ledesaetningen staar OVER instruktionen og er husets egen ramme om et instrument,
+    // aldrig en del af det. Kun de skemaer der har en, faar en (Viktor-GO 21-08).
+    const lede = s.ledesaetning ? `<div class="schema-lede">${s.ledesaetning}</div>` : '';
     sec.innerHTML = `
       <div class="schema-header"><div class="schema-title">${s.short}</div></div>
+      ${lede}
       <div class="schema-instruction">${s.instruction}${attr}</div>
       <div class="items" id="items-${id}"></div>`;
     root.appendChild(sec);
