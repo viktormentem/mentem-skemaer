@@ -12,6 +12,8 @@ import {
   INSTRUMENTER, INSTRUMENTER_REVIEW, INSTRUMENT_MODULER, maaVisesForKlient, REVIEW_PARAM,
   WHO5_INSTRUMENT, PHQ9_INSTRUMENT, GAD7_INSTRUMENT, ESS_INSTRUMENT,
   CAS1_INSTRUMENT_SLOT, WSAS_INSTRUMENT_SLOT, WHODAS_INSTRUMENT_SLOT,
+  OFFENTLIGT_KLAR,
+  INSTRUMENT_LICENS,
 } from '../mentem-skema-core.js';
 
 let fejl = 0;
@@ -23,13 +25,90 @@ console.log('Instrument KLAR-gate guard (licens-gate + a11y, spec §5):');
 const aktive = INSTRUMENT_MODULER.filter(m => m.KLAR);
 const slots  = INSTRUMENT_MODULER.filter(m => !m.KLAR);
 ok(aktive.length === 4, 'praecis 4 fuldt formede moduler (KLAR:true)');
-ok(slots.length === 3, 'praecis 3 scaffold-slots (KLAR:false)');
+// 🔵 4, ikke 3: `ISI_INSTRUMENT_SLOT` kom med fra forligs-grenen (8e24319). Tallet er
+// opdateret frem for fjernet, men det er den AFLEDTE invariant nedenfor der baerer , et
+// haardkodet tal raadner ved naeste modul, og det gjorde det praecis her.
+ok(slots.length === 4, 'praecis 4 scaffold-slots (KLAR:false)');
+// 🔵 OG DEN AFLEDTE INVARIANT BLIVER STAAENDE VED SIDEN AF TALLENE (forlig 22-08).
+// De to haardkodede tal ovenfor er MAIN's og er rigtige i dag. Men et tal raadner naar et
+// modul mere lander, og gaten faelder saa paa sit ANTAL frem for paa sin egenskab , det
+// skete for mig 19-08 med `slots.length === 3`. Invarianten kan ikke raadne:
+ok(aktive.length + slots.length === INSTRUMENT_MODULER.length,
+   `hvert modul er enten aktivt eller slot (${aktive.length} + ${slots.length} = ${INSTRUMENT_MODULER.length})`);
+
+// ── 🔴 ENTYDIGHED: ÉT modul pr. skabelon. Tilfoejet ved forliget 22-08. ──────────
+// HVORFOR DEN FINDES, og fundet er saa konkret som det bliver: da de to ESS-linjer blev
+// merget, lagde git BEGGE `ESS_INSTRUMENT` (main) og `ESS_INSTRUMENT_SLOT` (grenen) ind i
+// INSTRUMENT_MODULER , to moduler med `skabelon: 'ess'`, hver med sin egen ordlyd og sin
+// egen attribution , UDEN en eneste konfliktmarkoer. De laa forskellige steder i filen, saa
+// der var ikke noget for git at vaere i tvivl om.
+//
+// 🔴 OG INGEN AF HUSETS GATES SAGDE FRA. Maalt paa praecis den dublet, foer denne assert:
+//     instrument-klar-gate  roed, men paa TAELLINGEN »praecis 3 scaffold-slots«
+//     licens-profil-gate    roed, men paa en SyntaxError fra merget
+//     e2e-ess-review        roed, men paa en locator der timede ud
+//     3l · batteri · selftest   GROENNE
+// Tre roede, og ingen af dem sagde »der er to ESS«. **En dom der peger et andet sted hen
+// end sin aarsag, laerer laeseren at gaten er stoej.**
+//
+// 🔵 Registreringsloekken skjuler den aktivt: `INSTRUMENTER[modul.skabelon] = modul` lader
+// den sidste vinde i tavshed. Med to moduler der begge er spaerret, ser resultatet endda
+// KORREKT ud , og den dag den ene flippes, afgoer raekkefoelgen i en liste hvilken ordlyd
+// en klient faar. Det er ikke en teoretisk fejl, det er en tavs en.
+{
+  const set = new Set();
+  const dubletter = [];
+  for (const m of INSTRUMENT_MODULER) {
+    if (set.has(m.skabelon)) dubletter.push(m.skabelon);
+    set.add(m.skabelon);
+  }
+  ok(dubletter.length === 0,
+     `hver skabelon findes PRAECIS een gang i INSTRUMENT_MODULER (dubletter: ${dubletter.join(', ') || 'ingen'})`);
+  ok(set.size === INSTRUMENT_MODULER.length,
+     `${set.size} distinkte skabeloner af ${INSTRUMENT_MODULER.length} moduler`);
+}
 
 // Intet KLAR:false-modul maa vaere i INSTRUMENTER -> ueksponerbart via ?s=<skabelon>.
+//
+// 🔴 »0 items« VAR reglen mod fabrikation, og den kunne ikke skelne to ting: et slot uden
+// tekst, og et slot med LICENSERET VERBATIM tekst der endnu ikke maa vises. ESS er den
+// anden: Special Terms 140135 er i hus siden 26/6, den danske AU1.0-tekst ligger paa disk,
+// og eksponeringen er spaerret af en UOPFYLDT betingelse (screenshot-review), ikke af at
+// teksten mangler. Under den gamle regel kunne den skaerm ikke bygges , og uden skaermen
+// kan screenshots ikke skydes, og uden screenshots kan betingelsen aldrig opfyldes.
+// **Gaten spaerrede den ENESTE vej ud af den tilstand den selv haandhaevede.**
+// ⇒ Reglen er ikke svaekket, den er gjort MAALBAR: har et slot items, skal det navngive den
+// licenserede kilde de er taget fra. Foer kunne gaten kun sige »der er ingen tekst«; nu kan
+// den sige »teksten har en kilde«. Fabrikeret tekst har ingen.
 for (const m of slots) {
   ok(!(m.skabelon in INSTRUMENTER), `slot '${m.skabelon}' (KLAR:false) er IKKE i INSTRUMENTER (licens-gate)`);
-  ok(Array.isArray(m.scoredItems) && m.scoredItems.length === 0, `slot '${m.skabelon}' har 0 item-tekst (ingen fabrikation)`);
+  const harItems = Array.isArray(m.scoredItems) && m.scoredItems.length > 0;
+  if (harItems) {
+    ok(typeof m.verbatimKilde === 'string' && m.verbatimKilde.length > 0,
+       `slot '${m.skabelon}' har ${m.scoredItems.length} items OG navngiver sin verbatim-kilde (ingen fabrikation)`);
+  } else {
+    ok(Array.isArray(m.scoredItems) && m.scoredItems.length === 0,
+       `slot '${m.skabelon}' har 0 item-tekst (ingen fabrikation)`);
+  }
   ok(typeof m.licensStatus === 'string' && m.licensStatus.length > 0, `slot '${m.skabelon}' baerer licensStatus ('${m.licensStatus}')`);
+  // 🔴 FORM, ikke kun ANTAL. Foerste udgave af ESS-slottet bar items som bare STRENGE, og
+  // gaten var groen: den taalte `.length`. `renderInstrument` laeser `it.key`/`it.text`, saa
+  // skaermen ville have rendret otte tomme spoergsmaal. **Et antal kan ikke svare paa et
+  // spoergsmaal om form** , husets egen regel fra 19/8, her paa mit eget arbejde.
+  for (const it of (m.scoredItems || [])) {
+    ok(it && typeof it.key === 'string' && it.key.length > 0 && typeof it.text === 'string' && it.text.length > 0,
+       `slot '${m.skabelon}' item baerer baade key og text (render-kontrakt)`);
+  }
+}
+
+// 🔴 OG DEN VIGTIGSTE: et slot med items maa ALDRIG kunne naa fladen. Den gamle gate fik
+// dette gratis af »0 items«; nu hvor items er tilladt, skal spaerringen staa for sig selv.
+for (const m of slots.filter(x => Array.isArray(x.scoredItems) && x.scoredItems.length > 0)) {
+  ok(!OFFENTLIGT_KLAR.includes(m.skabelon),
+     `slot '${m.skabelon}' har verbatim items og staar IKKE paa OFFENTLIGT_KLAR (klientvendt spaerring)`);
+  const lic = INSTRUMENT_LICENS[m.skabelon];
+  ok(lic && lic.grundlag === 'B' && Array.isArray(lic.betingelser) && lic.betingelser.some(b => b.status === 'ikke opfyldt'),
+     `slot '${m.skabelon}' har form B med mindst een UOPFYLDT betingelse (ellers hoerer den ikke til som slot)`);
 }
 
 // Hvert INSTRUMENTER-opslag peger paa et KLAR:true-modul (intet andet sluppet ind).

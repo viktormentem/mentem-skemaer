@@ -28,10 +28,15 @@ for (const id of OFFENTLIGT_KLAR) {
   ok(SKEMA_ORDER.includes(id), `'${id}' er en delmængde af SKEMA_ORDER (intet fremmed id)`);
   ok(id in SKEMAER, `'${id}' er et registreret skema i SKEMAER`);
 }
-// Kanonisk rækkefølge bevares (OFFENTLIGT_KLAR er ordnet som SKEMA_ORDER) → batteriet
-// rendres altid i samme rækkefølge uanset hvilket register der driver allowlisten.
-const ordnet = SKEMA_ORDER.filter(id => OFFENTLIGT_KLAR.includes(id));
-ok(ordnet.join(',') === OFFENTLIGT_KLAR.join(','), 'OFFENTLIGT_KLAR følger SKEMA_ORDERs kanoniske rækkefølge');
+// 🔴 FJERNET 21-08 (INFRA), og fjernelsen er selve rettelsen, ikke en omgåelse.
+// Her stod en assert der KRÆVEDE at OFFENTLIGT_KLAR var ordnet som SKEMA_ORDER. Den
+// håndhævede dermed at licensgatens orden var klientens orden, altså præcis den kobling
+// der gjorde at en bedre rækkefølge til klienten krævede en redigering af en licensgate.
+// Vagten målte en akse den ikke burde måle, og gik rød på en rigtig rettelse.
+// Ordenen har nu sit eget register (KLIENT_RAEKKEFOELGE) og sin egen gate
+// (test/raekkefoelge-gate.mjs). Her tjekkes MEDLEMSKAB, og kun medlemskab.
+ok(OFFENTLIGT_KLAR.every(id => SKEMA_ORDER.includes(id)),
+   'OFFENTLIGT_KLAR er en ægte delmængde af SKEMA_ORDER (medlemskab, IKKE orden)');
 
 // ── 1b. CAS-1/MCB må ALDRIG rendres digitalt (Viktor-beslutning 2026-07-03, Wells-licens) ──
 // De administreres kun på papir og indtastes separat i klient-record. OFFENTLIGT_KLAR er
@@ -65,8 +70,20 @@ const html = readFileSync(join(here, '..', 'index.html'), 'utf8');
 // B: registret importeres + driver den offentlige allowlist (`selected`), ikke SKEMA_ORDER.
 ok(/import \{[^}]*\bOFFENTLIGT_KLAR\b[^}]*\} from '\.\/mentem-skema-core\.js'/.test(html),
   'index.html importerer OFFENTLIGT_KLAR fra core');
-ok(/let selected = OFFENTLIGT_KLAR\.filter\(id => rawSelected\.includes\(id\)\)/.test(html),
-  'selected udledes af OFFENTLIGT_KLAR (offentlig allowlist), ikke SKEMA_ORDER');
+// 🔴 SPEJLEDE ORDLYDEN INDTIL 21-08. Her stod en naal der laaste den LITERALE linje
+// `let selected = OFFENTLIGT_KLAR.filter(...)`. Den gik derfor roed paa en rigtig
+// rettelse (ordens-registret blev tilfoejet) og ville samtidig vaere groen paa en
+// mutant der beholdt ordlyden og aendrede betydningen. Husets maalte fejlklasse.
+// Maal EGENSKABEN: linjen der binder `selected`, skal gate paa OFFENTLIGT_KLAR og
+// maa ALDRIG naevne SKEMA_ORDER (som er registret UDEN licensstatus).
+const selLinje = (html.match(/^\s*let selected = .*$/m) || [''])[0];
+ok(selLinje.includes('OFFENTLIGT_KLAR'),
+  'selected gates paa OFFENTLIGT_KLAR (offentlig allowlist)');
+ok(!selLinje.includes('SKEMA_ORDER'),
+  'selected udledes IKKE af SKEMA_ORDER (registret uden licensstatus)');
+// ANTI-VAKUUM (husets regel om en akse den drivende streng ikke roerer): var linjen
+// slet ikke fundet, ville begge asserts ovenfor kunne staa groenne paa en tom streng.
+ok(selLinje.trim().length > 0, 'naalen fandt overhovedet en `let selected =`-linje');
 
 // C: ingen fuld-SKEMA_ORDER-fallback-batteri tilbage; ufuldstændigt-link-skærm i stedet.
 ok(!/fixedFromLink \? selected : SKEMA_ORDER/.test(html),
@@ -81,7 +98,20 @@ const navne = /(GAD-7|PHQ-9|WHO-5|WSAS|WAI-SR)/;
 const staticCredit = (html.match(/<p class="footer-credit" id="footer-credit"[^>]*>([^<]*)<\/p>/) || [])[1] || '';
 ok(staticCredit.length > 0, 'statisk footer-credit findes (id="footer-credit")');
 ok(!navne.test(staticCredit), 'statisk footer-credit navngiver INTET instrument (L2 lukket)');
-ok(/anerkendte, validerede spørgeskemaer/.test(staticCredit), 'statisk footer-credit bruger den generiske ordlyd');
+// 🔴 DENNE ASSERT SPEJLEDE EN STRENG, IKKE EN EGENSKAB, og det kostede en roed gate paa en
+// RIGTIG rettelse 20-08. Den lyd `/anerkendte, validerede spørgeskemaer/`, altsaa den ordlyd
+// fodnoten tilfaeldigvis havde. Da »WSAS« blev omdoebt til husets egen skala, blev ordet
+// »validerede« USANDT om listen, copyen blev rettet, og gaten gik roed paa noget der ikke er
+// dens formaal. Gatens formaal staar i B ovenfor: fodnoten skal vaere GENERISK.
+// ⇒ Den maaler nu to EGENSKABER i stedet, og er dermed straengere end foer:
+//   1. fodnoten er en hel saetning (ikke en rest efter en halv redigering)
+//   2. den paastaar ikke at ALLE skemaer er validerede. Mindst eet af dem er husets eget,
+//      og dets egen attribution siger ordret »Ikke et valideret instrument«. To saetninger
+//      paa samme flade maa ikke modsige hinanden.
+ok(staticCredit.trim().length >= 40 && /\.$/.test(staticCredit.trim()),
+  'statisk footer-credit er en hel saetning');
+ok(!/validerede?\s+sp(ø|oe)rgeskemaer/i.test(staticCredit),
+  'statisk footer-credit paastaar IKKE at alle skemaer er validerede (mindst eet er husets eget)');
 const jsCredit = (html.match(/credit\.textContent = OFFENTLIGT_KLAR\.length[\s\S]*?:\s*'';/) || [''])[0];
 ok(jsCredit.length > 0 && !navne.test(jsCredit), 'JS-drevet footer-credit (af OFFENTLIGT_KLAR) navngiver INTET instrument');
 

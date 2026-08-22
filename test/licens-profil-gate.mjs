@@ -25,7 +25,7 @@
 // Køres: node test/licens-profil-gate.mjs
 import {
   OFFENTLIGT_KLAR, SKEMAER, INSTRUMENT_MODULER,
-  INSTRUMENT_LICENS, PROFIL_INTERN, PROFIL_PRODUKT, allowlistFor,
+  INSTRUMENT_LICENS, PROFIL_INTERN, PROFIL_PRODUKT, allowlistFor
 } from '../mentem-skema-core.js';
 
 let fejl = 0;
@@ -97,6 +97,12 @@ console.log('Licens-profil-gate (intern urørt · produkt fail-closed):');
 // registre, så udvidelsen ændrer ingen eksisterende dom. Den koster nul i dag.
 // Hensigten er urørt: en række uden hverken skema eller modul er stadig rød.
 {
+  // 🔴 PRÆMISSEN VAR FOR SNÆVER: den antog at et licensregister kun kan beskrive
+  // BATTERI-skemaer. ESS er et instrument-MODUL (INSTRUMENT_MODULER), ikke et batteri-skema,
+  // og dens licensrække hører lige så meget hjemme her: det er dén række der får §3l-gaten
+  // til at gå rød med begge betingelser navngivet, den dag nogen sætter ess klientvendt.
+  // ⇒ Driften gaten vogter mod, er »en licensrække uden et instrument«. Den er bevaret;
+  // populationen af kendte instrumenter er bare målt rigtigt.
   const modulSkabeloner = new Set(INSTRUMENT_MODULER.map(m => m.skabelon));
   for (const id of Object.keys(INSTRUMENT_LICENS)) {
     ok(id in SKEMAER || modulSkabeloner.has(id),

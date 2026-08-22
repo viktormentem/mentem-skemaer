@@ -220,4 +220,12 @@ if (fejl.length) {
   process.exit(1);
 }
 
-console.log(`licens-3l-gate ✓ - 0 nye §3l-brud (${paaGulvet} kendt(e) undtagelse(r) paa gulvet, se ovenfor)`);
+// 🔴 DEN GROENNE GREN MED ET TOMT GULV BLEV NAAET FOERSTE GANG 20-08 kl. 20.1x, og den lyd
+// »0 kendt(e) undtagelse(r) paa gulvet, se ovenfor«. »Se ovenfor« peger paa ingenting naar
+// tallet er nul, og en henvisning til et tomt sted laeser som en fejl i vagten frem for som
+// den gode nyhed det er. Husets egen regel: den gren der kun naas naar alt andet er groent,
+// er den der aldrig er blevet laest (SUBSTRAT 6/8). Den koster eet blik paa den ene dag hvor
+// den er billig at proeve, nemlig den dag man lige har naaet den.
+console.log(paaGulvet === 0
+  ? 'licens-3l-gate ✓ - 0 nye §3l-brud, og gulvet er TOMT: hver klientvendt flade har form A eller B'
+  : `licens-3l-gate ✓ - 0 nye §3l-brud (${paaGulvet} kendt(e) undtagelse(r) paa gulvet, se ovenfor)`);

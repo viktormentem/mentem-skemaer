@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>ESS kompakt · forslag til MRT (IKKE klientvendt)</title>
+<!--
+  ESS screenshot-review-render.
+
+  🔴 HVORFOR DENNE FIL LIGGER I EN UNDERMAPPE OG IKKE I RODEN.
+  `build-tools/deploy-skemaer.sh` l.147 er `for f in *` med `[ -f "$f" ] || continue`, altsaa
+  KUN rod-FILER. En undermappe kan strukturelt ikke udrulles. Laa filen i roden, ville `html`
+  matche EXTS og siden ville gaa LIVE offentligt , praecis den laek §3l forbyder. Valget er
+  strukturelt frem for en post paa INTERNAL_ROOT, som er en liste nogen skal huske.
+
+  🔴 HVORFOR STYLES HENTES FRA index.html FREM FOR AT VAERE KOPIERET.
+  Licensens §4.3 kraever screenshots af de FAKTISKE sider. En kopieret style-blok ville drive
+  fra klientfladen, og de godkendte screenshots ville efter et stykke tid vise noget andet end
+  det klienten ser. **En godkendelse af en kopi er ikke en godkendelse.** Derfor hentes
+  index.html's egen <style> ved indlaesning: eet sted, ingen drift.
+
+  🔴 DENNE SIDE GEMMER, SENDER OG KRYPTERER INTET. Den er et visnings-lag til review.
+-->
+<style>
+  body { margin: 0; }
+  #review-ramme {
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #1d2b36; color: #eef4f8; padding: 14px 18px;
+    display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap;
+  }
+  #review-ramme b { color: #ffd479; }
+  #review-ramme p { margin: 4px 0 0; max-width: 62ch; }
+  #review-ramme button {
+    font: inherit; padding: 7px 14px; border-radius: 7px; border: 1px solid #7fa8c4;
+    background: #2b3f4f; color: #eef4f8; cursor: pointer; white-space: nowrap;
+  }
+  body.rent #review-ramme { display: none; }
+  #skaerm { max-width: 680px; margin: 0 auto; padding: 24px 18px 60px; }
+</style>
+</head>
+<body>
+
+<div id="review-ramme">
+  <div style="flex:1 1 380px">
+    <b>ESS · KOMPAKT (forslag).</b> Ankrene står ÉN gang, som i papirudgaven, og hver situation har
+    én 0-3-række. Ordlyden er uændret, men strukturen er en ANDEN end udgave A. Den er <b>ikke</b> klientvendt: <code>ess</code> står
+    ikke på <code>OFFENTLIGT_KLAR</code>, modulet er <code>KLAR:false</code>, og to gates
+    spærrer den. Siden ligger i en undermappe og kan ikke udrulles.
+    <p>Tryk «Skjul denne ramme» før du skyder screenshots til ePROVIDE, så billedet kun
+       viser klientskærmen.</p>
+  </div>
+  <button id="toggle" type="button">Skjul denne ramme</button>
+</div>
+
+<div id="skaerm">
+  <h1 id="instrument-title" class="diary-title"></h1>
+  <p id="instrument-intro" class="diary-intro" style="white-space:pre-line"></p>
+  <div id="instrument-fields"></div>
+  <p id="instrument-attribution" class="instrument-attribution"
+     style="margin-top:28px;font-size:13px;opacity:.85"></p>
+</div>
+
+<script type="module">
+import { ESS_INSTRUMENT_SLOT as ESS } from '../mentem-skema-core.js';
+
+// ── 1. Hent klientfladens EGNE styles, saa renderen er visuelt identisk ──────────────
+// POS-KTRL: vi kraever at blokken faktisk indeholder en af instrument-klasserne. Uden den
+// ville en tom eller aendret style-blok give en side der ser "ren" ud og IKKE er klientens.
+try {
+  const html = await (await fetch('../index.html')).text();
+  const m = html.match(/<style>([\s\S]*?)<\/style>/);
+  if (!m || !m[1].includes('.radio-option')) {
+    throw new Error('style-blokken mangler .radio-option — renderen ville ikke ligne klientfladen');
+  }
+  const st = document.createElement('style');
+  st.textContent = m[1];
+  document.head.appendChild(st);
+} catch (e) {
+  document.getElementById('skaerm').innerHTML =
+    '<p style="font:16px sans-serif;color:#b00">UMÅLT: kunne ikke hente klientfladens styles (' +
+    e.message + '). Skyd IKKE screenshots af denne side: den viser ikke klientens skærm.</p>';
+  throw e;
+}
+
+// ── 2. Render, med SAMME DOM-struktur som renderInstrument() i index.html ────────────
+const esc = (t) => String(t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+document.getElementById('instrument-title').textContent = ESS.uiTitle;
+document.getElementById('instrument-intro').textContent = ESS.instruktion;
+// Copyright-notitsen er KONTRAKTLIG (General §4.4) og skal vaere synlig paa selve siden.
+document.getElementById('instrument-attribution').textContent = ESS.attribution;
+document.getElementById('instrument-intro').textContent =
+  ESS.instruktion + '\n\n' + ESS.options.map(o => `${o.value} = ${o.label}`).join('\n');
+
+const wrap = document.getElementById('instrument-fields');
+
+// Ankrene EEN gang, som i papirudgaven (»Brug nedenstaaende skala ...« efterfulgt af 0-3).
+const skala = document.createElement('p');
+skala.className = 'instrument-stem';
+skala.style.cssText = 'margin:18px 0 6px;font-weight:600';
+skala.textContent = ESS.stem;
+wrap.appendChild(skala);
+
+const tbl = document.createElement('div');
+tbl.style.cssText = 'display:flex;flex-direction:column;gap:2px';
+let qnum = 0;
+for (const item of ESS.scoredItems) {
+  qnum++;
+  const raekke = document.createElement('fieldset');
+  raekke.className = 'diary-field instrument-field';
+  raekke.style.cssText = 'display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:10px 14px;margin:0';
+
+  const legend = document.createElement('legend');
+  legend.className = 'diary-q';
+  legend.style.cssText = 'flex:1 1 260px;margin:0';
+  legend.innerHTML = `<span class="question-num" aria-hidden="true">${qnum}.</span>` + esc(item.text);
+  raekke.appendChild(legend);
+
+  const group = document.createElement('div');
+  group.className = 'radio-group';
+  group.setAttribute('role', 'radiogroup');
+  group.setAttribute('aria-label', ESS.stem + ' ' + item.text);
+  group.style.cssText = 'display:flex;gap:6px;margin:0';
+  for (const opt of ESS.options) {
+    const lbl = document.createElement('label');
+    lbl.className = 'radio-option';
+    lbl.style.cssText = 'padding:6px 12px;margin:0;min-width:0';
+    // 🔴 Tallet er synligt, ORDLYDEN er radioens tilgaengelige navn: skaermlaeseren faar
+    // stadig den verbatim ankertekst, praecis som i udgave A.
+    lbl.innerHTML = `<input type="radio" name="${esc(item.key)}" value="${opt.value}" `
+                  + `aria-label="${esc(opt.value + ', ' + opt.label)}">`
+                  + `<span aria-hidden="true">${opt.value}</span>`;
+    group.appendChild(lbl);
+  }
+  raekke.appendChild(group);
+  tbl.appendChild(raekke);
+}
+wrap.appendChild(tbl);
+
+document.getElementById('toggle').addEventListener('click', () => {
+  document.body.classList.add('rent');
+});
+// 🔵 `?rent=1` skjuler rammen fra start. Et klik er en skroebelig maade at producere et
+// artefakt paa: rammer det ved siden af, faar man et screenshot MED rammen og opdager det
+// foerst naar MRT spoerger hvad den gule tekst er. En parameter kan efterproeves i URL'en.
+if (new URLSearchParams(location.search).get('rent') === '1') {
+  document.body.classList.add('rent');
+}
+
+console.log(`[ESS-review] ${ESS.scoredItems.length} items · KLAR=${ESS.KLAR} · ${ESS.licensStatus}`);
+</script>
+</body>
+</html>

@@ -79,6 +79,11 @@
   .schema-section { margin-bottom:40px; }
   .schema-header { border-bottom:2px solid var(--ink); padding-bottom:14px; margin-bottom:18px; }
   .schema-title { font-family:'DM Serif Display',serif; font-size:26px; margin-bottom:4px; }
+  /* Ledesaetningen er husets EGEN ramme om et instrument, ikke en del af det. Derfor
+     ser den anderledes ud end instruktionsboksen: ingen baggrund, ingen kant, stoerre og
+     roligere. Klienten skal kunne se at det er en tanke hun bliver bedt om at holde fast
+     i, frem for endnu en instruks om hvordan skemaet udfyldes. (Viktor-GO 21-08) */
+  .schema-lede { font-size:16px; line-height:1.5; color:var(--ink, #1a1a24); margin:0 0 12px; font-weight:500; }
   .schema-instruction { background:var(--accent-light); border-left:3px solid var(--accent); padding:12px 16px; border-radius:0 8px 8px 0; font-size:14px; margin-bottom:20px; line-height:1.5; }
   .schema-attribution { font-size:11px; color:var(--muted); margin-top:10px; font-style:italic; }
 
@@ -399,7 +404,7 @@
     <button class="btn-primary" id="start-btn" disabled>Start</button>
     <p class="start-note">Til sidst får du én fil, som du nemt deler med din psykolog. Vi viser dig hvordan.</p>
     <div class="disclaimer"><span aria-hidden="true" style="display:inline-flex;width:1em;height:1em;vertical-align:-2px;margin-right:5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><span class="disc-body" data-autosend="<strong>Privatliv:</strong> Du udfylder alt i din egen browser. Når du er færdig, sendes svarene sikkert og krypteret direkte til din psykolog. Kun din psykolog kan åbne dem. Har du det akut svært, skal du ikke vente til samtalen. Se Akut hjælp nederst."><strong>Privatliv:</strong> Du udfylder alt i din egen browser. Når du er færdig, samles svarene i én krypteret fil, som kun din psykolog kan åbne. Intet gemmes på en server, og du sender selv filen. Har du det akut svært, skal du ikke vente til samtalen. Se Akut hjælp nederst.</span></div>
-    <p class="footer-credit" id="footer-credit">Skemaerne bygger på anerkendte, validerede spørgeskemaer, som din psykolog bruger til at følge din udvikling.</p>
+    <p class="footer-credit" id="footer-credit">Skemaerne er valgt af din psykolog til at følge din udvikling. Hvert skema fortæller selv, hvor det kommer fra.</p>
     <p class="footer-credit" id="key-fp"></p>
   </div>
 </div>
@@ -415,7 +420,7 @@
     <div class="patient-info">
       <div class="form-field">
         <label>Dit navn (valgfrit)</label>
-        <input type="text" id="patient-name" placeholder="Fx Anna Larsen" autocomplete="off">
+        <input type="text" id="patient-name" placeholder="Fx dit fornavn, eller dine initialer" autocomplete="off">
       </div>
     </div>
     <div id="form-sections"></div>
@@ -614,7 +619,7 @@
 </div>
 
 <script type="module">
-import { SKEMAER, SKEMA_ORDER, OFFENTLIGT_KLAR, buildPayload, buildPayloadCSD, buildPayloadBaseline, mentemEncrypt,
+import { SKEMAER, SKEMA_ORDER, OFFENTLIGT_KLAR, KLIENT_RAEKKEFOELGE, buildPayload, buildPayloadCSD, buildPayloadBaseline, mentemEncrypt,
          CSD_SOEVNDAGBOG, SOEVN_BASELINE, CONTENT_VERSION, kryptoStoettet,
          PINNED_PUBKEY, PINNED_KEY_ID, resolveRecipientKey,
          INSTRUMENTER, INSTRUMENTER_REVIEW, REVIEW_PARAM, instrumentFeltOrden, buildInstrumentMycel,
@@ -1005,6 +1010,16 @@ const screeningId = rawSelected.find(id => SKEMAER[id].kind === 'screening') || 
 // flowet. KLAR:false-instrumenter er IKKE i INSTRUMENTER (licens-gate i core.js) -> ueksponerbare.
 const sTokens = sParam ? sParam.split(',').map(x => x.trim().toLowerCase()) : [];
 const instrumentId = (sTokens.length === 1 && INSTRUMENTER[sTokens[0]]) ? sTokens[0] : null;
+// To registre, to spørgsmål, og det er hele pointen at de er adskilt (INFRA 21-08):
+//   OFFENTLIGT_KLAR      MEDLEMSKAB. Hvem må overhovedet vises på den uautentificerede
+//                        flade. En licensgate. Et licenspending skema kan ikke lække via ?s=.
+//   KLIENT_RAEKKEFOELGE  ORDEN. I hvilken rækkefølge klienten møder dem. Viktor-GO Q12=1.
+// 🔴 Indtil 21-08 filtrerede denne linje gennem OFFENTLIGT_KLAR ALENE, så licensgatens
+// orden blev klientens orden, og en bedre rækkefølge krævede at man redigerede en
+// licensgate. Begge betingelser kræves nu, og rækkefølgen kommer fra ordens-registret.
+// 🟡 Et id der står i rækkefølgen men IKKE i allowlisten, vises ikke. Medlemskab vinder.
+// Kun spørgeskemaer (diary/baseline/screening har egne flows).
+let selected = KLIENT_RAEKKEFOELGE.filter(id => rawSelected.includes(id) && OFFENTLIGT_KLAR.includes(id));
 // ── GODKENDELSES-REVIEW: bygget, ikke godkendt (ESS, Mapi Special Terms 140135) ─────
 // Et instrument kan vaere fuldt formet og alligevel forbudt at vise for en klient, indtil
 // licensgiveren har godkendt selve SKAERMEN. Screenshot-review er selv betingelsen, saa
@@ -1021,11 +1036,6 @@ const instrumentReviewId = (sTokens.length === 1
   && INSTRUMENTER_REVIEW[sTokens[0]]
   && params.get(REVIEW_PARAM) === '1'
   && !ingestToken) ? sTokens[0] : null;
-// Offentlig batteri-allowlist: kun OFFENTLIGT_KLAR-skemaer kan rendres på den
-// uautentificerede flade (parallelt register, ikke SKEMA_ORDER): et licenspending
-// skema kan derfor ikke længere lække via ?s=. Kanonisk rækkefølge bevares (OFFENTLIGT_KLAR
-// er ordnet som SKEMA_ORDER). Kun spørgeskemaer (diary/baseline har egne flows).
-let selected = OFFENTLIGT_KLAR.filter(id => rawSelected.includes(id));
 // ── EMA: egen-forfattet, og naas KUN med et autentificeret link ──────────────
 // 🔴 HVORFOR DEN IKKE LAEGGES I OFFENTLIGT_KLAR. Det register vogter TREDJEPARTS-
 // instrumenter mod at laekke paa den UAUTENTIFICEREDE flade (GAD-7, PHQ-9, WHO-5, WSAS
@@ -1373,9 +1383,19 @@ function renderWelcome() {
 
   // Footer-credit drives af OFFENTLIGT_KLAR: generisk ordlyd, ingen instrumentnavne
   // (samme register som batteri-allowlisten). Tomt register → ingen credit.
+  // 🔴 ORDLYDEN RETTET 20-08, og fejlen opstod af en RIGTIG rettelse eet led vaek.
+  // Linjen sagde »anerkendte, VALIDEREDE spoergeskemaer« om HELE listen. Da »WSAS« samme
+  // aften blev omdoebt til husets egen skala »Hverdag og funktion«, fik dens egen
+  // attribution linjen »Ikke et valideret instrument«. Forsiden og skemaet modsagde
+  // dermed hinanden paa den samme flade, og forsiden var den der loej.
+  // ⇒ Den nye ordlyd paastaar intet om validering og peger paa attributionen, som er
+  // stedet hvor hvert enkelt skema kan svare for sig. Den er dermed sand for enhver
+  // sammensaetning af OFFENTLIGT_KLAR, ogsaa fremtidige.
+  // 🔵 Fundet paa SKAERMEN, ikke i koden: begge saetninger er korrekte hver for sig, og
+  // kun det samlede billede viser modsigelsen (Chrome-SOP, udvidelse 18/8).
   const credit = document.getElementById('footer-credit');
   if (credit) credit.textContent = OFFENTLIGT_KLAR.length
-    ? 'Skemaerne bygger på anerkendte, validerede spørgeskemaer, som din psykolog bruger til at følge din udvikling.'
+    ? 'Skemaerne er valgt af din psykolog til at følge din udvikling. Hvert skema fortæller selv, hvor det kommer fra.'
     : '';
 
   const fp = document.getElementById('key-fp');
@@ -1391,8 +1411,12 @@ function renderForm() {
     const sec = document.createElement('div');
     sec.className = 'schema-section';
     const attr = s.attribution ? `<div class="schema-attribution">${s.attribution}</div>` : '';
+    // Ledesaetningen staar OVER instruktionen og er husets egen ramme om et instrument,
+    // aldrig en del af det. Kun de skemaer der har en, faar en (Viktor-GO 21-08).
+    const lede = s.ledesaetning ? `<div class="schema-lede">${s.ledesaetning}</div>` : '';
     sec.innerHTML = `
       <div class="schema-header"><div class="schema-title">${s.short}</div></div>
+      ${lede}
       <div class="schema-instruction">${s.instruction}${attr}</div>
       <div class="items" id="items-${id}"></div>`;
     root.appendChild(sec);
