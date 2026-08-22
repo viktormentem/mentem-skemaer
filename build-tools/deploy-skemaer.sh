@@ -137,6 +137,24 @@ if [ -n "$gate_fejl" ]; then
   fi
 fi
 
+# ── 1b. ROTATIONS-GATE: nægter en MODTAGER-NØGLE-rotation mens klienter er midt i et
+# søvnforløb Mentem er eneste læser af. Kører EFTER herkomst-gaten (et urent træ skal
+# afvises på herkomst, ikke på en nøgle) og FØR staging bygges.
+#
+# 🔴 Den er koblet ind her frem for at være et script nogen kører: Viktor BESLUTTEDE
+# rækkefølgen »rotér sidst« 22/8, og en besluttet rækkefølge er noget nogen skal HUSKE.
+# Husets egen figur: »en forkontrol man kører men ikke standser på, er en kommentar.«
+#
+# rc 3 (UMÅLT) STOPPER OGSÅ. Kan vagten ikke tælle forløbene, må deployet ikke fortsætte
+# på et tal ingen har målt , det er præcis dér »0 aktive« og »kunne ikke måle« ville
+# blive forvekslet.
+sh "$(dirname "$0")/rotations-vagt.sh"
+rot_rc=$?
+if [ "$rot_rc" != "0" ]; then
+  echo "🔴 ABORT (rotations-gate, rc $rot_rc). Deployet er stoppet." >&2
+  exit "$rot_rc"
+fi
+
 # Klient-facing rod-endelser. Nye assets med disse endelser i roden kommer AUTOMATISK med.
 EXTS=" html js mjs css png ico svg jpg jpeg webp gif json webmanifest txt woff woff2 "
 # Rod-filer der matcher en klient-endelse men ALDRIG må deployes (defensivt, fremtidssikring).
