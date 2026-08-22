@@ -70,6 +70,12 @@ FIX="$TMP/repo"
 BARE="$TMP/origin.git"
 mkdir -p "$FIX/build-tools" "$FIX/docs"
 cp "$SCRIPT_UNDER_TEST" "$FIX/build-tools/deploy-skemaer.sh"
+# 🔴 GATENS SØSKENDE SKAL MED. Deploy-scriptet kalder `rotations-vagt.sh` som en sibling;
+# uden den giver kopien rc 127 og HVER assertion herunder bliver rød af en grund der intet
+# har med herkomst at gøre. Målt 23/8: 19 assertions faldt af netop det.
+# 🔵 Vagten selv opdager at fixturet ikke er skema-træet (ingen mentem-skema-core.js) og
+# svarer rc 0 »intet at dømme«, så den rører hverken nettet eller dommen her.
+cp "$(dirname "$SCRIPT_UNDER_TEST")/rotations-vagt.sh" "$FIX/build-tools/rotations-vagt.sh"
 i=1
 while [ "$i" -le 14 ]; do printf '<!-- fil %s -->\n' "$i" > "$FIX/side$i.html"; i=$((i+1)); done
 # index.html er IKKE bare en fil mere i fixturet: den er den ENESTE fil afsender-stemplet
