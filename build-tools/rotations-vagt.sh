@@ -53,6 +53,25 @@ er_noegle ''                                             && umaalt "formtesten a
 
 udtraek() { grep -ho "$2 *= *'[^']*'" "$1" 2>/dev/null | head -1 | sed "s/.*'\\(.*\\)'/\\1/"; }
 
+# ── 0. ER DETTE OVERHOVEDET SKEMA-TRÆET? ─────────────────────────────────────────
+# 🔴 HVORFOR SPØRGSMÅLET FINDES, og det er målt på mig selv 23/8 kl. 00.3x.
+# `deploy-herkomst-test.sh` er en fitness-funktion: den bygger et SYNTETISK repo, lægger
+# `deploy-skemaer.sh` ind i det og kører det med `--dry-run`. Da jeg koblede denne vagt ind
+# i deploy-stien, kaldte det kopierede script en søskende der ikke fandtes i fixturet →
+# rc 127 → **19 assertions gik fra grøn til rød**, og jeg havde allerede merget det.
+#
+# 🔴 OG DEN NEMME KUR VAR FORKERT: »mangler filerne, så spring over« er fail-OPEN på en
+# sikkerhedsgate. Skelnen skal være POSITIV og målbar:
+#     mentem-skema-core.js FINDES IKKE  -> det er ikke skema-træet. Der er ingen nøgle at
+#                                          rotere, fordi der ingen flade er. rc 0, sig det.
+#     den FINDES, men nøglerne kan ikke læses -> UMÅLT (rc 3). Det kan være at nogen har
+#                                          FJERNET en nøgle, og det er en ændring af
+#                                          modtager-opsætningen, ikke en ikke-ændring.
+if [ ! -f "$REPO/mentem-skema-core.js" ]; then
+  echo "🟢 rotations-vagt: $REPO er ikke skema-træet (ingen mentem-skema-core.js). Intet at dømme."
+  exit 0
+fi
+
 # ── 1. NØGLERNE I TRÆET ──────────────────────────────────────────────────────────
 TRAE_INGEST=$(udtraek "$REPO/index.html" INGEST_PUBKEY)
 TRAE_PINNED=$(udtraek "$REPO/mentem-skema-core.js" PINNED_PUBKEY)
