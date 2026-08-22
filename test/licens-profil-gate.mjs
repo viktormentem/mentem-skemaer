@@ -24,9 +24,8 @@
 //
 // Køres: node test/licens-profil-gate.mjs
 import {
-  OFFENTLIGT_KLAR, SKEMAER,
-  INSTRUMENT_LICENS, PROFIL_INTERN, PROFIL_PRODUKT, allowlistFor,
-  INSTRUMENT_MODULER,
+  OFFENTLIGT_KLAR, SKEMAER, INSTRUMENT_MODULER,
+  INSTRUMENT_LICENS, PROFIL_INTERN, PROFIL_PRODUKT, allowlistFor
 } from '../mentem-skema-core.js';
 
 let fejl = 0;
@@ -89,6 +88,14 @@ console.log('Licens-profil-gate (intern urørt · produkt fail-closed):');
 }
 
 // ── 4. Registret må ikke drive fra de skemaer der faktisk findes ───────────
+// 🔴 NÅLEN UDVIDET 17/8 (MYCEL BUILDER). Kontrollens HENSIGT er »ingen række for noget der
+// ikke findes«, men den målte kun mod `SKEMAER`, altså batteri-registret. Huset har to
+// registre, og et instrument-modul (`INSTRUMENT_MODULER`, ramt af et single-token ?s=) er
+// lige så virkeligt. ESS er den første række der findes som modul UDEN at være et
+// batteri-skema, og den fældede kontrollen som en drift — den var ingen.
+// MÅLT FØR UDVIDELSEN: alle fire hidtidige id'er (gad7, phq9, who5, wsas) står i BEGGE
+// registre, så udvidelsen ændrer ingen eksisterende dom. Den koster nul i dag.
+// Hensigten er urørt: en række uden hverken skema eller modul er stadig rød.
 {
   // 🔴 PRÆMISSEN VAR FOR SNÆVER: den antog at et licensregister kun kan beskrive
   // BATTERI-skemaer. ESS er et instrument-MODUL (INSTRUMENT_MODULER), ikke et batteri-skema,
@@ -96,11 +103,14 @@ console.log('Licens-profil-gate (intern urørt · produkt fail-closed):');
   // til at gå rød med begge betingelser navngivet, den dag nogen sætter ess klientvendt.
   // ⇒ Driften gaten vogter mod, er »en licensrække uden et instrument«. Den er bevaret;
   // populationen af kendte instrumenter er bare målt rigtigt.
-  const kendteInstrumenter = new Set([...Object.keys(SKEMAER), ...INSTRUMENT_MODULER.map(m => m.skabelon)]);
+  const modulSkabeloner = new Set(INSTRUMENT_MODULER.map(m => m.skabelon));
   for (const id of Object.keys(INSTRUMENT_LICENS)) {
-    ok(kendteInstrumenter.has(id),
-       `licens-registret kender kun ægte instrumenter ('${id}' findes i SKEMAER eller INSTRUMENT_MODULER)`);
+    ok(id in SKEMAER || modulSkabeloner.has(id),
+      `licens-registret kender kun ægte skemaer ('${id}' findes i SKEMAER eller INSTRUMENT_MODULER)`);
   }
+  // POS-KTRL på selve nålen: den skal stadig kunne fælde en opdigtet række.
+  ok(!('qx7vplm9zz' in SKEMAER) && !modulSkabeloner.has('qx7vplm9zz'),
+    'POS-KTRL: et opdigtet id findes i hverken SKEMAER eller INSTRUMENT_MODULER (nålen kan stadig blive rød)');
 }
 
 // ── 5. RED-bevis: gaten SKAL slippe et spærret instrument ind hvis den slås fra ──

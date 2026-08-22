@@ -622,7 +622,7 @@
 import { SKEMAER, SKEMA_ORDER, OFFENTLIGT_KLAR, KLIENT_RAEKKEFOELGE, buildPayload, buildPayloadCSD, buildPayloadBaseline, mentemEncrypt,
          CSD_SOEVNDAGBOG, SOEVN_BASELINE, CONTENT_VERSION, kryptoStoettet,
          PINNED_PUBKEY, PINNED_KEY_ID, resolveRecipientKey,
-         INSTRUMENTER, instrumentFeltOrden, buildInstrumentMycel,
+         INSTRUMENTER, INSTRUMENTER_REVIEW, REVIEW_PARAM, instrumentFeltOrden, buildInstrumentMycel,
          SOEVN_SCREENING, buildPayloadScreening, SCREENING_ALDER_MIN, SCREENING_ALDER_MAX,
          SENDT_KVITTERING_PRIMAER, sendtKvitteringSekundaer, SEND_SIKKERT_CTA,
          SRT_VINDUE_TEKST, SOEVN_F2,
@@ -1020,6 +1020,22 @@ const instrumentId = (sTokens.length === 1 && INSTRUMENTER[sTokens[0]]) ? sToken
 // 🟡 Et id der står i rækkefølgen men IKKE i allowlisten, vises ikke. Medlemskab vinder.
 // Kun spørgeskemaer (diary/baseline/screening har egne flows).
 let selected = KLIENT_RAEKKEFOELGE.filter(id => rawSelected.includes(id) && OFFENTLIGT_KLAR.includes(id));
+// ── GODKENDELSES-REVIEW: bygget, ikke godkendt (ESS, Mapi Special Terms 140135) ─────
+// Et instrument kan vaere fuldt formet og alligevel forbudt at vise for en klient, indtil
+// licensgiveren har godkendt selve SKAERMEN. Screenshot-review er selv betingelsen, saa
+// skaermen skal kunne rendres foer den maa bruges. Tre laase, alle tre skal aabne:
+//   1. skabelonen staar i INSTRUMENTER_REVIEW (altsaa KLAR:true OG klientGodkendt:false)
+//   2. ?godkendelsesreview=1 staar eksplicit i URL'en
+//   3. der er INTET ingest-token. Et token er beviset paa at linket er sendt til et
+//      menneske; et review-link maa aldrig kunne baere et. Uden token er der ingen
+//      krypteret transport overhovedet (instrument-flowet emitterer kun [MYCEL]-tekst).
+// 🔴 Der tegnes bevidst INTET review-baand paa skaermen. Mapi godkender den side klienten
+// faktisk ser; en ekstra bjaelke ville goere det godkendte artefakt forskelligt fra det
+// udrullede, og det er en vaerre fejl end at review-visningen ligner sig selv.
+const instrumentReviewId = (sTokens.length === 1
+  && INSTRUMENTER_REVIEW[sTokens[0]]
+  && params.get(REVIEW_PARAM) === '1'
+  && !ingestToken) ? sTokens[0] : null;
 // ── EMA: egen-forfattet, og naas KUN med et autentificeret link ──────────────
 // 🔴 HVORFOR DEN IKKE LAEGGES I OFFENTLIGT_KLAR. Det register vogter TREDJEPARTS-
 // instrumenter mod at laekke paa den UAUTENTIFICEREDE flade (GAD-7, PHQ-9, WHO-5, WSAS
@@ -3222,6 +3238,9 @@ function showStep(i, moveFocus = true) {
   });
 }
 
+// Hvilket instrument-modul er i gang? Saettes af renderInstrument. Stepperens cfg bygges
+// uden for renderInstrument og har ellers ingen adgang til modulet.
+let aktivtInstrumentSkema = null;
 function instrumentStepperCfg() {
   return {
     rootId: 'instrument-fields',
@@ -3237,7 +3256,14 @@ function instrumentStepperCfg() {
         if (p) p.hidden = false;
       }
       const intro = document.getElementById('instrument-intro'); if (intro) intro.hidden = i !== 0;
-      const attr = document.getElementById('instrument-attribution'); if (attr) attr.hidden = i !== 0;
+      // 🔴 KILDEANGIVELSEN KAN VAERE EN LICENSBETINGELSE, ikke en hoeflighed. Default er
+      // uaendret (kun trin 1), fordi WHO-5/PHQ-9/GAD-7 ikke kraever andet. Men ESS' Special
+      // Terms §4.4 siger at notitsen SKAL vises hvor instrumentet optraeder, og i et
+      // eet-spoergsmaal-ad-gangen-flow er trin 2 til 8 syv sider hvor det optraeder UDEN
+      // notits. Maalt 17/8 paa screenshottene: 1 af 8 trin baerer den.
+      // Flaget saettes pr. modul, saa udvidelsen koster nul for de tre andre instrumenter.
+      const attr = document.getElementById('instrument-attribution');
+      if (attr) attr.hidden = (aktivtInstrumentSkema && aktivtInstrumentSkema.notitsPaaHverSide) ? false : (i !== 0);
       const note = document.getElementById('instrument-note'); if (note) note.hidden = i !== (steps.length - 1);
     },
     onTeardown: () => {
@@ -3256,7 +3282,11 @@ function instrumentStemAria(stem, text) {
   return (stem ? stem.replace(/\s*\.\.\.\s*$/, '') + ' ' : '') + text;
 }
 function renderInstrument(id) {
-  const skema = INSTRUMENTER[id];
+  // Render-motoren er FAELLES for de to registre med vilje. Screenshot-review skal ramme
+  // praecis den kode der senere sender: godkendte man en skaerm tegnet af en anden funktion,
+  // beviste godkendelsen noget om et artefakt der aldrig blev udrullet.
+  const skema = INSTRUMENTER[id] || INSTRUMENTER_REVIEW[id];
+  aktivtInstrumentSkema = skema;
   const ref  = params.get('ref')  || '';
   const dato = params.get('dato') || '';
   const instrAnswers = {};   // { [feltkey]: heltal }: KUN faktiske klik, ingen default
@@ -4339,6 +4369,11 @@ if (formuleringAktiv) {
   runDiary(diaryId);
 } else if (instrumentId) {
   renderInstrument(instrumentId);
+} else if (instrumentReviewId) {
+  // Bygget, ikke godkendt. Naas kun med ?godkendelsesreview=1 og uden ingest-token; se
+  // begrundelsen ved instrumentReviewId ovenfor. Falder man igennem her (fx fordi tokenet
+  // var med), lander man i velkomst-grenen nedenfor, altsaa ingen ESS-skaerm. Fail-closed.
+  renderInstrument(instrumentReviewId);
 } else {
   document.getElementById('finish-btn').addEventListener('click', goDone);
   // Indpakket: se begrundelsen ved screening-bindingen (Event-objektet er sandt).
@@ -4484,7 +4519,13 @@ initA11yMode();
 // Instrument-skemaer (WHO-5/PHQ-9/GAD-7): ét-spørgsmål-ad-gangen-stepperen anvendes HER, efter
 // A11Y_KEY/data-a11y/localStorage er resolved (a11yOn() rammer TDZ under routing). a11y skifter kun
 // auto-frem, ikke selve trin-flowet. Søvndagbogen rammer ikke dette (felter renderes efter navigation).
-if (instrumentId) {
+// 🔴 `|| instrumentReviewId` er ikke kosmetik. Uden den kom stepperen aldrig i gang i
+// review-visningen, og siden viste ALLE items paa eet lange rul. Maalt 17/8 paa det foerste
+// screenshot: 8 af 8 ESS-spoergsmaal synlige samtidig. Det er ikke en grim skaerm, det er en
+// FALSK skaerm: screenshottet der skulle godkendes af licensgiveren, viste en side klienten
+// aldrig kommer til at se. En godkendelse af et artefakt der ikke udrulles, er ingen
+// godkendelse. Fundet fordi billedet blev SET, ikke fordi en proeve var roed.
+if (instrumentId || instrumentReviewId) {
   const instrScreen = document.getElementById('screen-instrument');
   if (instrScreen && instrScreen.classList.contains('active')) { diaryStepIndex = 0; applyInstrumentStepper(); }
 }
