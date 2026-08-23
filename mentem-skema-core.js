@@ -1585,6 +1585,118 @@ export function buildAnmodKonvolut(input = {}) {
 }
 
 // ════════════════════════════════════════════════════════════════════════
+//  Q17 - »spørg aldrig om det vi allerede har« (Viktor-GO 17=1)
+// ════════════════════════════════════════════════════════════════════════
+// Spec: kanonisk/specs/2026-08-21-viktors-fem-svar-bygget.md §Q17.
+//   har vi feltet, og er det PÅLIDELIGT   -> spring spørgsmålet over, tavst
+//   har vi feltet, men med LAV KONFIDENS  -> vis det til bekræftelse, spørg ikke forfra
+//   har vi det ikke                       -> spørg
+//   er feltet FØLSOMT (CPR)               -> spring over uanset, og vis det ALDRIG
+//
+// Denne fil er FLADENS halvdel. Serversidens halvdel (»hvad har vi allerede om denne
+// klient«) er MJ BUILDERs, og kontrakten nedenfor er det eneste de to deler.
+//
+// 🔴 MÅLT FØR JEG BYGGEDE, og det ændrede formen tre steder:
+//
+// 1. Fladen stiller i dag PRÆCIS ÉT stamdata-spørgsmål: `patient-name`
+//    (»Dit navn (valgfrit)«). Telefon: 0 forekomster som felt. CPR: 0 forekomster.
+//    Q17's tre andre rækker er allerede opfyldt af at spørgsmålene ikke findes.
+//    ⇒ Reglen har én kaldeflade i dag, og gaten nedenfor er det der holder den ene.
+//
+// 2. `clientName` er IKKE pynt. Den er redningsnettet når token-joinet fejler:
+//    MentemSyncService.swift:201 `fallbackKlient(forKlientNavn:)` er det eneste
+//    der importerer en dekrypteret payload når `findByToken` giver nil, og
+//    KlientDataImportVC bygger hele den manuelle import op om den.
+//    ⇒ **At springe SPØRGSMÅLET over må aldrig springe SVARET over.** Derfor kræver
+//    `spring` at serveren sendte en VÆRDI vi kan lægge i payloaden i stedet.
+//    »Pålidelig« uden værdi falder til `spoerg`, ikke til `spring`: at spørge er
+//    harmløst, at miste nettet er det ikke.
+//
+// 3. Nul-viden-postkassen (migrations/0001_init.sql, Viktor-besluttet 18/6:
+//    »Worker ser KUN ciphertext + pseudonym. Ingen navn, klartekst eller nøgle på
+//    disk«) kan IKKE svare på dette opslag uden at holde op med at være det den er.
+//    ⇒ Kontrakten er derfor bundet til et ORIGIN der må kende klienten (Journal),
+//    ikke til `ingest.mycel.dk`. Se `Q17_KENDT_KONTRAKT.origin`.
+
+// De ENESTE felter der må nå fladen. Alt andet er en fejl hos afsenderen, ikke
+// et felt vi ignorerer: en server der sender CPR, er en server hvis øvrige svar
+// vi heller ikke kan stole på. Fail-loud, og fald tilbage til at spørge om alt.
+export const Q17_TILLADTE_FELTER = ['navn'];
+
+// Felter der kan nævnes for at blive AFVIST med en navngiven grund. Uden denne
+// liste ville »cpr« bare være et ukendt felt, og afvisningen ville læse som en
+// tastefejl frem for som den regel den er.
+export const Q17_FORBUDTE_FELTER = {
+  cpr:     'CPR må aldrig på en klientvendt flade (spec §Q17)',
+  telefon: 'telefonen er verificeret ved konstruktion: hun åbnede linket vi sendte på SMS',
+};
+
+export const Q17_TILSTANDE = ['paalidelig', 'lav', 'ukendt'];
+
+// Kontrakten, ét sted, så fladen og serveren ikke kan drive fra hinanden.
+export const Q17_KENDT_KONTRAKT = {
+  rute: '/klient/kendt',
+  metode: 'GET',
+  parameter: 't',
+  // 🔴 IKKE ingest.mycel.dk. Se punkt 3 ovenfor.
+  origin: 'journal',
+  svar: { ok: true, felter: { navn: { tilstand: 'paalidelig|lav|ukendt', vaerdi: 'string|null' } } },
+  version: 1,
+};
+
+/// Dommen for ÉT felt. Ren funktion: ingen DOM, ingen netværk, ingen ur.
+/// Returnerer { handling, vaerdi, grund }.
+///   handling: 'spring' | 'bekraeft' | 'spoerg' | 'forbudt'
+export function q17FeltDom(felt, post) {
+  if (Object.prototype.hasOwnProperty.call(Q17_FORBUDTE_FELTER, felt)) {
+    return { handling: 'forbudt', vaerdi: null, grund: Q17_FORBUDTE_FELTER[felt] };
+  }
+  if (!Q17_TILLADTE_FELTER.includes(felt)) {
+    return { handling: 'forbudt', vaerdi: null, grund: 'ukendt felt »' + felt + '« er ikke på tilladelseslisten' };
+  }
+  if (!post || typeof post !== 'object') {
+    return { handling: 'spoerg', vaerdi: null, grund: 'intet svar for feltet' };
+  }
+  if (!Q17_TILSTANDE.includes(post.tilstand)) {
+    return { handling: 'spoerg', vaerdi: null, grund: 'ukendt tilstand »' + String(post.tilstand) + '«' };
+  }
+  const vaerdi = (typeof post.vaerdi === 'string' ? post.vaerdi.trim() : '');
+  if (post.tilstand === 'ukendt') return { handling: 'spoerg', vaerdi: null, grund: 'vi har det ikke' };
+  if (!vaerdi) {
+    // Se punkt 2 i hovedkommentaren: dette er den dyre celle.
+    return { handling: 'spoerg', vaerdi: null, grund: 'tilstand »' + post.tilstand + '« uden værdi: at springe over ville miste redningsnettet for navnet' };
+  }
+  if (post.tilstand === 'paalidelig') return { handling: 'spring', vaerdi, grund: 'journalen har det pålideligt' };
+  return { handling: 'bekraeft', vaerdi, grund: 'lav konfidens: vis til bekræftelse, spørg ikke forfra' };
+}
+
+/// Dommen for HELE svaret. Et forbudt felt forgifter hele svaret (fail-closed):
+/// alle felter falder til `spoerg`, og `afvist` bærer grundene.
+export function q17Dom(svar) {
+  const tomt = { felter: {}, afvist: [], brugt: false };
+  if (!svar || typeof svar !== 'object' || svar.ok !== true || !svar.felter || typeof svar.felter !== 'object') {
+    return { ...tomt, afvist: svar ? ['svaret har ikke formen { ok: true, felter: {...} }'] : [] };
+  }
+  const felter = {};
+  const afvist = [];
+  for (const navn of Object.keys(svar.felter)) {
+    const d = q17FeltDom(navn, svar.felter[navn]);
+    if (d.handling === 'forbudt') { afvist.push(navn + ': ' + d.grund); continue; }
+    felter[navn] = d;
+  }
+  if (afvist.length) return { felter: {}, afvist, brugt: false };
+  return { felter, afvist: [], brugt: true };
+}
+
+/// Hvad `patient-name`-feltet skal gøre. Én linje, så kaldestedet i index.html
+/// ikke kan komme til at fortolke dommen på sin egen måde.
+export function q17NavneHandling(dom) {
+  const d = dom && dom.felter && dom.felter.navn;
+  if (!d) return { handling: 'spoerg', vaerdi: null };
+  return { handling: d.handling, vaerdi: d.vaerdi };
+}
+
+// ════════════════════════════════════════════════════════════════════════
 //  KEY-PINNING (sikkerheds-hærdning, P1a) - trust anchor i siden
 // ════════════════════════════════════════════════════════════════════════
 // Mentems E2E X25519-public-key er PINNED i koden - IKKE taget fra ?pk=-URL-
