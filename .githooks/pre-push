@@ -1,7 +1,15 @@
 #!/bin/bash
 #
 # pre-push (emoji-guard-haard-merge-gate) — git pre-push-hook: gør VERA-guard #1 til en
-# BLOKERENDE merge-gate for mentem-skemaer (prod-web → GitHub Pages).
+# BLOKERENDE merge-gate for mentem-skemaer (prod-web).
+#
+# 🔴 RETTET 23-08-2026: linjen sagde »prod-web → GitHub Pages«. Det er en OVERHALET
+# praemis, og den var farlig fordi den laeste som en beskrivelse af hvor et push lander.
+# Maalt: skemaer.mycel.dk serveres af CLOUDFLARE Pages via direct-upload (dig -> 104.21.33.49
+# / 172.67.158.222 · `server: cloudflare` · /deploy-sha.txt stemplet af deploy-skemaer.sh).
+# Et push eller en PR-merge til main UDGIVER DERFOR INTET; udrulning er et separat, gatet
+# wrangler-trin. GitHub Pages paa dette repo er SLUKKET 23/8 paa Viktor-GO (API svarer 404).
+# Gaten selv er UROERT og gaelder stadig: en emoji-som-ikon-regression maa ikke naa main.
 #
 # Født af handoff-vera-guard-1-haard-merge-gate-2026-06-15: guard #1 (test/emoji-guard.mjs)
 # var et SIGNAL (rapporterede fil:linje+codepoint) men intet aborterede et push til prod-main

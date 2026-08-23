@@ -3,7 +3,9 @@
 # HVORFOR (maskin-uafhængig backstop): den hårde gate lever pt. KUN som en lokal
 # pre-push-hook (.githooks/pre-push → install pr. klon via test/install-emoji-guard-hook.sh).
 # git versionerer ikke .git/hooks/ → en frisk klon / et CI-miljø / en kollega uden hooken
-# installeret kan pushe en emoji-som-ikon-regression til prod-main (GitHub Pages) uopdaget.
+# installeret kan pushe en emoji-som-ikon-regression til prod-main uopdaget.
+# (Stod »GitHub Pages«. Prod serveres af Cloudflare Pages, og Pages paa dette repo er slukket
+#  23/8 paa Viktor-GO. Gaten er uaendret: den vogter MAIN, ikke en bestemt udgivelsesvej.)
 # Denne workflow lukker det hul server-side: GitHub kører guarden på HVER PR mod main og på
 # HVERT push til main — uafhængigt af om nogen lokal hook er installeret. Rød guard → rød check.
 #
