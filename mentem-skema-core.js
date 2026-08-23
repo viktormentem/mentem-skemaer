@@ -1099,6 +1099,22 @@ export function buildPayload(answers, meta = {}) {
     questionnaireScores,
   };
 
+  // ── Udfyldnings-varighed (Viktor-GO Q15, 23-08-2026) ──────────────────────────────
+  // Formen: { who5: 61, wsas: 48, ..., ialt: 446, afbrudt: ['phq9'] }, i HELE SEKUNDER.
+  // Måles paa fladen (index.html, `varighedResultat`), ikke her: denne funktion ser kun
+  // svarene, og en varighed er en egenskab ved UDFYLDNINGEN, ikke ved svaret.
+  //
+  // 🔴 FELTET UDELADES HELT NAAR DER INTET ER MAALT, frem for at staa som `null` eller
+  //    `{}`. En modtager der taeller »hvor mange besvarelser har en varighed« skal kunne
+  //    skelne »ikke maalt« fra »maalt til nul«, og et tomt objekt ligner det sidste.
+  //    Det er husets egen regel om at et nul skal sige hvilken slags nul det er.
+  // 🟡 GRAENSEN: feltet er adfaerdsmetadata om klienten og har sin egen raekke i
+  //    art.30-fortegnelsen, aktivitet 15. Det maa ALDRIG vises pr. klient i journalen,
+  //    kun som median paa tvaers og foerst ved n >= 20 pr. skema.
+  if (meta.varighed && typeof meta.varighed === 'object' && meta.varighed.ialt != null) {
+    payload.varighed = meta.varighed;
+  }
+
   if (s.cas) {
     payload.casTrends = [{
       date: now,
