@@ -1182,6 +1182,70 @@ function kaedeEfterAflevering(skemaId, statusEl) {
 
 const answers = {};
 
+// ── UDFYLDNINGS-VARIGHED (Viktor-GO Q15, MYCEL BUILDER 23-08-2026) ──────────────────
+// Viktors ord: »lad tiden det tog for en klient være en del af besvarelsen, så vi
+// indsamler den data også, så kan vi udregne mediantiden og vise det«. Formålet er ÉT og
+// smalt: et ærligt tidsestimat til den NÆSTE klient. Rækken i art.30-fortegnelsen
+// (aktivitet 15) blev skrevet FØR denne kode, fordi specen krævede den rækkefølge.
+//
+// 🔴 SPECENS PRÆMIS HOLDT IKKE, OG DET ÆNDRER FORMEN. Den skrev »t_start når skemaet
+//    FØRSTE gang vises«. Målt i denne fil: `renderForm()` tegner ALLE skemaer som
+//    sektioner i ÉN rullende formular. Der findes derfor intet »vises«-øjeblik pr. skema,
+//    og en implementering efter ordlyden ville have målt det samme tidspunkt for alle.
+// 🟢 DERFOR SVAR-GRÆNSER: skema 1 løber fra Start-klikket til sit sidste svar, skema k+1
+//    fra skema k's sidste svar til sit eget. Summen af delene er dermed lig med helheden,
+//    og læsetiden før et skemas første svar tilfalder det skema den hører til.
+// 🟡 GRÆNSEN SAGT HØJT: det forudsætter at hun svarer oppefra og ned. Springer hun frem
+//    og tilbage, er fordelingen mellem skemaerne forkert, mens `ialt` stadig er rigtig.
+//
+// 🔴 ET URØRT SKEMA FÅR INTET TAL, IKKE ET NUL. VAS-skemaer forudfyldes til 50 og tæller
+//    som besvarede (`vasBlock`), så en klient kan aflevere uden at have rørt dem. »Hun
+//    brugte 0 sekunder« og »vi målte hende ikke« er to forskellige påstande, og kun den
+//    ene er sand. Nøglen udelades derfor helt.
+//
+// 🔴 MONOTONT UR, IKKE VÆGUR. `Date.now()` springer hvis systemuret rettes (NTP, tidszone,
+//    manuel ændring) og kan give en NEGATIV varighed. `performance.now()` kan ikke gå
+//    baglæns, og batteriet lever i ÉN sideindlæsning, som er præcis dens levetid.
+//    Faldet tilbage til `Date.now()` er kun for en browser uden den; de to må ALDRIG
+//    blandes, derfor vælges kilden ÉN gang her og ikke pr. kald.
+const VARIGHED_LOFT_SEK = 600;
+const VARIGHED_UR_ER_MONOTONT = (typeof performance !== 'undefined' && typeof performance.now === 'function');
+function varighedNu() { return VARIGHED_UR_ER_MONOTONT ? performance.now() : Date.now(); }
+
+const varighedsUr = { t0: null, sidste: Object.create(null) };
+
+function varighedStart() {
+  varighedsUr.t0 = varighedNu();
+  varighedsUr.sidste = Object.create(null);
+}
+function varighedNoterSvar(id) {
+  if (varighedsUr.t0 == null) return;    // svar afgivet uden for en målt udfyldning
+  varighedsUr.sidste[id] = varighedNu();
+}
+
+/// Deler tiden ud på skemaerne i den orden klienten møder dem. `raekkefoelge` er
+/// `selected`, altså KLIENT_RAEKKEFOELGE-ordenen, ikke `?s=`-ordenen.
+function varighedResultat(raekkefoelge) {
+  if (varighedsUr.t0 == null) return null;
+  const ud = { afbrudt: [] };
+  let forrige = varighedsUr.t0;
+  let sidsteGlobale = null;
+  for (const id of (raekkefoelge || [])) {
+    const t = varighedsUr.sidste[id];
+    if (t == null) continue;             // urørt skema: intet tal, se noten ovenfor
+    const sek = Math.max(0, Math.round((t - forrige) / 1000));
+    ud[id] = sek;
+    // 🔴 Loftet MÆRKER, det klemmer ikke. At klemme 20 timer ned til 600 sek opfinder et
+    //    tal der ligner en måling. Medianen på modtagersiden udelader de mærkede.
+    if (sek > VARIGHED_LOFT_SEK) ud.afbrudt.push(id);
+    forrige = t;
+    sidsteGlobale = t;
+  }
+  if (sidsteGlobale == null) return null;   // intet skema fik et svar: ingen måling
+  ud.ialt = Math.max(0, Math.round((sidsteGlobale - varighedsUr.t0) / 1000));
+  return ud;
+}
+
 // ── P0 incident-hærdning: krypto-fallback + diagnostik (klient-facing) ───────
 // Baggrund: indlejrede/forældede Android-browsere mangler X25519 i crypto.subtle
 // → kryptering kaster. Vi feature-detekterer FØR udfyldning og ved Send, bevarer
@@ -1439,6 +1503,7 @@ function radioBlock(id, i, q, options) {
     lbl.querySelector('input').addEventListener('change', () => {
       if (!answers[id]) answers[id] = {};
       answers[id][i] = opt.value;
+      varighedNoterSvar(id);
       group.querySelectorAll('.radio-option').forEach(o => o.classList.remove('checked'));
       lbl.classList.add('checked');
       block.classList.add('answered');
@@ -1463,6 +1528,7 @@ function vasBlock(id, i, item, s) {
     </div>`;
   block.querySelector('input').addEventListener('input', e => {
     answers[id][i] = parseInt(e.target.value, 10);
+    varighedNoterSvar(id);   // 🔴 forudfyldningen til 50 tæller IKKE som et svar; kun en berøring gør
   });
   return block;
 }
@@ -1485,6 +1551,7 @@ function updateProgress() {
 }
 
 function startForm() {
+  varighedStart();   // FØR renderForm: uret skal dække læsningen af det første skema
   renderForm();
   showScreen('screen-form');
   updateProgress();
@@ -1591,7 +1658,7 @@ async function shareEncrypted(auto = false) {
   let containerJSON, payload;
   try {
     const name = (document.getElementById('patient-name').value || '').trim();
-    payload = buildPayload(answers, { name, sessionNumber: sessionN });
+    payload = buildPayload(answers, { name, sessionNumber: sessionN, varighed: varighedResultat(selected) });
     containerJSON = JSON.stringify(await mentemEncrypt(keyCheck.key, payload, keyCheck.keyId)); // ALTID pinned key
   } catch (e) {
     console.error('[mentem] kryptering fejlede', e && e.name, e && e.message, e);
