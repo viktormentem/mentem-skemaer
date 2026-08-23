@@ -72,6 +72,7 @@
   .progress-label { font-size:13px; color:var(--muted); white-space:nowrap; }
 
   .patient-info { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px 24px; margin-bottom:28px; }
+  .q17-ret { margin-top:10px; background:none; border:1px solid var(--border); border-radius:8px; padding:7px 14px; font:inherit; font-size:15px; color:var(--accent); cursor:pointer; }
   .form-field label { display:block; font-size:13px; font-weight:500; color:var(--muted); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.05em; }
   .form-field input { width:100%; padding:12px 16px; border:1.5px solid var(--border); border-radius:8px; font-family:'DM Sans',sans-serif; font-size:16px; background:white; outline:none; }
   .form-field input:focus { border-color:var(--accent); }
@@ -629,7 +630,8 @@ import { SKEMAER, SKEMA_ORDER, OFFENTLIGT_KLAR, KLIENT_RAEKKEFOELGE, buildPayloa
          parseFormuleringFragment, renderFormulering,
          vaelgNudgeKort, vaelgUgeKort,
          NUDGE_EVAL_MILEPAELE, NUDGE_EVAL_SVAR, NUDGE_EVAL_TEKST,
-         setAfsenderKontekst, afsenderStempel } from './mentem-skema-core.js';
+         setAfsenderKontekst, afsenderStempel,
+         q17Dom, q17NavneHandling, Q17_KENDT_KONTRAKT } from './mentem-skema-core.js';
 
 // ── FORMULERING fragment-dispatch (Wells-model, s=formulering) ────────────
 // Linket bæres i URL-FRAGMENTET (#<32hex-token>;s=formulering;n=..;tr=..;..),
@@ -1484,11 +1486,89 @@ function updateProgress() {
   fb.textContent = answered < total ? `Mangler ${total - answered} svar` : 'Færdig →';
 }
 
+// ── Q17: spørg ikke om det journalen allerede har (Viktor-GO 17=1) ─────────
+// Spec: kanonisk/specs/2026-08-21-viktors-fem-svar-bygget.md §Q17. Dommen bor i
+// mentem-skema-core.js (`q17Dom`); her er KUN de tre ting fladen gør ved den.
+//
+// 🔴 TEGN FØRST, SPØRG DEREFTER (specens §3c). Feltet renderes som i dag, og
+// opslaget kan kun NEDGRADERE det bagefter. Klienten ser aldrig en tom skærm
+// mens noget hentes, og et dødt opslag koster ingenting: så står spørgsmålet der,
+// præcis som det gjorde før Q17 fandtes.
+//
+// 🔴 SERVEREN FINDES IKKE ENDNU, og det er en ERKLÆRET grænse, ikke en mangel.
+// Serversiden (»hvad har vi allerede om denne klient«) er MJ BUILDERs halvdel.
+// Den kan ikke ligge i ingest-workeren: migrations/0001_init.sql er en NUL-VIDENS
+// postkasse (»Worker ser KUN ciphertext + pseudonym. Ingen navn, klartekst eller
+// nøgle på disk«, Viktor-besluttet 18/6), og et navne-opslag dér ville ophæve
+// præcis den egenskab. Derfor er basen en SØM der er tom i dag: uden base spørger
+// fladen ingen, og opfører sig som før. Se Q17_KENDT_KONTRAKT for formen.
+let q17ApiBase = '';                       // sættes af Journal-fladen, når den findes
+let q17SidsteDom = null;                   // til diagnostik; bærer ALDRIG en værdi videre selv
+
+function q17Base() { return (q17ApiBase || '').replace(/\/+$/, ''); }
+function q17Muligt() { return !!(ingestToken && q17Base()); }
+
+async function q17HentKendt() {
+  if (!q17Muligt()) return null;           // intet token eller ingen base → spørg som før
+  try {
+    const u = q17Base() + Q17_KENDT_KONTRAKT.rute + '?' + Q17_KENDT_KONTRAKT.parameter +
+              '=' + encodeURIComponent(ingestToken);
+    const r = await fetch(u, { method: Q17_KENDT_KONTRAKT.metode });
+    return await r.json();
+  } catch (e) {
+    // Et dødt opslag og »vi har det ikke« ender begge i `spoerg`, men de er ikke
+    // det samme, og kun det ene er en måling. Derfor navngives det i konsollen.
+    console.warn('[mentem] Q17-opslaget kunne ikke nås', e && e.message);
+    return null;
+  }
+}
+
+/// Anvender dommen på navne-feltet. Ren DOM, ingen netværk: kaldes med et svar.
+function q17AnvendNavn(svar) {
+  const dom = q17Dom(svar);
+  q17SidsteDom = { brugt: dom.brugt, afvist: dom.afvist };
+  if (dom.afvist.length) console.warn('[mentem] Q17-svar afvist:', dom.afvist.join(' · '));
+  const h = q17NavneHandling(dom);
+  const blok = document.querySelector('.patient-info');
+  const input = document.getElementById('patient-name');
+  if (!blok || !input) return h.handling;
+
+  if (h.handling === 'spring') {
+    // Spørgsmålet forsvinder, SVARET gør ikke: værdien lægges i feltet, så
+    // buildPayload'ens `clientName` er uændret. Uden den linje ville fladen blive
+    // pænere og MentemSyncService.swift:201's navne-fallback holde op med at virke.
+    input.value = h.vaerdi;
+    blok.hidden = true;
+    return 'spring';
+  }
+  if (h.handling === 'bekraeft') {
+    input.value = h.vaerdi;
+    const label = blok.querySelector('label');
+    if (label) label.textContent = 'Er det dig?';
+    let ret = blok.querySelector('.q17-ret');
+    if (!ret) {
+      ret = document.createElement('button');
+      ret.type = 'button';
+      ret.className = 'q17-ret';
+      ret.textContent = 'Ret';
+      ret.addEventListener('click', () => { input.readOnly = false; input.focus(); ret.hidden = true; });
+      input.insertAdjacentElement('afterend', ret);
+    }
+    ret.hidden = false;
+    input.readOnly = true;
+    return 'bekraeft';
+  }
+  return 'spoerg';                          // feltet står som det gjorde før
+}
+
 function startForm() {
   renderForm();
   showScreen('screen-form');
   updateProgress();
   window.scrollTo(0, 0);
+  // Tegn først, spørg derefter: skærmen er oppe, og opslaget må gerne tage tid
+  // eller aldrig svare. Ingen `await` her, med vilje.
+  if (q17Muligt()) q17HentKendt().then(q17AnvendNavn).catch(() => {});
 }
 
 // ── AFSLUTNING + KRYPTERET DELING (nul-score) ───────────────────────────────
