@@ -103,8 +103,22 @@ ok(q17Dom({ ok: true, felter: { navn: { tilstand: 'sikker', vaerdi: 'A B' } } })
    'en tilstand vi ikke kender, gætter vi ikke på');
 
 console.log('\n── 6. kontrakten er skrevet ud, så de to halvdele ikke kan drive ──');
-ok(Q17_KENDT_KONTRAKT.rute === '/klient/kendt' && Q17_KENDT_KONTRAKT.metode === 'GET',
-   'rute og metode står i koden');
+ok(Q17_KENDT_KONTRAKT.rute === '/offentlig/klient-kendt' && Q17_KENDT_KONTRAKT.metode === 'POST',
+   'rute og metode står i koden (MJ BUILDER 24/8: /offentlig/-præfiks + POST)');
+ok(/^\/offentlig\//.test(Q17_KENDT_KONTRAKT.rute),
+   'ruten ligger under /offentlig/, ellers svarer den aldrig en browser',
+   'MJs tunnel-regel er path ^/offentlig/; /klient/ er et login-præfiks hos dem');
+ok(Q17_KENDT_KONTRAKT.kropsnoegle === 't' && !('parameter' in Q17_KENDT_KONTRAKT),
+   'tokenet har en KROPS-nøgle, og query-parameteren er VÆK',
+   'stod den der endnu, kunne et kaldested nå at bruge den');
+{
+  // 🔴 Den celle der faktisk vogter det: tokenet må ikke kunne havne i URLen.
+  const frag = kilde.slice(kilde.indexOf('async function q17HentKendt'),
+                           kilde.indexOf('function q17AnvendNavn'));
+  ok(!/\?.*ingestToken|\+\s*'\?'/.test(frag), 'kaldet bygger INGEN query-streng med tokenet');
+  ok(/body:\s*JSON\.stringify/.test(frag), 'tokenet sendes i kroppen');
+  ok(/method:\s*Q17_KENDT_KONTRAKT\.metode/.test(frag), 'metoden læses af kontrakten, ikke hardkodet');
+}
 ok(Q17_KENDT_KONTRAKT.origin === 'journal',
    'origin er journal, IKKE nul-viden-postkassen',
    'ingest-workeren må per migrations/0001_init.sql ikke kende et navn');
