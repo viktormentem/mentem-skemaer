@@ -1650,11 +1650,30 @@ export const Q17_TILSTANDE = ['paalidelig', 'lav', 'ukendt'];
 // 🟢 Men POST er stadig rigtigt, af en anden grund end den de gav: forskellen er ikke
 // sti mod query, den er HVEM DER SER DEN. Klientens egen URL ser kun hun og vi; et KALD
 // herfra til et fremmed origin kan derimod baere URLen videre i `Referer`.
-// 🔴 Og dér ligger et hul der er STOERRE end denne rute: fladen erklaerer INGEN
-// Referrer-Policy (0 traef paa »referrer« i index.html, ingen header fra prod), saa vi
-// hviler paa browserens default frem for paa en beslutning. Det gaelder ogsaa `/submit`
-// og draft-store, som baerer samme token i dag. Kuren er `no-referrer` paa HELE fladen,
-// og den er IKKE bygget her , den er noteret som sin egen opgave.
+// 🔴 RETTELSE 24/8, OG DEN FORRIGE UDGAVE AF DENNE KOMMENTAR VAR FALSK.
+// Her stod: »fladen erklaerer INGEN Referrer-Policy (0 traef ... ingen header fra prod)«.
+// Det er ikke sandt. Maalt paa ny med POS-KTRL:
+//     curl -sI https://skemaer.mycel.dk/   -> 200, 686 bytes
+//       referrer-policy: strict-origin-when-cross-origin
+//       cache-control:   public, max-age=0, must-revalidate
+//       x-content-type-options: nosniff
+//     POS-KTRL `server:` -> 1 traef · NEG-KTRL `x-fnord` -> 0
+// Cloudflare Pages saetter dem allerede, og `strict-origin-when-cross-origin` striber
+// path og query cross-origin. Fladen HVILER altsaa ikke paa en browser-default , den
+// erklaerer en, og tokenet i `&t=` naar ikke et fremmed origin via `Referer`.
+//
+// 🔵 HVORFOR DEN FORRIGE MAALING VAR FALSK, for fejlen er mere laererig end fundet:
+// samme `curl -sI ... | grep -i referrer` blev koert 23/8 og gav nul traef. Kort efter
+// begyndte ALLE prod-kald at fejle (rc 35 / rc 000): en VPN var kommet op og svarede paa
+// AL DNS med 192.168.213.2 , ogsaa for `example.com` og `github.com`. Grep'et havde ingen
+// POS-KTRL, saa et TOMT svar og en manglende header gav samme nul. Havde jeg greppet efter
+// `server:` eller `HTTP/` ved siden af, var det set med det samme.
+// **Et nul fra en doed naal er ikke til at skelne fra det gode nul.**
+//
+// 🟡 Tilbage staar en aegte, mindre pointe: policyen er Cloudflares default, ikke husets
+// beslutning. `no-referrer` ville stribe ogsaa origin. MJ BUILDER rangerede Cache-Control
+// hoejere end det, og de har ret , et svar der baerer et klientnavn maa ikke kunne caches,
+// og det er DERES endpoint der baerer navnet. Deres side er lukket i `660188a`.
 export const Q17_KENDT_KONTRAKT = {
   rute: '/offentlig/klient-kendt',
   metode: 'POST',
