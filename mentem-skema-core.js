@@ -1634,10 +1634,32 @@ export const Q17_FORBUDTE_FELTER = {
 export const Q17_TILSTANDE = ['paalidelig', 'lav', 'ukendt'];
 
 // Kontrakten, ét sted, så fladen og serveren ikke kan drive fra hinanden.
+// 🔴 RETTET 24/8 af MJ BUILDER (`22d82f4ad713`), og begge rettelser er deres hus:
+//   rute   `/klient/kendt` -> `/offentlig/klient-kendt`. Deres tunnel-regel er path
+//          `^/offentlig/`, saa min oprindelige rute ville ALDRIG have svaret en browser,
+//          og `/klient/` er desuden et login-praefiks hos dem (`klient/ny/` er login_required).
+//   metode GET -> POST, med tokenet i KROPPEN frem for i query-strengen. Deres tre
+//          oevrige token-ruter goer allerede saadan.
+//
+// 🟡 DERES BEGRUNDELSE FOR POST HOLDT IKKE, og det er noteret her saa den ikke arves:
+// de skrev at »et token maa aldrig staa i URLen« er en husregel. Maalt: det er den ikke.
+// `SoevnKaede.swift:92` bygger `&t=<token>` ind i praecis det link Viktor SMS'er til
+// klienter i prod i dag (ratificeret 17/8). Klientens EGEN side-URL BAERER tokenet , det
+// er den maade hun kom herhen paa. Var reglen husbred, brød hele soevn-kaeden den.
+//
+// 🟢 Men POST er stadig rigtigt, af en anden grund end den de gav: forskellen er ikke
+// sti mod query, den er HVEM DER SER DEN. Klientens egen URL ser kun hun og vi; et KALD
+// herfra til et fremmed origin kan derimod baere URLen videre i `Referer`.
+// 🔴 Og dér ligger et hul der er STOERRE end denne rute: fladen erklaerer INGEN
+// Referrer-Policy (0 traef paa »referrer« i index.html, ingen header fra prod), saa vi
+// hviler paa browserens default frem for paa en beslutning. Det gaelder ogsaa `/submit`
+// og draft-store, som baerer samme token i dag. Kuren er `no-referrer` paa HELE fladen,
+// og den er IKKE bygget her , den er noteret som sin egen opgave.
 export const Q17_KENDT_KONTRAKT = {
-  rute: '/klient/kendt',
-  metode: 'GET',
-  parameter: 't',
+  rute: '/offentlig/klient-kendt',
+  metode: 'POST',
+  // Tokenet ligger i JSON-kroppen som `{ t }`, ikke i query-strengen.
+  kropsnoegle: 't',
   // 🔴 IKKE ingest.mycel.dk. Se punkt 3 ovenfor.
   origin: 'journal',
   svar: { ok: true, felter: { navn: { tilstand: 'paalidelig|lav|ukendt', vaerdi: 'string|null' } } },

@@ -1577,9 +1577,14 @@ function q17Muligt() { return !!(ingestToken && q17Base()); }
 async function q17HentKendt() {
   if (!q17Muligt()) return null;           // intet token eller ingen base → spørg som før
   try {
-    const u = q17Base() + Q17_KENDT_KONTRAKT.rute + '?' + Q17_KENDT_KONTRAKT.parameter +
-              '=' + encodeURIComponent(ingestToken);
-    const r = await fetch(u, { method: Q17_KENDT_KONTRAKT.metode });
+    // 🔴 Tokenet i KROPPEN, ikke i query-strengen (MJ BUILDER 24/8). Ikke fordi et token
+    // aldrig maa staa i en URL , klientens egen side-URL baerer det allerede , men fordi
+    // et KALD til et fremmed origin ellers kan baere hele URLen videre i `Referer`.
+    const r = await fetch(q17Base() + Q17_KENDT_KONTRAKT.rute, {
+      method: Q17_KENDT_KONTRAKT.metode,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ [Q17_KENDT_KONTRAKT.kropsnoegle]: ingestToken }),
+    });
     return await r.json();
   } catch (e) {
     // Et dødt opslag og »vi har det ikke« ender begge i `spoerg`, men de er ikke
